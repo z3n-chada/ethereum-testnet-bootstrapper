@@ -122,11 +122,32 @@ class LighthouseTestnetGenerator(TestnetDirectoryGenerator):
         shutil.rmtree(str(self.testnet_dir) + "/validators/")
 
 
+class NimbusTestnetGenerator(TestnetDirectoryGenerator):
+    def __init__(self, global_config, client_config):
+        super().__init__(global_config, client_config)
+
+    def finalize_testnet_dir(self):
+        """
+        Copy validator info into local client.
+        """
+        print(f"Finalizing lighthouse client dir={self.testnet_dir}")
+        for ndx in range(self.cc["num-nodes"]):
+            node_dir = pathlib.Path(str(self.testnet_dir) + f"/node_{ndx}")
+            node_dir.mkdir()
+            keystore_dir = pathlib.Path(str(self.testnet_dir) + "/validators")
+            src_dir = pathlib.Path(str(keystore_dir) + f"/node_{ndx}")
+            shutil.copytree(str(src_dir) + "/nimbus-keys", str(node_dir) + "/keys")
+            shutil.copytree(str(src_dir) + "/secrets", str(node_dir) + "/secrets")
+        # done now clean up..
+        shutil.rmtree(str(self.testnet_dir) + "/validators/")
+
+
 def generate_consensus_testnet_dirs(global_config):
     generators = {
         "teku": TekuTestnetDirectoryGenerator,
         "prysm": PrysmTestnetGenerator,
         "lighthouse": LighthouseTestnetGenerator,
+        "nimbus": NimbusTestnetGenerator,
     }
     for cc in global_config["consensus-clients"]:
         print(f"Creating testnet directory for {cc}")

@@ -171,7 +171,7 @@ testnet-bootstrapper:
     tag: "latest"
     container-name: "testnet-bootstrapper"
     ip-start: "10.0.20.202"
-    config-file: '/configs/lighthouse/lighthouse-phase0-bellatrix-mainnet.yaml'
+    config-file: '/configs/lighthouse/lighthouse-phase0-altair-mainnet.yaml'
 
 # generic modules use custom python scripts and the bootstrapper image to
 # run python scripts to acoomplish various actions such as mining or 
