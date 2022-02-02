@@ -22,11 +22,11 @@ while [ ! -f "/data/local_testnet/bootnode/enr.dat" ]; do
     sleep 1
 done
 
-if [ ! -f "$TESTNET_DIR/boot_enr.yaml" ]; then
-    bootnode_enr=`cat /data/local_testnet/bootnode/enr.dat`
-    echo "- $bootnode_enr" > $TESTNET_DIR/boot_enr.yaml
-fi
-
+# if [ ! -f "$TESTNET_DIR/boot_enr.yaml" ]; then
+#     bootnode_enr=`cat /data/local_testnet/bootnode/enr.dat`
+#     echo "- $bootnode_enr" > $TESTNET_DIR/boot_enr.yaml
+# fi
+# 
 lighthouse \
 	--datadir $NODE_DIR \
 	--debug-level $DEBUG_LEVEL \
@@ -34,7 +34,7 @@ lighthouse \
     --target-peers $TARGET_PEERS \
 	--testnet-dir $TESTNET_DIR \
 	--staking \
-    --metrics --metrics-address=0.0.0.0 --metrics-port="$METRICS_PORT" \
+    --boot-nodes "$bootnode_enr" \
     --http-allow-sync-stalled \
 	--enr-address "$IP_ADDR" \
 	--enr-udp-port $P2P_PORT \
