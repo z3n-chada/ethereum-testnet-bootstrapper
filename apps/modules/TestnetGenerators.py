@@ -4,10 +4,10 @@ import subprocess
 
 
 class TestnetDirectoryGenerator(object):
-    def __init__(self, global_config, client_config):
+    def __init__(self, global_config, client_config, password=None):
         self.gc = global_config
         self.cc = client_config
-        self.password = None
+        self.password = password
         self.mnemonic = self.gc["accounts"]["validator-mnemonic"]
 
         genesis_ssz = self.gc["files"]["consensus-genesis"]
@@ -28,6 +28,7 @@ class TestnetDirectoryGenerator(object):
             self.cc["num-nodes"],
             self.cc["num-validators"],
             str(validator_dir),
+            password=self.password,
         )
 
     def _generate_validator_stores(
@@ -69,11 +70,12 @@ class TekuTestnetDirectoryGenerator(TestnetDirectoryGenerator):
 
 class PrysmTestnetGenerator(TestnetDirectoryGenerator):
     def __init__(self, global_config, client_config):
-        super().__init__(global_config, client_config)
+
+        super().__init__(
+            global_config, client_config, client_config["validator-password"]
+        )
         # prysm only stuff.
         self.password_file = self.cc["wallet-path"]
-
-        self.password = self.cc["validator-password"]
 
         with open(self.password_file, "w") as f:
             f.write(self.password)

@@ -80,8 +80,12 @@ class ClientWriter(object):
         geth_config = self.gc["execution-clients"]["geth-bootstrapper"]
         return f"http://{geth_config['ip-start']}:{geth_config['http-port']}"
 
+    def get_web3_ws(self):
+        geth_config = self.gc["execution-clients"]["geth-bootstrapper"]
+        return f"ws://{geth_config['ip-start']}:{geth_config['ws-port']}"
+
     def get_web3_ipc(self):
-        geth_config = self.cc["execution-clients"]["geth-bootstrapper"]
+        geth_config = self.gc["execution-clients"]["geth-bootstrapper"]
         return geth_config["geth-data-dir"] + "/geth.ipc"
 
     def _entrypoint(self):
@@ -169,6 +173,49 @@ class TekuClientWriter(ClientWriter):
         # ]
 
 
+class LighthouseClientWriter(ClientWriter):
+    def __init__(self, global_config, client_config, curr_node):
+        super().__init__(
+            global_config,
+            client_config,
+            f"lighthouse-consensus-client-{curr_node}",
+            curr_node,
+        )
+        self.out = self.config()
+
+    def _entrypoint(self):
+        """
+        DEBUG_LEVEL=$1
+        TESTNET_DIR=$2
+        NODE_DIR=$3
+        ETH1_ENDPOINT=$4
+        IP_ADDR=$5
+        P2P_PORT=$6
+        REST_PORT=$7
+        HTTP_PORT=$8
+        METRICS_PORT=$9
+        TTD_OVERRIDE=${10}
+        """
+        return [
+            self.get_launcher(),
+            self.cc["debug-level"],
+            self.get_testnet_dir(),
+            self.get_node_dir(),
+            self.get_web3_http(),
+            self.get_ip(),
+            self.get_port("p2p"),
+            self.get_port("rest"),
+            self.get_port("http"),
+            self.get_port("metric"),
+            str(
+                self.gc["config-params"]["execution-layer"]["genesis-config"][
+                    "terminalTotalDifficulty"
+                ]
+            ),
+            str(self.cc["target-peers"]),
+        ]
+
+
 class PrysmClientWriter(ClientWriter):
     def __init__(self, global_config, client_config, curr_node):
         super().__init__(
@@ -199,7 +246,7 @@ class PrysmClientWriter(ClientWriter):
             self.get_launcher(),
             self.get_testnet_dir(),
             self.get_node_dir(),
-            self.get_web3_ipc(),
+            self.get_web3_http(),
             self.get_ip(),
             self.get_port("p2p"),
             self.get_port("metric"),
@@ -269,6 +316,7 @@ class DockerComposeWriter(object):
         self.client_writers = {
             "teku": TekuClientWriter,
             "prysm": PrysmClientWriter,
+            "lighthouse": LighthouseClientWriter,
             "geth-bootstrapper": GethClientWriter,
             "ethereum-testnet-bootstrapper": TestnetBootstrapper,
             "generic-module": GenericModule,
@@ -297,8 +345,9 @@ class DockerComposeWriter(object):
 
         for module in client_modules:
             if module in self.gc:
-                for client in self.gc[module]:
-                    config = self.gc[module][client]
+                for client_module in self.gc[module]:
+                    config = self.gc[module][client_module]
+                    client = config["client-name"]
                     for n in range(config["num-nodes"]):
                         if module == "generic-modules":
                             writer = self.client_writers["generic-module"](
@@ -308,22 +357,6 @@ class DockerComposeWriter(object):
                             writer = self.client_writers[client](self.gc, config, n)
                         self.yaml["services"][writer.name] = writer.get_config()
 
-        # for client in self.gc["consensus-clients"]:
-        #     cc = self.gc["consensus-clients"][client]
-        #     for n in range(cc["num-nodes"]):
-        #         cw = self.client_writers[client](self.gc, cc, n)
-        #         self.yaml["services"][cw.name] = cw.get_config()
-        # for client in self.gc["execution-clients"]:
-        #     ec = self.gc["execution-clients"][client]
-        #     for n in range(ec["num-nodes"]):
-        #         ew = self.client_writers[client](self.gc, ec, n)
-        #         print(ew.get_config())
-
-        # # for client in self.gc["generic-modules"]:
-        #     generic_c = self.gc["generic-modules"][client]
-        #     for n in range(generic_c["num-nodes"]):
-        #         gw = self.client_writers["generic-module"](self.gc, generic_c, n)
-        #         self.yaml["services"][gw.name] = gw.get_config()
         # last we check for bootstrapper, if present all dockers must
         # depend on this.
         if "testnet-bootstrapper" in self.gc:
