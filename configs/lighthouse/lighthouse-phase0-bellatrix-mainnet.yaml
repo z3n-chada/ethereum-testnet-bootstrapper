@@ -115,7 +115,7 @@ execution-clients:
     http-port: 8645
     ws-port: 8646
     # script to execute
-    entrypoint: "/source/apps/launchers/launch-bellatrix-geth-clique.sh" #wrt to docker.
+    entrypoint: "/source/apps/launchers/geth/launch-bellatrix-geth-clique.sh" #wrt to docker.
   #other exeucution clients here or with consensus launchers?
 
 consensus-bootnodes:
@@ -142,12 +142,12 @@ consensus-clients:
     image: "lighthouse-client"
     tag: "kintsugi"
     container-name: "lighthouse-client"
-    entrypoint: "/source/apps/launchers/launch-bellatrix-lighthouse.sh"
+    entrypoint: "/source/apps/launchers/lighthouse/launch-bellatrix-lighthouse.sh"
     ip-start: "10.0.20.10"
     depends: "geth-bootstrapper"
     # beacon/validator flags
     target-peers: 7
-    debug-level: "debug"
+    debug-level: "info"
     start-p2p-port: 4000
     start-rest-port: 5000
     start-http-port: 6000
@@ -159,7 +159,7 @@ consensus-clients:
     num-nodes: 8
     num-validators: 64
     # status-checker
-    status-checker-port: 6000
+    start-status-checker-port: 5000
 
 # special case client that is the ethereum-testnet-bootstrapper
 # this allows you to create a new genesis everytime you call 
@@ -171,7 +171,7 @@ testnet-bootstrapper:
     tag: "latest"
     container-name: "testnet-bootstrapper"
     ip-start: "10.0.20.202"
-    config-file: '/configs/lighthouse-phase0-bellatrix-mainnet.yaml'
+    config-file: '/configs/lighthouse/lighthouse-phase0-bellatrix-mainnet.yaml'
 
 # generic modules use custom python scripts and the bootstrapper image to
 # run python scripts to acoomplish various actions such as mining or 
