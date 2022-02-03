@@ -41,8 +41,8 @@ config-params:
       istanbulBlock: 0
       berlinBlock: 0
       londonBlock: 0
-      mergeForkBlock: 194 # (16 blocks + epoch 7 on CL = 192 + a few more for TTD first)
-      terminalTotalDifficulty: 384
+      mergeForkBlock: 3000 # far away simulation wise
+      terminalTotalDifficulty: 3000000
     clique:
       enabled: True
       signer: "51Dd070D1f6f8dB48CA5b0E47D7e899aea6b1AF5"
@@ -78,7 +78,7 @@ config-params:
       altair-fork-epoch: 4
 
       bellatrix-fork-version: 0x03000666
-      bellatrix-fork-epoch: 7
+      bellatrix-fork-epoch: 18446744073709551615
 
       sharding-fork-version: 0x04000666
       sharding-fork-epoch: 18446744073709551615
@@ -115,13 +115,14 @@ execution-clients:
     http-port: 8645
     ws-port: 8646
     # script to execute
-    entrypoint: "/source/apps/launchers/launch-bellatrix-geth-clique.sh" #wrt to docker.
+    entrypoint: "/source/apps/launchers/geth/launch-geth-clique.sh" #wrt to docker.
   #other exeucution clients here or with consensus launchers?
 
 consensus-bootnodes:
   eth2-bootnode:
     # args for docker-compose
     container-name: "eth2-bootnode"
+    client-name: "eth2-bootnode"
     image: "bootnode-clients"
     tag: "latest"
     ip-start: "10.0.20.201"
@@ -138,9 +139,9 @@ consensus-clients:
     client-name: 'prysm'
     # docker-compose
     image: "prysm-client"
-    tag: "kintsugi"
+    tag: "develop"
     container-name: "prysm-client"
-    entrypoint: "/source/apps/launchers/launch-bellatrix-prysm.sh"
+    entrypoint: "/source/apps/launchers/prysm/launch-phase0-prysm.sh"
     ip-start: "10.0.20.10"
     depends: "geth-bootstrapper"
     # beacon/validator flags
@@ -173,7 +174,7 @@ testnet-bootstrapper:
     tag: "latest"
     container-name: "testnet-bootstrapper"
     ip-start: "10.0.20.202"
-    config-file: '/configs/prysm-phase0-bellatrix-mainnet.yaml'
+    config-file: '/configs/prysm/prysm-phase0-altair-mainnet.yaml'
 
 # generic modules use custom python scripts and the bootstrapper image to
 # run python scripts to acoomplish various actions such as mining or 
