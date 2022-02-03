@@ -35,26 +35,29 @@ def perform_experiment():
     print("Implement me.")
 
 
-def check_health(manager):
-    for qp in health_check_apis["queryPaths"]:
-        vals = []
-        for client in manager.clients.values():
-            vals.append(str(qp.get_response(client)))
-        if len(list(set(vals))) > 1:
-            print("Error")
-        else:
-            print("Consensus")
-
-    for sp in statePaths:
-        for s in states:
-            r = APIRequest(f"/eth/v1/beacon/states/{s}/{sp}")
+def check_health(manager, num_checks, check_delay):
+    for i in range(num_checks):
+        for qp in health_check_apis["queryPaths"]:
             vals = []
             for client in manager.clients.values():
-                vals.append(str(r.get_response(client)))
+                vals.append(str(qp.get_response(client)))
             if len(list(set(vals))) > 1:
                 print("Error")
             else:
                 print("Consensus")
+
+        for sp in statePaths:
+            for s in states:
+                r = APIRequest(f"/eth/v1/beacon/states/{s}/{sp}")
+                vals = []
+                for client in manager.clients.values():
+                    vals.append(str(r.get_response(client)))
+                if len(list(set(vals))) > 1:
+                    print("Error")
+                else:
+                    print("Consensus")
+
+        time.sleep(check_delay)
 
 
 def wait_for_slot(manager, goal_slot):
@@ -113,6 +116,22 @@ if __name__ == "__main__":
         default=240,
         help="genesis delay to wait for first slot",
     )
+
+    parser.add_argument(
+        "--number-of-checks",
+        dest="num_checks",
+        default=3,
+        type=int,
+        help="how many loops to run the health check per run",
+    )
+
+    parser.add_argument(
+        "--check-delay",
+        dest="check_delay",
+        type=int,
+        default=10,
+        help="when doing multiple checks how long to pause between them",
+    )
     args = parser.parse_args()
 
     manager = get_api_manager_from_config(args.config)
@@ -120,9 +139,9 @@ if __name__ == "__main__":
     # wait for network init.
     time.sleep(args.genesis_delay)
     wait_for_slot(manager, args.phase0_slot)
-    check_health(manager)
+    check_health(manager, args.num_checks, args.check_delay)
     perform_experiment()
     wait_for_slot(manager, args.phase1_slot)
-    check_health(manager)
+    check_health(manager, args.num_checks, args.check_delay)
     wait_for_slot(manager, args.phase2_slot)
-    check_health(manager)
+    check_health(manager, args.num_checks, args.check_delay)

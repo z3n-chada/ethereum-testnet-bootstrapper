@@ -43,8 +43,8 @@ class ClientWriter(object):
                 config["entrypoint"] = self._entrypoint()
         else:
             config["entrypoint"] = self._entrypoint()
-        if "environment" in self.gc["docker"]:
-            config["environment"] = self.gc["docker"]["environment"]
+        if "environment" in self.cc:
+            config["environment"] = [str(x) for x in self.cc["environment"]]
         return config
 
     def _networking(self):
