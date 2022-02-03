@@ -115,13 +115,14 @@ execution-clients:
     http-port: 8645
     ws-port: 8646
     # script to execute
-    entrypoint: "/source/apps/launchers/launch-bellatrix-geth-clique.sh" #wrt to docker.
+    entrypoint: "/source/apps/launchers/geth/launch-bellatrix-geth-clique.sh" #wrt to docker.
   #other exeucution clients here or with consensus launchers?
 
 consensus-bootnodes:
   eth2-bootnode:
     # args for docker-compose
     container-name: "eth2-bootnode"
+    client-name: "eth2-bootnode"
     image: "bootnode-clients"
     tag: "latest"
     ip-start: "10.0.20.201"
@@ -140,7 +141,7 @@ consensus-clients:
     image: "teku-client"
     tag: "kintsugi"
     container-name: "teku-client"
-    entrypoint: "/source/apps/launchers/launch-bellatrix-teku.sh"
+    entrypoint: "/source/apps/launchers/teku/launch-bellatrix-teku.sh"
     ip-start: "10.0.20.10"
     depends: "geth-bootstrapper"
     # beacon/validator flags
@@ -164,7 +165,7 @@ testnet-bootstrapper:
     tag: "latest"
     container-name: "testnet-bootstrapper"
     ip-start: "10.0.20.202"
-    config-file: '/configs/teku-phase0-bellatrix-mainnet.yaml'
+    config-file: '/configs/teku/teku-phase0-bellatrix-mainnet.yaml'
 
 # generic modules use custom python scripts and the bootstrapper image to
 # run python scripts to acoomplish various actions such as mining or 

@@ -2,20 +2,59 @@
     Provides a method of gettting a high level overview of the running experiment
     to check on the health of the network.
 """
-from modules.BeaconApi import get_api_manager_from_config
+from modules.BeaconApi import get_api_manager_from_config, APIRequest
 import time
 
 # api_requests to run to comapre nodes.
-health_check_apis = {}
+health_check_apis = {
+    "queryPaths": [
+        APIRequest("/eth/v1/beacon/headers"),
+        APIRequest("/eth/v1/beacon/pool/attestations"),
+        APIRequest("/eth/v1/beacon/pool/attester_slashings"),
+        APIRequest("/eth/v1/beacon/pool/proposer_slashings"),
+        APIRequest("/eth/v1/beacon/pool/voluntary_exits"),
+        APIRequest("/eth/v1/debug/beacon/heads"),
+        APIRequest("/eth/v1/node/syncing"),
+    ],
+    "headQueryPaths": [APIRequest("/eth/v1/beacon/states/")],
+    "slotQueryPaths": [APIRequest("/eth/v1/beacon/blocks/")],
+}
+
+statePaths = [
+    "committees",
+    "validator_balances",
+    "root",
+    "fork",
+    "finality_checkpoints",
+]
+
+states = ["head", "justified", "finalized"]
 
 
 def perform_experiment():
-    print("TODO")
+    print("Implement me.")
 
 
 def check_health(manager):
-    for metric, api in health_check_apis.values():
-        print("TODO")
+    for qp in health_check_apis["queryPaths"]:
+        vals = []
+        for client in manager.clients.values():
+            vals.append(str(qp.get_response(client)))
+        if len(list(set(vals))) > 1:
+            print("Error")
+        else:
+            print("Consensus")
+
+    for sp in statePaths:
+        for s in states:
+            r = APIRequest(f"/eth/v1/beacon/states/{s}/{sp}")
+            vals = []
+            for client in manager.clients.values():
+                vals.append(str(r.get_response(client)))
+            if len(list(set(vals))) > 1:
+                print("Error")
+            else:
+                print("Consensus")
 
 
 def wait_for_slot(manager, goal_slot):
@@ -67,11 +106,19 @@ if __name__ == "__main__":
         default=160,
         help="slot to wait to check for network recovery",
     )
+    parser.add_argument(
+        "--genesis-delay",
+        dest="genesis_delay",
+        type=int,
+        default=240,
+        help="genesis delay to wait for first slot",
+    )
     args = parser.parse_args()
 
     manager = get_api_manager_from_config(args.config)
 
     # wait for network init.
+    time.sleep(args.genesis_delay)
     wait_for_slot(manager, args.phase0_slot)
     check_health(manager)
     perform_experiment()

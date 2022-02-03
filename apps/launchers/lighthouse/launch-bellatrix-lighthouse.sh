@@ -22,16 +22,16 @@ while [ ! -f "/data/local_testnet/bootnode/enr.dat" ]; do
     sleep 1
 done
 
-# if [ ! -f "$TESTNET_DIR/boot_enr.yaml" ]; then
-#     bootnode_enr=`cat /data/local_testnet/bootnode/enr.dat`
-#     echo "- $bootnode_enr" > $TESTNET_DIR/boot_enr.yaml
-# fi
-# 
+if [ ! -f "$TESTNET_DIR/boot_enr.yaml" ]; then
+    bootnode_enr=`cat /data/local_testnet/bootnode/enr.dat`
+    echo "- $bootnode_enr" > $TESTNET_DIR/boot_enr.yaml
+fi
+
 lighthouse \
 	--datadir $NODE_DIR \
 	--debug-level $DEBUG_LEVEL \
 	bn \
-    --target-peers $TARGET_PEERS \
+    --target-peers 7 \
 	--testnet-dir $TESTNET_DIR \
 	--staking \
     --boot-nodes "$bootnode_enr" \
@@ -44,9 +44,10 @@ lighthouse \
 	--http-address 0.0.0.0 \
 	--http-allow-origin "*" \
 	--eth1 --eth1-endpoints "$ETH1_ENDPOINT" \
-    --merge \
     --disable-packet-filter \
     --execution-endpoints="$ETH1_ENDPOINT" \
+    --subscribe-all-subnets \
+    --merge \
     --terminal-total-difficulty-override=$TTD_OVERRIDE &
 
 sleep 10

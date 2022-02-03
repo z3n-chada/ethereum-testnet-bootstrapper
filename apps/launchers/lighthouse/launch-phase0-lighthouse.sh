@@ -21,6 +21,11 @@ done
 
 bootnode_enr=`cat $TESTNET_DIR/../bootnode/enr.dat`
 
+if [ ! -f "$TESTNET_DIR/boot_enr.yaml" ]; then
+    bootnode_enr=`cat /data/local_testnet/bootnode/enr.dat`
+    echo "- $bootnode_enr" > $TESTNET_DIR/boot_enr.yaml
+fi
+
 lighthouse \
 	--datadir $NODE_DIR \
 	--debug-level $DEBUG_LEVEL \
