@@ -78,7 +78,7 @@ config-params:
       altair-fork-epoch: 4
 
       bellatrix-fork-version: 0x03000666
-      bellatrix-fork-epoch: 7
+      bellatrix-fork-epoch: 18446744073709551615
 
       sharding-fork-version: 0x04000666
       sharding-fork-epoch: 18446744073709551615
@@ -110,17 +110,18 @@ execution-clients:
     debug: False
     network-id: 0x01000666
     chain-id: 0x01000666
-    http-apis: "net,eth,web3,personal,engine,debug,txpool"
-    ws-apis: "net,eth,web3,personal,engine,debug,txpool"
+    http-apis: "net,eth,web3,personal,engine"
+    ws-apis: "net,eth,web3,personal,engine"
     http-port: 8645
     ws-port: 8646
     # script to execute
-    entrypoint: "/source/apps/launchers/launch-bellatrix-geth-clique.sh" #wrt to docker.
+    entrypoint: "/source/apps/launchers/geth/launch-geth-clique.sh" #wrt to docker.
   #other exeucution clients here or with consensus launchers?
 
 consensus-bootnodes:
-  eth2-bootnode:
+  bootnode:
     # args for docker-compose
+    client-name: "eth2-bootnode"
     container-name: "eth2-bootnode"
     image: "bootnode-clients"
     tag: "latest"
@@ -134,34 +135,31 @@ consensus-bootnodes:
     bootnode-enr-file: "/data/local_testnet/bootnode/enr.dat"
 
 consensus-clients:
-  prysm:
-    client-name: 'prysm'
+  # nimbus nodes whose deposits were done pre-genesis
+  nimbus-genesis-deposits:
+    client-name: 'nimbus'
     # docker-compose
-    image: "prysm-client"
-    tag: "kintsugi"
-    container-name: "prysm-client"
-    entrypoint: "/source/apps/launchers/launch-bellatrix-prysm.sh"
+    image: "nimbus-client"
+    tag: "stable"
+    container-name: "nimbus-client"
+    entrypoint: "/source/apps/launchers/nimbus/launch-phase0-nimbus.sh"
     ip-start: "10.0.20.10"
     depends: "geth-bootstrapper"
     # beacon/validator flags
+    target-peers: 7
     debug-level: "debug"
-    start-rpc-port: 3000
     start-p2p-port: 4000
-    start-rest-port: 5000
-    start-http-port: 6000
-    start-grpc-port: 7000
-    start-validator-metrics-port: 8000
+    start-rpc-port: 5000
+    start-rest-port: 6000
     start-metric-port: 9000
-    graffiti: "prysm-client-"
+    graffiti: "nimbus-client-"
     # testnet dir generation
-    testnet-dir: '/data/local_testnet/prysm'
+    testnet-dir: '/data/local_testnet/nimbus'
     validator-offset-start: 0 # so validators of different clients don't overlap
-    wallet-path: '/data/local_testnet/prysm/wallet-password.txt'
-    validator-password: "testnet-password"
     num-nodes: 8
     num-validators: 64
-    # status checker
-    status-checker-start-port: 7000
+    # status-checker
+    start-status-checker-port: 6000
 
 # special case client that is the ethereum-testnet-bootstrapper
 # this allows you to create a new genesis everytime you call 
@@ -173,7 +171,7 @@ testnet-bootstrapper:
     tag: "latest"
     container-name: "testnet-bootstrapper"
     ip-start: "10.0.20.202"
-    config-file: '/configs/prysm-phase0-bellatrix-mainnet.yaml'
+    config-file: '/configs/nimbus/nimbus-phase0-altair-mainnet.yaml'
 
 # generic modules use custom python scripts and the bootstrapper image to
 # run python scripts to acoomplish various actions such as mining or 

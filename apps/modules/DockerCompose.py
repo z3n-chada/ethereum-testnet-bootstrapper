@@ -216,6 +216,41 @@ class LighthouseClientWriter(ClientWriter):
         ]
 
 
+class NimbusClientWriter(ClientWriter):
+    def __init__(self, global_config, client_config, curr_node):
+        super().__init__(
+            global_config,
+            client_config,
+            f"nimbus-consensus-client-{curr_node}",
+            curr_node,
+        )
+        self.out = self.config()
+
+    def _entrypoint(self):
+        """
+        DEBUG_LEVEL=$1
+        TESTNET_DIR=$2
+        NODE_DIR=$3
+        ETH1_ENDPOINT=$4
+        IP_ADDR=$5
+        P2P_PORT=$6
+        RPC_PORT=$7
+        METRICS_PORT=$9
+        """
+        return [
+            self.get_launcher(),
+            self.cc["debug-level"],
+            self.get_testnet_dir(),
+            self.get_node_dir(),
+            self.get_web3_ws(),
+            self.get_ip(),
+            self.get_port("p2p"),
+            self.get_port("rpc"),
+            self.get_port("rest"),
+            self.get_port("metric"),
+        ]
+
+
 class PrysmClientWriter(ClientWriter):
     def __init__(self, global_config, client_config, curr_node):
         super().__init__(
@@ -317,6 +352,7 @@ class DockerComposeWriter(object):
             "teku": TekuClientWriter,
             "prysm": PrysmClientWriter,
             "lighthouse": LighthouseClientWriter,
+            "nimbus": NimbusClientWriter,
             "geth-bootstrapper": GethClientWriter,
             "ethereum-testnet-bootstrapper": TestnetBootstrapper,
             "generic-module": GenericModule,
