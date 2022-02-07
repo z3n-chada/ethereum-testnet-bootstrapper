@@ -12,7 +12,7 @@ RUN apt-get update && \
 
 WORKDIR /git
 
-RUN wget --no-check-certificate https://apt.llvm.org/llvm.sh && chmod +x llvm.sh && ./llvm.sh
+RUN wget --no-check-certificate https://apt.llvm.org/llvm.sh && chmod +x llvm.sh && ./llvm.sh 13
 
 ENV LLVM_CONFIG=llvm-config-13
 
