@@ -60,7 +60,7 @@ config-params:
     eth1-follow-distance: 16
     seconds-per-slot: 12
     slots-per-epoch: 32
-    epochs-per-eth2-voting-period: 64
+    epochs-per-eth1-voting-period: 1 #custom
     slots-per-historical-root: 8192
     shard-committee-period: 256
     epochs-per-historical-vector: 65536
