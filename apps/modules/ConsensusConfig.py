@@ -41,6 +41,7 @@ SECONDS_PER_ETH1_BLOCK: {ec['seconds-per-eth1-block']}
 MIN_VALIDATOR_WITHDRAWABILITY_DELAY: 256
 SHARD_COMMITTEE_PERIOD: {cc['shard-committee-period']}
 ETH1_FOLLOW_DISTANCE: {cc['eth1-follow-distance']}
+EPOCHS_PER_ETH1_VOTING_PERIOD: {cc['epochs-per-eth2-voting-period']}
 
 # Validator cycle
 # ---------------------------------------------------------------

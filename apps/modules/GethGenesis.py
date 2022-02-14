@@ -95,7 +95,7 @@ def create_geth_genesis(global_config):
             genesis["extraData"] = extradata
             genesis["config"]["clique"] = {
                 "period": ec["seconds-per-eth1-block"],
-                "epoch": ec['clique']['epoch'],
+                "epoch": ec["clique"]["epoch"],
             }
 
     return genesis

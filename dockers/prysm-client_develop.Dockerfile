@@ -30,6 +30,7 @@ RUN cd /git/src/github.com/prysmaticlabs/ && \
     -b develop \
     https://github.com/prysmaticlabs/prysm
 
+COPY src/prysm/ /git/src/github.com/prysmaticlabs/prysm
 # Get dependencies
 RUN cd /git/src/github.com/prysmaticlabs/prysm/ && \
     go get -t -d ./... && \

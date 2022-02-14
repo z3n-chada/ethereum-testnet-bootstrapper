@@ -1,8 +1,13 @@
-from ruamel import yaml
 import subprocess
 
+from ruamel import yaml
 
-def deploy_consensus_genesis(global_config):
+
+def deploy_consensus_genesis(
+    global_config,
+    eth1_block_hash="0000000000000000000000000000000000000000000000000000000000000000",
+    eth1_timestamp=1644722881,
+):
     """
     We just leverage the eth2-testnet-genesis utility.
     currently only using mainnet preset.
@@ -36,6 +41,9 @@ def deploy_consensus_genesis(global_config):
         config,
         "--state-output",
         state_out,
+        "--eth1-block",
+        eth1_block_hash,
+        "--timestamp",
+        str(eth1_timestamp),
     ]
-
     subprocess.run(cmd)

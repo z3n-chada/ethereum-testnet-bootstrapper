@@ -383,6 +383,10 @@ class DockerComposeWriter(object):
             if module in self.gc:
                 for client_module in self.gc[module]:
                     config = self.gc[module][client_module]
+                    if not "client-name" in config:
+                        exception = f"module {module}, {client_module} expects client-name attribute\n"
+                        exception += f"\tfound: {config.keys()}\n"
+                        raise Exception(exception)
                     client = config["client-name"]
                     for n in range(config["num-nodes"]):
                         if module == "generic-modules":
