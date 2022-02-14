@@ -1,16 +1,18 @@
 import argparse
-import time
 import json
-import ruamel.yaml as yaml
+import os
 import pathlib
 import shutil
-import os
+import time
 
-from modules.GethGenesis import create_geth_genesis
+import ruamel.yaml as yaml
+
 from modules.ConsensusConfig import create_consensus_config
 from modules.ConsensusGenesis import deploy_consensus_genesis
-from modules.TestnetGenerators import generate_consensus_testnet_dirs
 from modules.DockerCompose import generate_docker_compose
+from modules.GethGenesis import create_geth_genesis
+from modules.GethIPCUtils import GethIPC
+from modules.TestnetGenerators import generate_consensus_testnet_dirs
 
 global global_config
 
@@ -54,7 +56,14 @@ def generate_consensus_config():
 
 
 def generate_consensus_genesis():
-    deploy_consensus_genesis(global_config)
+    global global_config
+    # we now use eth1_timestamp and block notation
+    geth_endpoint = GethIPC("/data/local_testnet/geth/geth.ipc")
+    latest_block = geth_endpoint.get_block()
+    block_hash = latest_block["hash"].hex()[2:]
+    block_time = latest_block["timestamp"]
+    print(f"{block_hash} : {block_time}")
+    deploy_consensus_genesis(global_config, block_hash, block_time)
     generate_consensus_testnet_dirs(global_config)
     c_checkpoint = global_config["files"]["consensus-checkpoint"]
     with open(c_checkpoint, "w", opener=rw_all_user) as f:

@@ -1,10 +1,11 @@
 """
     Given CL slot times, deploy transactions to and from wallets.
 """
-import subprocess
-import random
 import pathlib
+import random
+import subprocess
 import time
+
 from ruamel import yaml
 from web3.auto import w3
 

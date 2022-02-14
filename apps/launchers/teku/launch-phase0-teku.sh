@@ -21,11 +21,11 @@ while [ ! -f "/data/local_testnet/bootnode/enr.dat" ]; do
 done
 
 bootnode_enr=`cat $TESTNET_DIR/../bootnode/enr.dat`
-
 teku \
-    --initial-state "$TESTNET_DIR/genesis.ssz" \
-    --network "$TESTNET_DIR/config.yaml" \
-    --data-path "$NODE_DIR" \
+    --initial-state="$TESTNET_DIR/genesis.ssz" \
+    --logging="$DEBUG_LEVEL" \
+    --network="$TESTNET_DIR/config.yaml" \
+    --data-path="$NODE_DIR" \
     --data-storage-mode=PRUNE \
     --p2p-enabled=true \
     --p2p-discovery-enabled=true \
@@ -34,10 +34,11 @@ teku \
     --p2p-port="$P2P_PORT" \
     --p2p-advertised-port="$P2P_PORT" \
     --p2p-advertised-udp-port="$P2P_PORT" \
-    --logging="$DEBUG_LEVEL" \
+    --logging=debug \
     --p2p-peer-upper-bound=8 \
-    --eth1-endpoint "$ETH1_ENDPOINT" \
+    --eth1-endpoint="$ETH1_ENDPOINT" \
     --p2p-discovery-bootnodes="$bootnode_enr" \
+    --p2p-subscribe-all-subnets-enabled=true \
     --metrics-enabled=true \
     --metrics-interface=0.0.0.0 \
     --metrics-port="$HTTP_PORT" \
@@ -49,5 +50,5 @@ teku \
     --rest-api-host-allowlist="*" \
     --data-storage-non-canonical-blocks-enabled=true \
     --validators-graffiti="teku-$IP_ADDR" \
-    --validator-keys "$NODE_DIR/keys:$NODE_DIR/secrets" \
+    --validator-keys="$NODE_DIR/keys:$NODE_DIR/secrets" \
     --validators-keystore-locking-enabled=false 
