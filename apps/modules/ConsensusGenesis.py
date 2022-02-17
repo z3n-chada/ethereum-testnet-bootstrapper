@@ -7,6 +7,7 @@ def deploy_consensus_genesis(
     global_config,
     eth1_block_hash="0000000000000000000000000000000000000000000000000000000000000000",
     eth1_timestamp=1644722881,
+    preset_base="mainnet",
 ):
     """
     We just leverage the eth2-testnet-genesis utility.
@@ -35,6 +36,8 @@ def deploy_consensus_genesis(
     cmd = [
         "eth2-testnet-genesis",
         genesis_fork,
+        "--preset-phase0",
+        preset_base,
         "--mnemonics",
         "/tmp/validators.yaml",
         "--config",

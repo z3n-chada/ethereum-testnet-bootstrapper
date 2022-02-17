@@ -22,6 +22,7 @@ while [ ! -f "/data/local_testnet/bootnode/enr.dat" ]; do
 done
 
 beacon-chain \
+  --minimal-config \
   --log-file="$NODE_DATADIR/log.txt" \
   --accept-terms-of-use=true \
   --subscribe-all-subnets \
@@ -47,6 +48,7 @@ sleep 20
 
 validator \
   --accept-terms-of-use=true \
+  --minimal-config \
   --datadir="$NODE_DATADIR" \
   --chain-config-file="$TESTNET_DIR/config.yaml" \
   --graffiti="$GRAFFITI" \

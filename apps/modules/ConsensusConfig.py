@@ -3,7 +3,7 @@ def create_consensus_config(global_config):
     cc = global_config["config-params"]["consensus-layer"]
     ec = global_config["config-params"]["execution-layer"]
     return f"""
-PRESET_BASE: {cc['preset-base']}
+PRESET_BASE: \"{cc['preset-base']}\"
 
 # Genesis
 # ---------------------------------------------------------------
