@@ -58,6 +58,7 @@ config-params:
     forks:
       genesis-fork-version: 0x01000666
       genesis-fork-name: "phase0"
+      end-fork-name: "altair"
 
       altair-fork-version: 0x02000666
       altair-fork-epoch: 10
@@ -127,7 +128,7 @@ consensus-clients:
     image: "nimbus-client-minimal"
     tag: "stable"
     container-name: "nimbus-client"
-    entrypoint: "/source/apps/launchers/nimbus/launch-phase0-nimbus-minimal.sh"
+    entrypoint: "/source/apps/launchers/launch-nimbus.sh"
     ip-start: "10.0.20.10"
     depends: "geth-bootstrapper"
     # beacon/validator flags
@@ -152,7 +153,7 @@ consensus-clients:
     image: "lighthouse-client-minimal"
     tag: "stable"
     container-name: "lighthouse-client"
-    entrypoint: "/source/apps/launchers/lighthouse/launch-phase0-lighthouse-minimal.sh"
+    entrypoint: "/source/apps/launchers/launch-lighthouse.sh"
     ip-start: "10.0.20.20"
     depends: "geth-bootstrapper"
     # beacon/validator flags
@@ -177,11 +178,11 @@ consensus-clients:
     image: "prysm-client-minimal"
     tag: "develop"
     container-name: "prysm-client-minimal"
-    entrypoint: "/source/apps/launchers/prysm/launch-phase0-prysm-minimal.sh"
+    entrypoint: "/source/apps/launchers/launch-prysm.sh"
     ip-start: "10.0.20.30"
     depends: "geth-bootstrapper"
     # beacon/validator flags
-    debug-level: "trace"
+    debug-level: "debug"
     start-rpc-port: 3000
     start-p2p-port: 4000
     start-rest-port: 5000
@@ -206,7 +207,7 @@ consensus-clients:
     image: "teku-client"
     tag: "master"
     container-name: "teku-client"
-    entrypoint: "/source/apps/launchers/teku/launch-phase0-teku-minimal.sh"
+    entrypoint: "/source/apps/launchers/launch-teku.sh"
     ip-start: "10.0.20.40"
     depends: "geth-bootstrapper"
     # beacon/validator flags
