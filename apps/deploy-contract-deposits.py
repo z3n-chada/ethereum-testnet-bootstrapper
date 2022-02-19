@@ -41,6 +41,7 @@ def create_deposit_data(config, args):
         + f'--withdrawals-mnemonic "{withdrawl_mnem}" '
         + "--as-json-list "
     )
+    print(cmd)
     x = subprocess.run(cmd, shell=True, capture_output=True)
     stdout_deposit_data = x.stdout
     return stdout_deposit_data
@@ -113,13 +114,15 @@ if __name__ == "__main__":
     parser.add_argument(
         "--start-offset",
         dest="start_offset",
-        default=65,
+        default=16,
+        type=int,
         help="min source to pass to generate deposit-data",
     )
     parser.add_argument(
         "--num-deposits",
         dest="num_deposits",
-        default=1,
+        default=3,
+        type=int,
         help="min source to pass to generate deposit-data",
     )
 
