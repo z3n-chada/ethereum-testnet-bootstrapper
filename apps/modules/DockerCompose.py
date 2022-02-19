@@ -88,6 +88,13 @@ class ClientWriter(object):
         geth_config = self.gc["execution-clients"]["geth-bootstrapper"]
         return geth_config["geth-data-dir"] + "/geth.ipc"
 
+    def get_ttd(self):
+        return str(
+            self.gc["config-params"]["execution-layer"]["genesis-config"][
+                "terminalTotalDifficulty"
+            ]
+        )
+
     def _entrypoint(self):
         raise Exception("override this method")
 
@@ -111,6 +118,7 @@ class GethClientWriter(ClientWriter):
         WS_APIS
         IP_ADDR
         TESTNET_IP_RANGE
+        TTD
         """
         return [
             str(self.cc["entrypoint"]),
@@ -123,6 +131,7 @@ class GethClientWriter(ClientWriter):
             str(self.cc["ws-apis"]),
             str(self.get_ip()),
             self.get_ip_subnet(),
+            self.get_ttd(),
         ]
 
 
@@ -207,11 +216,7 @@ class LighthouseClientWriter(ClientWriter):
             self.get_port("rest"),
             self.get_port("http"),
             self.get_port("metric"),
-            str(
-                self.gc["config-params"]["execution-layer"]["genesis-config"][
-                    "terminalTotalDifficulty"
-                ]
-            ),
+            self.get_ttd(),
             str(self.cc["target-peers"]),
         ]
 
@@ -236,6 +241,7 @@ class NimbusClientWriter(ClientWriter):
         P2P_PORT=$6
         RPC_PORT=$7
         METRICS_PORT=$9
+        TTD=$10
         """
         return [
             self.get_launcher(),
@@ -248,6 +254,7 @@ class NimbusClientWriter(ClientWriter):
             self.get_port("rpc"),
             self.get_port("rest"),
             self.get_port("metric"),
+            self.get_ttd(),
         ]
 
 

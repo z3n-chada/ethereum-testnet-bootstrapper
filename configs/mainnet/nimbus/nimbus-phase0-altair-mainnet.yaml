@@ -78,7 +78,7 @@ config-params:
       altair-fork-epoch: 4
 
       bellatrix-fork-version: 0x03000666
-      bellatrix-fork-epoch: 7
+      bellatrix-fork-epoch: 18446744073709551615
 
       sharding-fork-version: 0x04000666
       sharding-fork-epoch: 18446744073709551615
@@ -115,7 +115,7 @@ execution-clients:
     http-port: 8645
     ws-port: 8646
     # script to execute
-    entrypoint: "/source/apps/launchers/geth/launch-bellatrix-geth-clique.sh" #wrt to docker.
+    entrypoint: "/source/apps/launchers/geth/launch-geth-clique.sh" #wrt to docker.
   #other exeucution clients here or with consensus launchers?
 
 consensus-bootnodes:
@@ -171,8 +171,5 @@ testnet-bootstrapper:
     tag: "latest"
     container-name: "testnet-bootstrapper"
     ip-start: "10.0.20.202"
-    config-file: '/configs/nimbus/nimbus-phase0-bellatrix-mainnet.yaml'
+    config-file: '/configs/mainnet/nimbus/nimbus-phase0-altair-mainnet.yaml'
 
-# generic modules use custom python scripts and the bootstrapper image to
-# run python scripts to acoomplish various actions such as mining or 
-# deploying deposits and sending transactions.

@@ -119,10 +119,10 @@ execution-clients:
   #other exeucution clients here or with consensus launchers?
 
 consensus-bootnodes:
-  bootnode:
+  eth2-bootnode:
     # args for docker-compose
-    client-name: "eth2-bootnode"
     container-name: "eth2-bootnode"
+    client-name: "eth2-bootnode"
     image: "bootnode-clients"
     tag: "latest"
     ip-start: "10.0.20.201"
@@ -135,31 +135,25 @@ consensus-bootnodes:
     bootnode-enr-file: "/data/local_testnet/bootnode/enr.dat"
 
 consensus-clients:
-  # lighthouse nodes whose deposits were done pre-genesis
-  lighthouse-genesis-deposits:
-    client-name: 'lighthouse'
+  teku:
+    client-name: 'teku'
     # docker-compose
-    image: "lighthouse-client"
+    image: "teku-client"
     tag: "kintsugi"
-    container-name: "lighthouse-client"
-    entrypoint: "/source/apps/launchers/lighthouse/launch-bellatrix-lighthouse.sh"
+    container-name: "teku-client"
+    entrypoint: "/source/apps/launchers/teku/launch-bellatrix-teku.sh"
     ip-start: "10.0.20.10"
     depends: "geth-bootstrapper"
     # beacon/validator flags
-    target-peers: 7
-    debug-level: "info"
+    debug-level: "debug"
     start-p2p-port: 4000
     start-rest-port: 5000
     start-http-port: 6000
-    start-metric-port: 9000
-    graffiti: "lighthouse-client-"
     # testnet dir generation
-    testnet-dir: '/data/local_testnet/lighthouse'
+    testnet-dir: '/data/local_testnet/teku'
     validator-offset-start: 0 # so validators of different clients don't overlap
     num-nodes: 8
     num-validators: 64
-    # status-checker
-    start-status-checker-port: 5000
 
 # special case client that is the ethereum-testnet-bootstrapper
 # this allows you to create a new genesis everytime you call 
@@ -171,20 +165,5 @@ testnet-bootstrapper:
     tag: "latest"
     container-name: "testnet-bootstrapper"
     ip-start: "10.0.20.202"
-    config-file: '/configs/lighthouse/lighthouse-phase0-bellatrix-mainnet.yaml'
+    config-file: '/configs/mainnet/teku/teku-phase0-bellatrix-mainnet.yaml'
 
-# generic modules use custom python scripts and the bootstrapper image to
-# run python scripts to acoomplish various actions such as mining or 
-# deploying deposits and sending transactions.
-# generic-modules:
-#   geth-miner:
-#   # docker compose
-#     image: "ethereum-testnet-bootstrapper"
-#     tag: "latest"
-#     container-name: "geth-miner"
-#     ip-start: "10.0.20.203"
-#     num-nodes: 1
-#     entrypoint: ["python3", "/source/apps/start-geth-miner.py", "--geth-ipc", "/data/local_testnet/geth/geth.ipc"]
-#     # custom
-#     num-mining-threads: 1
-#     # TODO: when to stop

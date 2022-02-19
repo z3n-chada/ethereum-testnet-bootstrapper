@@ -56,11 +56,11 @@ config-params:
     max-committees-per-slot: 64
     target-committee-size: 128
     shuffle-round-count: 90
-    min-genesis-active-validator-count: 64 # custom preseeded into genesis state.
+    min-genesis-active-validator-count: 64 # custom 
     eth1-follow-distance: 16
     seconds-per-slot: 12
     slots-per-epoch: 32
-    epochs-per-eth1-voting-period: 1
+    epochs-per-eth1-voting-period: 1 #custom
     slots-per-historical-root: 8192
     shard-committee-period: 256
     epochs-per-historical-vector: 65536
@@ -78,7 +78,7 @@ config-params:
       altair-fork-epoch: 4
 
       bellatrix-fork-version: 0x03000666
-      bellatrix-fork-epoch: 18446744073709551615
+      bellatrix-fork-epoch: 7
 
       sharding-fork-version: 0x04000666
       sharding-fork-epoch: 18446744073709551615
@@ -115,7 +115,7 @@ execution-clients:
     http-port: 8645
     ws-port: 8646
     # script to execute
-    entrypoint: "/source/apps/launchers/geth/launch-geth-clique.sh" #wrt to docker.
+    entrypoint: "/source/apps/launchers/geth/launch-bellatrix-geth-clique.sh" #wrt to docker.
   #other exeucution clients here or with consensus launchers?
 
 consensus-bootnodes:
@@ -135,44 +135,19 @@ consensus-bootnodes:
     bootnode-enr-file: "/data/local_testnet/bootnode/enr.dat"
 
 consensus-clients:
-  # nimbus nodes whose deposits were done pre-genesis
-  nimbus-genesis-deposits:
-    client-name: 'nimbus'
-    # docker-compose
-    image: "nimbus-client"
-    tag: "stable"
-    container-name: "nimbus-client"
-    entrypoint: "/source/apps/launchers/nimbus/launch-phase0-nimbus.sh"
-    ip-start: "10.0.20.10"
-    depends: "geth-bootstrapper"
-    # beacon/validator flags
-    target-peers: 7
-    debug-level: "debug"
-    start-p2p-port: 4000
-    start-rpc-port: 5000
-    start-rest-port: 6000
-    start-metric-port: 9000
-    graffiti: "nimbus-client-"
-    # testnet dir generation
-    testnet-dir: '/data/local_testnet/nimbus'
-    validator-offset-start: 0 # so validators of different clients don't overlap
-    num-nodes: 2
-    num-validators: 16
-    # status-checker
-    start-status-checker-port: 6000
-
+  # lighthouse nodes whose deposits were done pre-genesis
   lighthouse-genesis-deposits:
     client-name: 'lighthouse'
     # docker-compose
     image: "lighthouse-client"
-    tag: "stable"
+    tag: "kintsugi"
     container-name: "lighthouse-client"
-    entrypoint: "/source/apps/launchers/lighthouse/launch-phase0-lighthouse.sh"
-    ip-start: "10.0.20.20"
+    entrypoint: "/source/apps/launchers/lighthouse/launch-bellatrix-lighthouse.sh"
+    ip-start: "10.0.20.10"
     depends: "geth-bootstrapper"
     # beacon/validator flags
     target-peers: 7
-    debug-level: "debug"
+    debug-level: "info"
     start-p2p-port: 4000
     start-rest-port: 5000
     start-http-port: 6000
@@ -180,61 +155,10 @@ consensus-clients:
     graffiti: "lighthouse-client-"
     # testnet dir generation
     testnet-dir: '/data/local_testnet/lighthouse'
-    validator-offset-start: 16 # so validators of different clients don't overlap
-    num-nodes: 2
-    num-validators: 16
+    validator-offset-start: 0 # so validators of different clients don't overlap
+    num-nodes: 8
+    num-validators: 64
     # status-checker
-    start-status-checker-port: 6000
-
-  prysm-genesis-deposits:
-    client-name: 'prysm'
-    # docker-compose
-    image: "prysm-client"
-    tag: "develop"
-    container-name: "prysm-client"
-    entrypoint: "/source/apps/launchers/prysm/launch-phase0-prysm.sh"
-    ip-start: "10.0.20.30"
-    depends: "geth-bootstrapper"
-    # beacon/validator flags
-    debug-level: "debug"
-    start-rpc-port: 3000
-    start-p2p-port: 4000
-    start-rest-port: 5000
-    start-http-port: 6000
-    start-grpc-port: 7000
-    start-validator-metrics-port: 8000
-    start-metric-port: 9000
-    graffiti: "prysm-client-"
-    # testnet dir generation
-    testnet-dir: '/data/local_testnet/prysm'
-    wallet-path: '/data/local_testnet/prysm/wallet-password.txt'
-    validator-password: "testnet-password"
-    validator-offset-start: 32 # so validators of different clients don't overlap
-    num-nodes: 2
-    num-validators: 16
-    # status checker
-    start-status-checker-port: 7000
-
-  teku-genesis-deposits:
-    client-name: 'teku'
-    # docker-compose
-    image: "teku-client"
-    tag: "master"
-    container-name: "teku-client"
-    entrypoint: "/source/apps/launchers/teku/launch-phase0-teku.sh"
-    ip-start: "10.0.20.40"
-    depends: "geth-bootstrapper"
-    # beacon/validator flags
-    debug-level: "debug"
-    start-p2p-port: 4000
-    start-rest-port: 5000
-    start-http-port: 6000
-    # testnet dir generation
-    testnet-dir: '/data/local_testnet/teku'
-    validator-offset-start: 48 # so validators of different clients don't overlap
-    num-nodes: 2
-    num-validators: 16
-
     start-status-checker-port: 5000
 
 # special case client that is the ethereum-testnet-bootstrapper
@@ -247,8 +171,5 @@ testnet-bootstrapper:
     tag: "latest"
     container-name: "testnet-bootstrapper"
     ip-start: "10.0.20.202"
-    config-file: '/configs/multi/multi-phase0-altair-mainnet.yaml'
+    config-file: '/configs/mainnet/lighthouse/lighthouse-phase0-bellatrix-mainnet.yaml'
 
-# generic modules use custom python scripts and the bootstrapper image to
-# run python scripts to acoomplish various actions such as mining or 
-# deploying deposits and sending transactions.

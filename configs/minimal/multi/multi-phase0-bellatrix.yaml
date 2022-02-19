@@ -41,8 +41,8 @@ config-params:
       istanbulBlock: 0
       berlinBlock: 0
       londonBlock: 0
-      mergeForkBlock: 194 # (16 blocks + epoch 7 on CL = 192 + a few more for TTD first)
-      terminalTotalDifficulty: 384
+      mergeForkBlock: 99 # (12 slot/sec * 8 slot/epoch * 12 fork epoch) / 14 secs per block + 224/14 (genesis delay).
+      terminalTotalDifficulty: 201
     clique:
       enabled: True
       signer: "51Dd070D1f6f8dB48CA5b0E47D7e899aea6b1AF5"
@@ -52,33 +52,18 @@ config-params:
   # used for generating the consensus config placed in /data/eth2-config.yaml
   consensus-layer:
     genesis-delay: 224 #lets the clients get to eth1-follow-distance
-    preset-base: 'mainnet'
-    max-committees-per-slot: 64
-    target-committee-size: 128
-    shuffle-round-count: 90
-    min-genesis-active-validator-count: 64 # custom preseeded into genesis state.
-    eth1-follow-distance: 16
-    seconds-per-slot: 12
-    slots-per-epoch: 32
-    epochs-per-eth1-voting-period: 1 # custom
-    slots-per-historical-root: 8192
-    shard-committee-period: 256
-    epochs-per-historical-vector: 65536
-    epochs-per-slashings-vector: 8192
-    inactivity-penalty-quotient: 67108864
-    min-slashing-penalty-quotient: 128
-    proportional-slashing-multiplier: 1
-    churn-limit-quotient: 65536
+    preset-base: 'minimal'
+    min-genesis-active-validator-count: 16 # custom preseeded into genesis state.
 
     forks:
       genesis-fork-version: 0x01000666
       genesis-fork-name: "phase0"
 
       altair-fork-version: 0x02000666
-      altair-fork-epoch: 4
+      altair-fork-epoch: 6 # slot 48
 
       bellatrix-fork-version: 0x03000666
-      bellatrix-fork-epoch: 18446744073709551615
+      bellatrix-fork-epoch: 12 # slot 96
 
       sharding-fork-version: 0x04000666
       sharding-fork-epoch: 18446744073709551615
@@ -115,7 +100,7 @@ execution-clients:
     http-port: 8645
     ws-port: 8646
     # script to execute
-    entrypoint: "/source/apps/launchers/geth/launch-geth-clique.sh" #wrt to docker.
+    entrypoint: "/source/apps/launchers/geth/launch-bellatrix-geth-clique.sh" #wrt to docker.
   #other exeucution clients here or with consensus launchers?
 
 consensus-bootnodes:
@@ -139,10 +124,10 @@ consensus-clients:
   nimbus-genesis-deposits:
     client-name: 'nimbus'
     # docker-compose
-    image: "nimbus-client"
+    image: "nimbus-client-minimal"
     tag: "stable"
     container-name: "nimbus-client"
-    entrypoint: "/source/apps/launchers/nimbus/launch-phase0-nimbus.sh"
+    entrypoint: "/source/apps/launchers/nimbus/launch-bellatrix-nimbus-minimal.sh"
     ip-start: "10.0.20.10"
     depends: "geth-bootstrapper"
     # beacon/validator flags
@@ -157,17 +142,17 @@ consensus-clients:
     testnet-dir: '/data/local_testnet/nimbus'
     validator-offset-start: 0 # so validators of different clients don't overlap
     num-nodes: 2
-    num-validators: 16
+    num-validators: 4
     # status-checker
     start-status-checker-port: 6000
 
   lighthouse-genesis-deposits:
     client-name: 'lighthouse'
     # docker-compose
-    image: "lighthouse-client"
+    image: "lighthouse-client-minimal"
     tag: "stable"
     container-name: "lighthouse-client"
-    entrypoint: "/source/apps/launchers/lighthouse/launch-phase0-lighthouse.sh"
+    entrypoint: "/source/apps/launchers/lighthouse/launch-bellatrix-lighthouse.sh"
     ip-start: "10.0.20.20"
     depends: "geth-bootstrapper"
     # beacon/validator flags
@@ -180,23 +165,23 @@ consensus-clients:
     graffiti: "lighthouse-client-"
     # testnet dir generation
     testnet-dir: '/data/local_testnet/lighthouse'
-    validator-offset-start: 16 # so validators of different clients don't overlap
+    validator-offset-start: 4 # so validators of different clients don't overlap
     num-nodes: 2
-    num-validators: 16
+    num-validators: 4
     # status-checker
     start-status-checker-port: 6000
 
   prysm-genesis-deposits:
     client-name: 'prysm'
     # docker-compose
-    image: "prysm-client"
+    image: "prysm-client-minimal"
     tag: "develop"
-    container-name: "prysm-client"
-    entrypoint: "/source/apps/launchers/prysm/launch-phase0-prysm.sh"
+    container-name: "prysm-client-minimal"
+    entrypoint: "/source/apps/launchers/prysm/launch-bellatrix-prysm-minimal.sh"
     ip-start: "10.0.20.30"
     depends: "geth-bootstrapper"
     # beacon/validator flags
-    debug-level: "debug"
+    debug-level: "trace"
     start-rpc-port: 3000
     start-p2p-port: 4000
     start-rest-port: 5000
@@ -209,9 +194,9 @@ consensus-clients:
     testnet-dir: '/data/local_testnet/prysm'
     wallet-path: '/data/local_testnet/prysm/wallet-password.txt'
     validator-password: "testnet-password"
-    validator-offset-start: 32 # so validators of different clients don't overlap
+    validator-offset-start: 8 # so validators of different clients don't overlap
     num-nodes: 2
-    num-validators: 16
+    num-validators: 4
     # status checker
     start-status-checker-port: 7000
 
@@ -221,7 +206,7 @@ consensus-clients:
     image: "teku-client"
     tag: "master"
     container-name: "teku-client"
-    entrypoint: "/source/apps/launchers/teku/launch-phase0-teku.sh"
+    entrypoint: "/source/apps/launchers/teku/launch-bellatrix-teku.sh"
     ip-start: "10.0.20.40"
     depends: "geth-bootstrapper"
     # beacon/validator flags
@@ -231,9 +216,9 @@ consensus-clients:
     start-http-port: 6000
     # testnet dir generation
     testnet-dir: '/data/local_testnet/teku'
-    validator-offset-start: 48 # so validators of different clients don't overlap
+    validator-offset-start: 12 # so validators of different clients don't overlap
     num-nodes: 2
-    num-validators: 16
+    num-validators: 4
 
     start-status-checker-port: 5000
 
@@ -247,20 +232,5 @@ testnet-bootstrapper:
     tag: "latest"
     container-name: "testnet-bootstrapper"
     ip-start: "10.0.20.202"
-    config-file: '/configs/multi/multi-phase0-altair-mainnet.yaml'
+    config-file: '/configs/minimal/multi/multi-phase0-bellatrix.yaml'
 
-# generic modules use custom python scripts and the bootstrapper image to
-# run python scripts to acoomplish various actions such as mining or 
-# deploying deposits and sending transactions.
-# generic-modules:
-#   geth-miner:
-#   # docker compose
-#     image: "ethereum-testnet-bootstrapper"
-#     tag: "latest"
-#     container-name: "geth-miner"
-#     ip-start: "10.0.20.203"
-#     num-nodes: 1
-#     entrypoint: ["python3", "/source/apps/start-geth-miner.py", "--geth-ipc", "/data/local_testnet/geth/geth.ipc"]
-#     # custom
-#     num-mining-threads: 1
-#     # TODO: when to stop
