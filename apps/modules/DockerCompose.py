@@ -233,7 +233,7 @@ class LighthouseClientWriter(ClientWriter):
         METRICS_PORT=$9
         TTD_OVERRIDE=${10}
         """
-        entrypoint = [
+        return [
             self.get_launcher(),
             self.get_consensus_preset(),
             self.get_genesis_fork(),
@@ -250,8 +250,6 @@ class LighthouseClientWriter(ClientWriter):
             self.get_ttd(),
             self.get_consensus_target_peers(),
         ]
-        print(entrypoint, flush=True)
-        return entrypoint
 
 
 class NimbusClientWriter(ClientWriter):
@@ -291,6 +289,7 @@ class NimbusClientWriter(ClientWriter):
             self.get_port("rest"),
             self.get_port("metric"),
             self.get_ttd(),
+            self.get_consensus_target_peers(),
         ]
 
 
@@ -306,25 +305,28 @@ class PrysmClientWriter(ClientWriter):
 
     def _entrypoint(self):
         """
-        TESTNET_DIR=$1
-        NODE_DATADIR=$2
-        WEB3_PROVIDER=$3
-        DEPOSIT_CONTRACT=$4
-        IP_ADDR=$5
-        P2P_PORT=$6
-        METRICS_PORT=$7
-        RPC_PORT=$8
-        GRPC_PORT=$9
-        VALIDATOR_METRICS_PORT=${10}
-        GRAFFITI=${11}
-        NETRESTRICT_RANGE=${12}
-
+        PRESET_BASE=$1
+        STARK_FORK=$2
+        END_FORK=$3
+        DEBUG_LEVEL=$4
+        TESTNET_DIR=$5
+        NODE_DATADIR=$6
+        WEB3_PROVIDER=$7
+        IP_ADDR=$8
+        P2P_PORT=$9
+        METRICS_PORT=${10}
+        RPC_PORT=${11}
+        GRPC_PORT=${12}
+        VALIDATOR_METRICS_PORT=${13}
+        GRAFFITI=${14}
+        NETRESTRICT_RANGE=${15}
         """
         return [
             self.get_launcher(),
             self.get_consensus_preset(),
             self.get_genesis_fork(),
             self.get_end_fork(),
+            self.cc['debug-level'],
             self.get_testnet_dir(),
             self.get_node_dir(),
             self.get_web3_http(),
