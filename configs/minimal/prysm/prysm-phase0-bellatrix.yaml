@@ -41,8 +41,8 @@ config-params:
       istanbulBlock: 0
       berlinBlock: 0
       londonBlock: 0
-      mergeForkBlock: 194 # (16 blocks + epoch 7 on CL = 192 + a few more for TTD first)
-      terminalTotalDifficulty: 384
+      mergeForkBlock: 99 # (12 slot/sec * 8 slot/epoch * 12 fork epoch) / 14 secs per block + 224/14 (genesis delay).
+      terminalTotalDifficulty: 201
     clique:
       enabled: True
       signer: "51Dd070D1f6f8dB48CA5b0E47D7e899aea6b1AF5"
@@ -52,33 +52,22 @@ config-params:
   # used for generating the consensus config placed in /data/eth2-config.yaml
   consensus-layer:
     genesis-delay: 224 #lets the clients get to eth1-follow-distance
-    preset-base: 'mainnet'
-    max-committees-per-slot: 64
-    target-committee-size: 128
-    shuffle-round-count: 90
-    min-genesis-active-validator-count: 64 # custom 
-    eth1-follow-distance: 16
-    seconds-per-slot: 12
-    slots-per-epoch: 32
-    epochs-per-eth1-voting-period: 1 # custom
-    slots-per-historical-root: 8192
-    shard-committee-period: 256
-    epochs-per-historical-vector: 65536
-    epochs-per-slashings-vector: 8192
-    inactivity-penalty-quotient: 67108864
-    min-slashing-penalty-quotient: 128
-    proportional-slashing-multiplier: 1
-    churn-limit-quotient: 65536
+    preset-base: 'minimal'
+    min-genesis-active-validator-count: 16 # custom preseeded into genesis state.
 
     forks:
       genesis-fork-version: 0x01000666
       genesis-fork-name: "phase0"
+      end-fork-name: "bellatrix"
+
+      phase0-fork-version: 0x01000666
+      phase0-fork-epoch: 0 # genesis
 
       altair-fork-version: 0x02000666
-      altair-fork-epoch: 4
+      altair-fork-epoch: 6 # slot 48
 
       bellatrix-fork-version: 0x03000666
-      bellatrix-fork-epoch: 18446744073709551615
+      bellatrix-fork-epoch: 12 # slot 96
 
       sharding-fork-version: 0x04000666
       sharding-fork-epoch: 18446744073709551615
@@ -119,10 +108,10 @@ execution-clients:
   #other exeucution clients here or with consensus launchers?
 
 consensus-bootnodes:
-  eth2-bootnode:
+  bootnode:
     # args for docker-compose
-    container-name: "eth2-bootnode"
     client-name: "eth2-bootnode"
+    container-name: "eth2-bootnode"
     image: "bootnode-clients"
     tag: "latest"
     ip-start: "10.0.20.201"
@@ -135,25 +124,35 @@ consensus-bootnodes:
     bootnode-enr-file: "/data/local_testnet/bootnode/enr.dat"
 
 consensus-clients:
-  teku:
-    client-name: 'teku'
+
+  prysm-genesis-deposits:
+    client-name: 'prysm'
     # docker-compose
-    image: "teku-client"
-    tag: "kintsugi"
-    container-name: "teku-client"
-    entrypoint: "/source/apps/launchers/teku/launch-bellatrix-teku.sh"
-    ip-start: "10.0.20.10"
+    image: "prysm-client-minimal"
+    tag: "develop"
+    container-name: "prysm-client-minimal"
+    entrypoint: "/source/apps/launchers/launch-prysm.sh"
+    ip-start: "10.0.20.30"
     depends: "geth-bootstrapper"
     # beacon/validator flags
     debug-level: "debug"
+    start-rpc-port: 3000
     start-p2p-port: 4000
     start-rest-port: 5000
     start-http-port: 6000
+    start-grpc-port: 7000
+    start-validator-metrics-port: 8000
+    start-metric-port: 9000
+    graffiti: "prysm-client-"
     # testnet dir generation
-    testnet-dir: '/data/local_testnet/teku'
+    testnet-dir: '/data/local_testnet/prysm'
+    wallet-path: '/data/local_testnet/prysm/wallet-password.txt'
+    validator-password: "testnet-password"
     validator-offset-start: 0 # so validators of different clients don't overlap
     num-nodes: 8
-    num-validators: 64
+    num-validators: 16
+    # status checker
+    start-status-checker-port: 7000
 
 # special case client that is the ethereum-testnet-bootstrapper
 # this allows you to create a new genesis everytime you call 
@@ -165,20 +164,5 @@ testnet-bootstrapper:
     tag: "latest"
     container-name: "testnet-bootstrapper"
     ip-start: "10.0.20.202"
-    config-file: '/configs/teku/teku-phase0-altair-mainnet.yaml'
+    config-file: '/configs/minimal/prysm/prysm-phase0-bellatrix.yaml'
 
-# generic modules use custom python scripts and the bootstrapper image to
-# run python scripts to acoomplish various actions such as mining or 
-# deploying deposits and sending transactions.
-# generic-modules:
-#   geth-miner:
-#   # docker compose
-#     image: "ethereum-testnet-bootstrapper"
-#     tag: "latest"
-#     container-name: "geth-miner"
-#     ip-start: "10.0.20.203"
-#     num-nodes: 1
-#     entrypoint: ["python3", "/source/apps/start-geth-miner.py", "--geth-ipc", "/data/local_testnet/geth/geth.ipc"]
-#     # custom
-#     num-mining-threads: 1
-#     # TODO: when to stop

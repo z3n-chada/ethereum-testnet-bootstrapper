@@ -1,15 +1,18 @@
 #!/bin/bash
 
-DEBUG_LEVEL=$1 
-TESTNET_DIR=$2
-NODE_DIR=$3
-ETH1_ENDPOINT=$4
-IP_ADDR=$5
-P2P_PORT=$6
-REST_PORT=$7
-HTTP_PORT=$8
+PRESET_BASE=$1
+STARK_FORK=$2
+END_FORK=$3
+DEBUG_LEVEL=$4
+TESTNET_DIR=$5
+NODE_DIR=$6
+ETH1_ENDPOINT=$7
+IP_ADDR=$8
+P2P_PORT=$9
+REST_PORT=${10}
+HTTP_PORT=${11}
 
-sleep 5 # give bootstrapper enough time to remove the checkpoint file.
+ADDITIONAL_ARGS=""
 
 while [ ! -f "/data/consensus-clients-ready" ]; do
     sleep 1
@@ -22,10 +25,17 @@ done
 
 bootnode_enr=`cat $TESTNET_DIR/../bootnode/enr.dat`
 
+if [[ $END_FORK == "bellatrix" ]]; then
+    ADDITIONAL_ARGS="--Xee-endpoint=$ETH1_ENDPOINT --Xvalidators-proposer-default-fee-recipient=0xA18Fd83a55A9BEdB96d66C24b768259eED183be3 "
+else
+    ADDITIONAL_ARGS=""
+fi
+
 teku \
-    --initial-state "$TESTNET_DIR/genesis.ssz" \
-    --network "$TESTNET_DIR/config.yaml" \
-    --data-path "$NODE_DIR" \
+    --initial-state="$TESTNET_DIR/genesis.ssz" \
+    --logging="$DEBUG_LEVEL" \
+    --network="$TESTNET_DIR/config.yaml" \
+    --data-path="$NODE_DIR" \
     --data-storage-mode=PRUNE \
     --p2p-enabled=true \
     --p2p-discovery-enabled=true \
@@ -34,11 +44,10 @@ teku \
     --p2p-port="$P2P_PORT" \
     --p2p-advertised-port="$P2P_PORT" \
     --p2p-advertised-udp-port="$P2P_PORT" \
-    --logging="$DEBUG_LEVEL" \
     --p2p-peer-upper-bound=8 \
-    --eth1-endpoint "$ETH1_ENDPOINT" \
-    --Xee-endpoint="$ETH1_ENDPOINT" \
+    --eth1-endpoint="$ETH1_ENDPOINT" \
     --p2p-discovery-bootnodes="$bootnode_enr" \
+    --p2p-subscribe-all-subnets-enabled=true \
     --metrics-enabled=true \
     --metrics-interface=0.0.0.0 \
     --metrics-port="$HTTP_PORT" \
@@ -49,7 +58,6 @@ teku \
     --metrics-host-allowlist="*" \
     --rest-api-host-allowlist="*" \
     --data-storage-non-canonical-blocks-enabled=true \
-    --Xvalidators-proposer-default-fee-recipient="0xA18Fd83a55A9BEdB96d66C24b768259eED183be3" \
     --validators-graffiti="teku-$IP_ADDR" \
-    --validator-keys "$NODE_DIR/keys:$NODE_DIR/secrets" \
+    --validator-keys="$NODE_DIR/keys:$NODE_DIR/secrets" $ADDITIONAL_ARGS \
     --validators-keystore-locking-enabled=false 

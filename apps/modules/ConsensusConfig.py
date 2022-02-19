@@ -1,9 +1,56 @@
+minimal_defaults = {
+    "max-committees-per-slot": 4,
+    "target-committee-size": 4,
+    "shuffle-round-count": 10,
+    "eth1-follow-distance": 16,
+    "seconds-per-slot": 12,
+    "slots-per-epoch": 8,
+    "epochs-per-eth1-voting-period": 4,
+    "slots-per-historical-root": 64,
+    "shard-committee-period": 64,
+    "epochs-per-historical-vector": 64,
+    "epochs-per-slashings-vector": 64,
+    "inactivity-penalty-quotient": 33554432,
+    "min-slashing-penalty-quotient": 64,
+    "proportional-slashing-multiplier": 2,
+    "churn-limit-quotient": 32,
+}
+
+mainnet_defaults = {
+    "max-committees-per-slot": 64,
+    "target-committee-size": 128,
+    "shuffle-round-count": 90,
+    "eth1-follow-distance": 2048,
+    "seconds-per-slot": 12,
+    "slots-per-epoch": 32,
+    "epochs-per-eth1-voting-period": 64,
+    "slots-per-historical-root": 8192,
+    "shard-committee-period": 256,
+    "epochs-per-historical-vector": 65536,
+    "epochs-per-slashings-vector": 8192,
+    "inactivity-penalty-quotient": 67108864,
+    "min-slashing-penalty-quotient": 128,
+    "proportional-slashing-multiplier": 2,
+    "churn-limit-quotient": 65536,
+}
+
+
 def create_consensus_config(global_config):
     cp = global_config["config-params"]
     cc = global_config["config-params"]["consensus-layer"]
     ec = global_config["config-params"]["execution-layer"]
+    if cc["preset-base"] == "minimal":
+        # preset defaults
+        pd = minimal_defaults
+    elif cc["preset-base"] == "mainnet":
+        # preset defaults
+        pd = mainnet_defaults
+    else:
+        raise Exception(
+            f"Invalid preset base for consensus config: {cc['preset-base']}"
+        )
     return f"""
-PRESET_BASE: {cc['preset-base']}
+PRESET_BASE: \"{cc['preset-base']}\"
 
 # Genesis
 # ---------------------------------------------------------------
@@ -35,13 +82,13 @@ MIN_ANCHOR_POW_BLOCK_DIFFICULTY: 4294967296
 # Time parameters
 # ---------------------------------------------------------------
 # [customized] Faster for testing purposes
-SECONDS_PER_SLOT: {cc['seconds-per-slot']}
+SECONDS_PER_SLOT: {pd['seconds-per-slot']}
 # 14 (estimate from Eth1 mainnet)
 SECONDS_PER_ETH1_BLOCK: {ec['seconds-per-eth1-block']}
 MIN_VALIDATOR_WITHDRAWABILITY_DELAY: 256
-SHARD_COMMITTEE_PERIOD: {cc['shard-committee-period']}
-ETH1_FOLLOW_DISTANCE: {cc['eth1-follow-distance']}
-EPOCHS_PER_ETH1_VOTING_PERIOD: {cc['epochs-per-eth1-voting-period']}
+SHARD_COMMITTEE_PERIOD: {pd['shard-committee-period']}
+ETH1_FOLLOW_DISTANCE: {pd['eth1-follow-distance']}
+EPOCHS_PER_ETH1_VOTING_PERIOD: {pd['epochs-per-eth1-voting-period']}
 
 # Validator cycle
 # ---------------------------------------------------------------
@@ -54,7 +101,7 @@ EJECTION_BALANCE: 16000000000
 # 2**2 (= 4)
 MIN_PER_EPOCH_CHURN_LIMIT: 4
 # [customized] scale queue churn at much lower validator counts for testing
-CHURN_LIMIT_QUOTIENT: {cc['churn-limit-quotient']}
+CHURN_LIMIT_QUOTIENT: {pd['churn-limit-quotient']}
 
 # Transition
 # ---------------------------------------------------------------

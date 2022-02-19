@@ -63,7 +63,8 @@ def generate_consensus_genesis():
     block_hash = latest_block["hash"].hex()[2:]
     block_time = latest_block["timestamp"]
     print(f"{block_hash} : {block_time}")
-    deploy_consensus_genesis(global_config, block_hash, block_time)
+    preset_base = global_config["config-params"]["consensus-layer"]["preset-base"]
+    deploy_consensus_genesis(global_config, block_hash, block_time, preset_base)
     generate_consensus_testnet_dirs(global_config)
     c_checkpoint = global_config["files"]["consensus-checkpoint"]
     with open(c_checkpoint, "w", opener=rw_all_user) as f:

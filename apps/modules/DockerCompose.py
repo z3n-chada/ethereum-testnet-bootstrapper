@@ -20,6 +20,12 @@ class ClientWriter(object):
         self.network_name = self.gc["docker"]["network-name"]
         self.volumes = [str(x) for x in self.gc["docker"]["volumes"]]
 
+        # get number of consensus nodes
+        self.num_consensus_nodes = 0
+        for client in self.gc["consensus-clients"]:
+            config = self.gc["consensus-clients"][client]
+            self.num_consensus_nodes += config["num-nodes"]
+
     # inits for child classes.
     def config(self):
         out = {
@@ -88,6 +94,32 @@ class ClientWriter(object):
         geth_config = self.gc["execution-clients"]["geth-bootstrapper"]
         return geth_config["geth-data-dir"] + "/geth.ipc"
 
+    def get_ttd(self):
+        return str(
+            self.gc["config-params"]["execution-layer"]["genesis-config"][
+                "terminalTotalDifficulty"
+            ]
+        )
+
+    def get_consensus_preset(self):
+        # used for setting correct launcher params.
+        return str(self.gc["config-params"]["consensus-layer"]["preset-base"])
+
+    def get_genesis_fork(self):
+        # used for setting correct launcher params.
+        return str(
+            self.gc["config-params"]["consensus-layer"]["forks"]["genesis-fork-name"]
+        )
+
+    def get_end_fork(self):
+        # used for setting correct launcher params.
+        return str(
+            self.gc["config-params"]["consensus-layer"]["forks"]["end-fork-name"]
+        )
+
+    def get_consensus_target_peers(self):
+        return str(self.num_consensus_nodes - 1)
+
     def _entrypoint(self):
         raise Exception("override this method")
 
@@ -111,6 +143,7 @@ class GethClientWriter(ClientWriter):
         WS_APIS
         IP_ADDR
         TESTNET_IP_RANGE
+        TTD
         """
         return [
             str(self.cc["entrypoint"]),
@@ -123,6 +156,7 @@ class GethClientWriter(ClientWriter):
             str(self.cc["ws-apis"]),
             str(self.get_ip()),
             self.get_ip_subnet(),
+            self.get_ttd(),
         ]
 
 
@@ -150,6 +184,9 @@ class TekuClientWriter(ClientWriter):
 
         return [
             self.get_launcher(),
+            self.get_consensus_preset(),
+            self.get_genesis_fork(),
+            self.get_end_fork(),
             self.cc["debug-level"],
             self.get_testnet_dir(),
             self.get_node_dir(),
@@ -198,6 +235,9 @@ class LighthouseClientWriter(ClientWriter):
         """
         return [
             self.get_launcher(),
+            self.get_consensus_preset(),
+            self.get_genesis_fork(),
+            self.get_end_fork(),
             self.cc["debug-level"],
             self.get_testnet_dir(),
             self.get_node_dir(),
@@ -207,12 +247,8 @@ class LighthouseClientWriter(ClientWriter):
             self.get_port("rest"),
             self.get_port("http"),
             self.get_port("metric"),
-            str(
-                self.gc["config-params"]["execution-layer"]["genesis-config"][
-                    "terminalTotalDifficulty"
-                ]
-            ),
-            str(self.cc["target-peers"]),
+            self.get_ttd(),
+            self.get_consensus_target_peers(),
         ]
 
 
@@ -236,9 +272,13 @@ class NimbusClientWriter(ClientWriter):
         P2P_PORT=$6
         RPC_PORT=$7
         METRICS_PORT=$9
+        TTD=$10
         """
         return [
             self.get_launcher(),
+            self.get_consensus_preset(),
+            self.get_genesis_fork(),
+            self.get_end_fork(),
             self.cc["debug-level"],
             self.get_testnet_dir(),
             self.get_node_dir(),
@@ -248,6 +288,8 @@ class NimbusClientWriter(ClientWriter):
             self.get_port("rpc"),
             self.get_port("rest"),
             self.get_port("metric"),
+            self.get_ttd(),
+            self.get_consensus_target_peers(),
         ]
 
 
@@ -263,22 +305,28 @@ class PrysmClientWriter(ClientWriter):
 
     def _entrypoint(self):
         """
-        TESTNET_DIR=$1
-        NODE_DATADIR=$2
-        WEB3_PROVIDER=$3
-        DEPOSIT_CONTRACT=$4
-        IP_ADDR=$5
-        P2P_PORT=$6
-        METRICS_PORT=$7
-        RPC_PORT=$8
-        GRPC_PORT=$9
-        VALIDATOR_METRICS_PORT=${10}
-        GRAFFITI=${11}
-        NETRESTRICT_RANGE=${12}
-
+        PRESET_BASE=$1
+        STARK_FORK=$2
+        END_FORK=$3
+        DEBUG_LEVEL=$4
+        TESTNET_DIR=$5
+        NODE_DATADIR=$6
+        WEB3_PROVIDER=$7
+        IP_ADDR=$8
+        P2P_PORT=$9
+        METRICS_PORT=${10}
+        RPC_PORT=${11}
+        GRPC_PORT=${12}
+        VALIDATOR_METRICS_PORT=${13}
+        GRAFFITI=${14}
+        NETRESTRICT_RANGE=${15}
         """
         return [
             self.get_launcher(),
+            self.get_consensus_preset(),
+            self.get_genesis_fork(),
+            self.get_end_fork(),
+            self.cc['debug-level'],
             self.get_testnet_dir(),
             self.get_node_dir(),
             self.get_web3_http(),

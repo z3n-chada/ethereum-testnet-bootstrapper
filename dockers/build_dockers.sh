@@ -1,18 +1,9 @@
-# Example local dockers for experiments
+#!/bin/bash
 
-# geth client
-docker build -t geth-client:master -f geth-client.Dockerfile
-# eth2-bootnode
-docker build -t bootnode-clients:latest -f bootnode-client.Dockerfile
+for df in $(ls | grep Dockerfile); do
+    echo $df
+    i=`echo $df | tr '_' ':'`
+    image=`"${i::-11}"`
+    docker build -f "$df" -t "${i::-11}" .
+done
 
-#pre-bellatrix
-docker build -t lighthouse-client:stable -f lighthouse-client_stable.Dockerfile
-docker build -t nimbus-client:stable -f nimbus-client_stable.Dockerfile
-docker build -t prysm-client:develop -f prysm-client_develop.Dockerfile
-docker build -t teku-client:master -f teku-client_master.Dockerfile
-
-# bellatrix dockers.
-docker build -t lighthouse-client:kintsugi -f lighthouse-client_kintsugi.Dockerfile
-docker build -t nimbus-client:kintsugi -f nimbus-client_kintsugi.Dockerfile
-docker build -t prysm-client:kintsugi -f prysm-client_kintsugi.Dockerfile
-docker build -t teku-client:kintsugi -f teku-client_kintsugi.Dockerfile
