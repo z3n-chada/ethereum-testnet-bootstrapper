@@ -20,6 +20,12 @@ class ClientWriter(object):
         self.network_name = self.gc["docker"]["network-name"]
         self.volumes = [str(x) for x in self.gc["docker"]["volumes"]]
 
+        # get number of consensus nodes
+        self.num_consensus_nodes = 0
+        for client in self.gc["consensus-clients"]:
+            config = self.gc["consensus-clients"][client]
+            self.num_consensus_nodes += config["num-nodes"]
+
     # inits for child classes.
     def config(self):
         out = {
@@ -95,6 +101,25 @@ class ClientWriter(object):
             ]
         )
 
+    def get_consensus_preset(self):
+        # used for setting correct launcher params.
+        return str(self.gc["config-params"]["consensus-layer"]["preset-base"])
+
+    def get_genesis_fork(self):
+        # used for setting correct launcher params.
+        return str(
+            self.gc["config-params"]["consensus-layer"]["forks"]["genesis-fork-name"]
+        )
+
+    def get_end_fork(self):
+        # used for setting correct launcher params.
+        return str(
+            self.gc["config-params"]["consensus-layer"]["forks"]["end-fork-name"]
+        )
+
+    def get_consensus_target_peers(self):
+        return str(self.num_consensus_nodes - 1)
+
     def _entrypoint(self):
         raise Exception("override this method")
 
@@ -159,6 +184,9 @@ class TekuClientWriter(ClientWriter):
 
         return [
             self.get_launcher(),
+            self.get_consensus_preset(),
+            self.get_genesis_fork(),
+            self.get_end_fork(),
             self.cc["debug-level"],
             self.get_testnet_dir(),
             self.get_node_dir(),
@@ -205,8 +233,11 @@ class LighthouseClientWriter(ClientWriter):
         METRICS_PORT=$9
         TTD_OVERRIDE=${10}
         """
-        return [
+        entrypoint = [
             self.get_launcher(),
+            self.get_consensus_preset(),
+            self.get_genesis_fork(),
+            self.get_end_fork(),
             self.cc["debug-level"],
             self.get_testnet_dir(),
             self.get_node_dir(),
@@ -217,8 +248,10 @@ class LighthouseClientWriter(ClientWriter):
             self.get_port("http"),
             self.get_port("metric"),
             self.get_ttd(),
-            str(self.cc["target-peers"]),
+            self.get_consensus_target_peers(),
         ]
+        print(entrypoint, flush=True)
+        return entrypoint
 
 
 class NimbusClientWriter(ClientWriter):
@@ -245,6 +278,9 @@ class NimbusClientWriter(ClientWriter):
         """
         return [
             self.get_launcher(),
+            self.get_consensus_preset(),
+            self.get_genesis_fork(),
+            self.get_end_fork(),
             self.cc["debug-level"],
             self.get_testnet_dir(),
             self.get_node_dir(),
@@ -286,6 +322,9 @@ class PrysmClientWriter(ClientWriter):
         """
         return [
             self.get_launcher(),
+            self.get_consensus_preset(),
+            self.get_genesis_fork(),
+            self.get_end_fork(),
             self.get_testnet_dir(),
             self.get_node_dir(),
             self.get_web3_http(),
