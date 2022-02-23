@@ -239,13 +239,20 @@ testnet-bootstrapper:
     config-file: '/configs/minimal/multi/multi-phase0-bellatrix.yaml'
 
 generic-modules:
+  health-checker:
+    client-name: "health-checker"
+    image: "ethereum-testnet-bootstrapper"
+    tag: "latest"
+    container-name: "health-checker"
+    ip-start: "10.0.20.206"
+    num-nodes: 1
+    entrypoint: "python3 /source/apps/status-check.py --config /configs/minimal/multi/multi-phase0-bellatrix.yaml --phase0-slot 36 --experiment-slot 46 --phase1-slot 46 --phase2-slot 52 --genesis-delay 224 --number-of-checks 2"
+
   deposit-deployer:
-    #docker-compose
     client-name: "deposit-deployer"
     image: "ethereum-testnet-bootstrapper"
     tag: "latest"
     container-name: "deposit-deployer"
-    ip-start: "10.0.20.205"
+    ip-start: "10.0.20.207"
     num-nodes: 1
-    entrypoint: "python3 /source/apps/deploy-contract-deposits.py --geth-ipc /data/local_testnet/geth/geth.ipc --num-deposits 1 --start-offset 18 --config /configs/minimal/multi/multi-phase0-bellatrix.yaml"
-
+    entrypoint: "python3 /source/apps/deploy-contract-deposits.py --config /configs/minimal/multi/multi-phase0-bellatrix.yaml --start-offset 16 --num-deposits 4 --num-transactions 4 --delay-per-transaction 30 --geth-ipc data/local_testnet/geth/geth.ipc"
