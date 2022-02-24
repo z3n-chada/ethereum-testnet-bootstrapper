@@ -7,8 +7,9 @@ PRIV_KEY=$4
 ENR_PATH=$5
 
 if [ ! -f "/data/testnet-ready" ]; then
-    sleep 1
-fi
+    sleep 10
+    # TODO: fix this.
+fi 
 
 mkdir -p /data/local_testnet/bootnode/
 
