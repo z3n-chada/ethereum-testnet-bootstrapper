@@ -326,7 +326,7 @@ class PrysmClientWriter(ClientWriter):
             self.get_consensus_preset(),
             self.get_genesis_fork(),
             self.get_end_fork(),
-            self.cc['debug-level'],
+            self.cc["debug-level"],
             self.get_testnet_dir(),
             self.get_node_dir(),
             self.get_web3_http(),
@@ -373,7 +373,11 @@ class GenericModule(ClientWriter):
         self.out = self.config()
 
     def _entrypoint(self):
-        return self.cc["entrypoint"]
+        if isinstance(self.cc["entrypoint"], str):
+            return self.cc["entrypoint"].split()
+
+        else:
+            return self.cc["entrypoint"]
 
 
 class TestnetBootstrapper(ClientWriter):
