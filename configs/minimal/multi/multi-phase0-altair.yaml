@@ -233,7 +233,7 @@ testnet-bootstrapper:
     tag: "latest"
     container-name: "testnet-bootstrapper"
     ip-start: "10.0.20.202"
-    config-file: '/configs/minimal/multi/multi-phase0-altair.yaml'
+    config-file: '/source/configs/minimal/multi/multi-phase0-altair.yaml'
 
 generic-modules:
   status-check:

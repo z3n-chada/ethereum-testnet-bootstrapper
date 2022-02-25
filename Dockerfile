@@ -8,7 +8,7 @@ RUN git clone https://github.com/skylenet/eth2-testnet-genesis.git \
 
 FROM debian:latest
 WORKDIR /work
-VOLUME ["/config", "/data"]
+VOLUME ["/data"]
 EXPOSE 8000/tcp
 RUN apt-get update && \
     apt-get install --no-install-recommends -y \
@@ -23,7 +23,5 @@ COPY --from=builder /go/bin/eth2-testnet-genesis /usr/local/bin/eth2-testnet-gen
 COPY --from=builder /go/bin/eth2-val-tools /usr/local/bin/eth2-val-tools
 COPY --from=builder /go/bin/eth2-bootnode /usr/local/bin/eth2-bootnode
 COPY --from=builder /go/bin/ethereal /usr/local/bin/ethereal
-COPY configs/ /configs
-COPY apps /apps
-COPY entrypoint.sh .
-ENTRYPOINT [ "/work/entrypoint.sh" ]
+COPY ./ /source
+ENTRYPOINT [ "/source/entrypoint.sh" ]

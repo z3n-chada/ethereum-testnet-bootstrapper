@@ -389,7 +389,7 @@ class TestnetBootstrapper(ClientWriter):
 
     def _entrypoint(self):
         return [
-            "/work/entrypoint.sh",
+            "/source/entrypoint.sh",
             "--config",
             self.cc["config-file"],
             "--no-docker-compose",

@@ -164,7 +164,7 @@ testnet-bootstrapper:
     tag: "latest"
     container-name: "testnet-bootstrapper"
     ip-start: "10.0.20.202"
-    config-file: '/configs/minimal/prysm/prysm-phase0-bellatrix.yaml'
+    config-file: '/source/configs/minimal/prysm/prysm-phase0-bellatrix.yaml'
 
 generic-modules:
   status-check:
