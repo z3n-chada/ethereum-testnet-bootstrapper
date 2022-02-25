@@ -173,7 +173,7 @@ consensus-clients:
     num-nodes: 2
     num-validators: 6
     # status-checker
-    start-status-checker-port: 6000
+    start-status-checker-port: 5000
 
     # prysm-genesis-deposits:
     #   client-name: 'prysm'

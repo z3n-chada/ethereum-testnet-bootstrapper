@@ -148,7 +148,7 @@ consensus-clients:
     num-nodes: 8
     num-validators: 16
     # status-checker
-    start-status-checker-port: 6000
+    start-status-checker-port: 5000
 
 
 # special case client that is the ethereum-testnet-bootstrapper
