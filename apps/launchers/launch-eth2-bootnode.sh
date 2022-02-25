@@ -8,7 +8,8 @@ ENR_PATH=$5
 
 # some more exotic setups don't run with the /data/local_testnet/ already mounted in.
 # we support this by waiting for it to be done.
-while [ ! -f "/data/local_testnet/" ]; do
+while [ ! -d "/data/local_testnet" ]; do
+    ls /data/
     echo "waiting for local_testnet data to be mapped in."
     sleep 1
 done
