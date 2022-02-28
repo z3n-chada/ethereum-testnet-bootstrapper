@@ -42,9 +42,10 @@ def create_deposit_data(config, start_offset, num_deposits, amount):
         + f"--fork-version {chain_id} "
         + f'--validators-mnemonic "{validator_mnem}" '
         + f'--withdrawals-mnemonic "{withdrawl_mnem}" '
-        + f"--amount {amount} "
+        + f"--amount {int(amount)} "
         + "--as-json-list "
     )
+    print(cmd)
     x = subprocess.run(cmd, shell=True, capture_output=True)
     stdout_deposit_data = x.stdout
     print(stdout_deposit_data, flush=True)
