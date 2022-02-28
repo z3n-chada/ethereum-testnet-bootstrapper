@@ -43,7 +43,7 @@ class APIRequest(object):
             except:
                 pass
             if status_code != 200:
-                print(f"\tattempt={attempt}/{self.retries}; delay={self.retry_delay}s")
+                #print(f"\tattempt={attempt}/{self.retries}; delay={self.retry_delay}s")
                 time.sleep(self.retry_delay)
                 attempt += 1
             else:

@@ -6,9 +6,13 @@ API_PORT=$3
 PRIV_KEY=$4
 ENR_PATH=$5
 
-if [ ! -f "/data/testnet-ready" ]; then
+# some more exotic setups don't run with the /data/local_testnet/ already mounted in.
+# we support this by waiting for it to be done.
+while [ ! -d "/data/local_testnet" ]; do
+    ls /data/
+    echo "waiting for local_testnet data to be mapped in."
     sleep 1
-fi
+done
 
 mkdir -p /data/local_testnet/bootnode/
 

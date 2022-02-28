@@ -16,11 +16,11 @@ RUN wget --no-check-certificate https://apt.llvm.org/llvm.sh && chmod +x llvm.sh
 
 ENV LLVM_CONFIG=llvm-config-13
 
-RUN git clone --recurse-submodules -b kintsugi https://github.com/status-im/nimbus-eth2.git
+RUN git clone --recurse-submodules https://github.com/status-im/nimbus-eth2.git
+
+RUN cd nimbus-eth2 && git checkout kintsugi
 
 WORKDIR /git/nimbus-eth2
-
-RUN make update
 
 RUN make -j64 nimbus_beacon_node NIMFLAGS="--cc:clang --clang.exe:clang-13 --clang.linkerexe:clang-13 -d:const_preset=minimal -d:SECONDS_PER_SLOT=12"
 
