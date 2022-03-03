@@ -43,7 +43,7 @@ class APIRequest(object):
             except:
                 pass
             if status_code != 200:
-                #print(f"\tattempt={attempt}/{self.retries}; delay={self.retry_delay}s")
+                # print(f"\tattempt={attempt}/{self.retries}; delay={self.retry_delay}s")
                 time.sleep(self.retry_delay)
                 attempt += 1
             else:
@@ -97,12 +97,13 @@ def get_api_manager_from_config(path):
 
     for client_module in data["consensus-clients"]:
         client_config = data["consensus-clients"][client_module]
+        consensus_config = data["consensus-configs"][client_config["consensus-config"]]
         client_name = client_config["client-name"]
-        for ndx in range(client_config["num-nodes"]):
-            prefix = ".".join(client_config["ip-start"].split(".")[:3]) + "."
-            base = int(client_config["ip-start"].split(".")[-1])
+        for ndx in range(consensus_config["num-nodes"]):
+            prefix = ".".join(client_config["start-ip-addr"].split(".")[:3]) + "."
+            base = int(client_config["start-ip-addr"].split(".")[-1])
             ip = prefix + str(base + ndx)
-            port = client_config["start-status-checker-port"] + ndx
+            port = consensus_config["start-beacon-api-port"] + ndx
 
             api_client = BeaconAPIClient(ip, port, client_name)
             manager.add_client(api_client)

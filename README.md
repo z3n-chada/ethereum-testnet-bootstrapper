@@ -24,3 +24,5 @@ The issues listed here are not neccesarily related to security bugs, they could 
 - eth2-testnet-genesis
     - (non-security) fix altair beaconstate genesis
 
+# Overview
+Dockers contain the cl and the el clients with which they can become nodes on the network. The bootstrapper (ethereum-testnet-bootstrapper) reads the configuration for the testnet and populates all of the required directories.  

@@ -68,7 +68,13 @@ RUN git clone https://github.com/prysmaticlabs/prysm && \
 
 RUN cd prysm && /root/go/bin/bazelisk build //validator:validator --config=minimal
 
+FROM golang:1.17 as builder
+RUN git clone https://github.com/MariusVanDerWijden/go-ethereum.git \
+    && cd go-ethereum && git checkout merge-kiln-v2 \
+    && make geth
+
 from debian:latest
 
 COPY --from=beacon_builder /git/prysm/bazel-bin/cmd/beacon-chain/beacon-chain_/beacon-chain /usr/local/bin/beacon-chain
 COPY --from=validator_builder /git/prysm/bazel-bin/cmd/validator/validator_/validator /usr/local/bin/validator
+COPY --from=builder /go/go-ethereum/build/bin/geth /usr/local/bin/geth

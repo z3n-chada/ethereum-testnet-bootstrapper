@@ -1,4 +1,177 @@
 from ruamel import yaml
+import re
+
+# TODO: use this to clean up client writers.
+class ConfigurationEnvironment(object):
+    """
+    Crawler that goes through all of the configurations of a module
+    and grabs the required variables.
+    """
+
+    def __init__(self, client_writer):
+        self.cw = client_writer
+        self.gc = self.cw.gc
+        self.cc = self.cw.cc
+        self.ecc = None
+        self.ccc = None
+        if "consensus-config" in self.cc:
+            self.ccc = self.gc["consensus-configs"][self.cc["consensus-config"]]
+        if "execution-config" in self.cc:
+            self.ecc = self.gc["execution-configs"][self.cc["execution-config"]]
+        elif "execution-config" in self.ccc:  # cl client with el client
+            self.ecc = self.gc["execution-configs"][self.ccc["execution-config"]]
+
+        self.variable_getters = {
+            # generic
+            "start-ip-addr": self.get_ip,
+            "netrestrict-range": self.get_ip_subnet,
+            # execution
+            "execution-data-dir": self.get_execution_data_dir,
+            "execution-p2p-port": self.get_static_port,
+            "execution-http-port": self.get_static_port,
+            "execution-ws-port": self.get_static_port,
+            "http-apis": self.get_execution_config,
+            "ws-apis": self.get_execution_config,
+            "chain-id": self.get_execution_config,
+            "network-id": self.get_execution_config,
+            "execution-genesis": self.get_execution_genesis,
+            "terminaltotaldifficulty": self.get_ttd,
+            # consensus
+            "preset-base": self.get_consensus_preset,
+            "start-fork": self.get_genesis_fork,
+            "end-fork": self.get_end_fork,
+            "testnet-dir": self.get_client_config,
+            "node-dir": self.get_node_dir,
+            "start-consensus-p2p-port": self.get_port,
+            "start-beacon-api-port": self.get_port,
+            "graffiti": self.get_graffiti,
+            "start-beacon-metric-port": self.get_port,
+            "start-validator-metric-port": self.get_port,
+            "execution-launcher": self.get_execution_launcher,
+            "local-execution-client": self.get_consensus_config,
+            "http-web3-ip-addr": self.get_consensus_config,
+            "ws-web3-ip-addr": self.get_consensus_config,
+        }
+
+        # how to fetch various ports.
+        self.port_maps = {}
+
+    def get_environment_var(self, var):
+        if var not in self.variable_getters:
+            raise Exception(f"Tried to fetch unimplemented var: {var}.")
+        else:
+            getter = self.variable_getters[var]
+            value = getter(var)
+            if getter == self.get_static_port:
+                p = re.compile(r"(?P<port>([A-Za-z0-9\-]+-port))")
+                m = p.search(var)
+                if m is None:
+                    raise Exception(f"Unexpected port: {var}")
+                variable = m.group("port")
+            elif getter == self.get_port:
+                p = re.compile(r"start-(?P<port>([A-Za-z0-9\-]+-port))")
+                m = p.search(var)
+                if m is None:
+                    raise Exception(f"Unexpected port: {var}")
+                variable = m.group("port")
+            elif getter == self.get_ip:
+                variable = "ip-addr"
+            else:
+                variable = var
+
+            return f'{variable.upper().replace("-","_")}={value}'
+
+    # Generic
+    def get_client_config(self, var):
+        return self.cc[var]
+
+    def get_execution_config(self, var):
+        return self.ecc[var]
+
+    def get_consensus_config(self, var):
+        return self.ccc[var]
+
+    def get_ip(self, _unused="unused"):
+        prefix = ".".join(self.cc["start-ip-addr"].split(".")[:3]) + "."
+        base = int(self.cc["start-ip-addr"].split(".")[-1])
+        ip = prefix + str(base + self.cw.curr_node)
+        return ip
+
+    def get_static_port(self, goal_port):
+        return self.get_port(goal_port, static=True)
+
+    def get_port(self, goal_port, static=False):
+        if goal_port in self.cc:
+            if static:
+                return int(self.cc[goal_port])
+            return str(int(self.cc[goal_port]) + self.cw.curr_node)
+        elif self.ccc is not None and goal_port in self.ccc:
+            if static:
+                return int(self.ccc[goal_port])
+            return str(int(self.ccc[goal_port]) + self.cw.curr_node)
+        elif self.ecc is not None and goal_port in self.ecc:
+            if static:
+                return int(self.ecc[goal_port])
+            return str(int(self.ecc[goal_port]) + self.cw.curr_node)
+        else:
+            raise Exception(f"Can't find a reference to {goal_port}")
+
+    # Global Config
+    def get_ttd(self, _unused="unused"):
+        return self.gc["config-params"]["execution-layer"]["genesis-config"][
+            "terminalTotalDifficulty"
+        ]
+
+    def get_execution_genesis(self, _unused="unused"):
+        # TODO: generic
+        return self.gc["files"]["geth-genesis"]
+
+    def get_ip_subnet(self, _unused="unused"):
+        return str(self.gc["docker"]["ip-subnet"])
+
+    def get_consensus_preset(self, _unused="unused"):
+        # used for setting correct launcher params.
+        return str(self.gc["config-params"]["consensus-layer"]["preset-base"])
+
+    def get_genesis_fork(self, _unused="unused"):
+        # used for setting correct launcher params.
+        return str(
+            self.gc["config-params"]["consensus-layer"]["forks"]["genesis-fork-name"]
+        )
+
+    def get_end_fork(self, _unused="unused"):
+        # used for setting correct launcher params.
+        return str(
+            self.gc["config-params"]["consensus-layer"]["forks"]["end-fork-name"]
+        )
+
+    # Client Config
+
+    # Execution Config
+    def get_execution_client_name(self, _unused="unused"):
+        return self.ecc["client"]
+
+    def get_execution_data_dir(self, _unused="unused"):
+        if self.ccc is not None:
+            return f"{self.get_node_dir()}/{self.get_execution_client_name()}"
+        return self.cc["data-dir"]
+
+    # Consensus Config
+    def get_execution_launcher(self, _unused="unused"):
+        print(self.ccc)
+        if self.ccc["local-execution-client"]:
+            return str(self.ccc["execution-launcher"])
+        else:
+            return None
+
+    def get_graffiti(self, _unused="unused"):
+        if "graffiti" in self.cc:
+            return str(self.cc["graffiti"] + str(self.cw.curr_node))
+        else:
+            return str(self.cc["client-name"] + str(self.cw.curr_node))
+
+    def get_node_dir(self, _unused="unused"):
+        return f"{self.cc['testnet-dir']}/node_{self.cw.curr_node}"
 
 
 class ClientWriter(object):
@@ -20,11 +193,49 @@ class ClientWriter(object):
         self.network_name = self.gc["docker"]["network-name"]
         self.volumes = [str(x) for x in self.gc["docker"]["volumes"]]
 
+        self.env = []
+
         # get number of consensus nodes
         self.num_consensus_nodes = 0
         for client in self.gc["consensus-clients"]:
             config = self.gc["consensus-clients"][client]
-            self.num_consensus_nodes += config["num-nodes"]
+            ccc = self.gc["consensus-configs"][config["consensus-config"]]
+            self.num_consensus_nodes += ccc["num-nodes"]
+
+        self.base_consensus_env_vars = [
+            "preset-base",
+            "start-fork",
+            "end-fork",
+            "testnet-dir",
+            "node-dir",
+            "start-ip-addr",
+            "start-consensus-p2p-port",
+            "start-beacon-api-port",
+            "graffiti",
+            "netrestrict-range",
+            "start-beacon-metric-port",
+            "start-validator-metric-port",
+            "execution-launcher",
+            "local-execution-client",
+        ]
+        self.consensus_with_execution_env_vars = [
+            "http-web3-ip-addr",
+            "ws-web3-ip-addr",
+        ]
+        self.base_execution_env_vars = [
+            "start-ip-addr",
+            "execution-data-dir",
+            "execution-p2p-port",
+            "execution-http-port",
+            "execution-ws-port",
+            "netrestrict-range",
+            "http-apis",
+            "ws-apis",
+            "chain-id",
+            "network-id",
+            "execution-genesis",
+            "terminaltotaldifficulty",
+        ]
 
     # inits for child classes.
     def config(self):
@@ -49,115 +260,101 @@ class ClientWriter(object):
                 config["entrypoint"] = self._entrypoint()
         else:
             config["entrypoint"] = self._entrypoint()
-        if "environment" in self.cc:
-            config["environment"] = [str(x) for x in self.cc["environment"]]
+        config["environment"] = self._environment()
         return config
+
+    # override this if neccessary
+    def _environment(self):
+        return []
 
     def _networking(self):
         # first calculate the ip.
         return {self.network_name: {"ipv4_address": self.get_ip()}}
 
-    """
-        Popular args across all clients
-    """
-
-    def get_ip(self):
-        prefix = ".".join(self.cc["ip-start"].split(".")[:3]) + "."
-        base = int(self.cc["ip-start"].split(".")[-1])
-        ip = prefix + str(base + self.curr_node)
-        return ip
-
-    def get_testnet_dir(self):
-        return str(self.cc["testnet-dir"])
-
-    def get_node_dir(self):
-        return f"{self.cc['testnet-dir']}/node_{self.curr_node}"
-
-    def get_ip_subnet(self):
-        return str(self.gc["docker"]["ip-subnet"])
-
-    def get_port(self, port_name):
-        return str(int(self.cc[f"start-{port_name}-port"]) + self.curr_node)
-
-    def get_launcher(self):
-        return str(self.cc["entrypoint"])
-
-    def get_web3_http(self):
-        geth_config = self.gc["execution-clients"]["geth-bootstrapper"]
-        return f"http://{geth_config['ip-start']}:{geth_config['http-port']}"
-
-    def get_web3_ws(self):
-        geth_config = self.gc["execution-clients"]["geth-bootstrapper"]
-        return f"ws://{geth_config['ip-start']}:{geth_config['ws-port']}"
-
-    def get_web3_ipc(self):
-        geth_config = self.gc["execution-clients"]["geth-bootstrapper"]
-        return geth_config["geth-data-dir"] + "/geth.ipc"
-
-    def get_ttd(self):
-        return str(
-            self.gc["config-params"]["execution-layer"]["genesis-config"][
-                "terminalTotalDifficulty"
-            ]
-        )
-
-    def get_consensus_preset(self):
-        # used for setting correct launcher params.
-        return str(self.gc["config-params"]["consensus-layer"]["preset-base"])
-
-    def get_genesis_fork(self):
-        # used for setting correct launcher params.
-        return str(
-            self.gc["config-params"]["consensus-layer"]["forks"]["genesis-fork-name"]
-        )
-
-    def get_end_fork(self):
-        # used for setting correct launcher params.
-        return str(
-            self.gc["config-params"]["consensus-layer"]["forks"]["end-fork-name"]
-        )
-
-    def get_consensus_target_peers(self):
-        return str(self.num_consensus_nodes - 1)
-
     def _entrypoint(self):
         raise Exception("override this method")
 
+    def get_ip(self, _unused="unused"):
+        prefix = ".".join(self.cc["start-ip-addr"].split(".")[:3]) + "."
+        base = int(self.cc["start-ip-addr"].split(".")[-1])
+        ip = prefix + str(base + self.curr_node)
+        return ip
 
-class GethClientWriter(ClientWriter):
+
+class ConsensusClientWriter(ClientWriter):
     def __init__(self, global_config, client_config, curr_node):
         super().__init__(
-            global_config, client_config, f"geth-node-{curr_node}", curr_node
+            global_config,
+            client_config,
+            f"{client_config['client-name']}-node-{curr_node}",
+            curr_node,
         )
+        self.ccc = global_config["consensus-configs"][client_config["consensus-config"]]
+        if self.ccc["local-execution-client"]:
+            self.ecc = self.ccc["execution-config"]
+        else:
+            self.ecc = None
+
+    def _environment(self):
+        environment = []
+        config_env = ConfigurationEnvironment(self)
+        for bcev in self.base_consensus_env_vars:
+            environment.append(config_env.get_environment_var(bcev))
+        if self.ecc is not None:
+            for beev in self.base_execution_env_vars:
+                environment.append(config_env.get_environment_var(beev))
+            for ceev in self.consensus_with_execution_env_vars:
+                environment.append(config_env.get_environment_var(ceev))
+        if "consensus-additional-env" in self.cc:
+            for k, v in self.cc["consensus-additional-env"].items():
+                environment.append(f'{k.upper().replace("-","_")}={v}')
+        return list(set(environment))
+        # additional_envs = self._additional_consensus_environment()
+        # if "consensus-additional-env" in self.cc:
+        #     self.cc.pop("consensus-additional-env")
+        # if self.ecc is not None:
+        #     env_dict = self._base_consensus_environment() | self.ecc
+        # else:
+        #     env_dict = self._base_consensus_environment()
+        # env = {f'{k.upper().replace("-","_")}': f"{v}" for k, v in env_dict.items()}
+        # # overwrite defaults with custom values and add any new args for a client
+        # for k, v in additional_envs.items():
+        #     env[k] = v
+
+        # return [f"{k}={v}" for k, v in env.items()]
+        # """
+        # DEBUG_LEVEL=$4
+        # WEB3_PROVIDER=$7
+        # RPC_PORT=${11}
+        # GRPC_PORT=${12}
+        # """
+
+
+class ExecutionClientWriter(ClientWriter):
+    def __init__(self, global_config, client_config, curr_node):
+        super().__init__(
+            global_config,
+            client_config,
+            f"{client_config['client-name']}-node-{curr_node}",
+            curr_node,
+        )
+        self.ecc = global_config["execution-configs"][client_config["execution-config"]]
+
+    def _environment(self):
+        environment = []
+        config_env = ConfigurationEnvironment(self)
+        for beev in self.base_execution_env_vars:
+            environment.append(config_env.get_environment_var(beev))
+        return environment
+
+
+class GethClientWriter(ExecutionClientWriter):
+    def __init__(self, global_config, client_config, curr_node):
+        super().__init__(global_config, client_config, curr_node)
         self.out = self.config()
 
     def _entrypoint(self):
-        """
-        Usage:
-        GETH_DATA_DIR
-        GENESIS_CONFIG
-        NETWORK_ID
-        HTTP_PORT
-        HTTP_APIS
-        WS_PORT
-        WS_APIS
-        IP_ADDR
-        TESTNET_IP_RANGE
-        TTD
-        """
-        return [
-            str(self.cc["entrypoint"]),
-            str(self.cc["geth-data-dir"]),
-            str(self.gc["files"]["geth-genesis"]),
-            str(self.cc["network-id"]),
-            str(self.cc["http-port"]),
-            str(self.cc["http-apis"]),
-            str(self.cc["ws-port"]),
-            str(self.cc["ws-apis"]),
-            str(self.get_ip()),
-            self.get_ip_subnet(),
-            self.get_ttd(),
-        ]
+        return [self.cc["entrypoint"]]
 
 
 class TekuClientWriter(ClientWriter):
@@ -181,28 +378,28 @@ class TekuClientWriter(ClientWriter):
         REST_PORT=$6
         ETH1_ENDPOINT=$7
         """
-
-        return [
-            self.get_launcher(),
-            self.get_consensus_preset(),
-            self.get_genesis_fork(),
-            self.get_end_fork(),
-            self.cc["debug-level"],
-            self.get_testnet_dir(),
-            self.get_node_dir(),
-            self.get_web3_http(),
-            self.get_ip(),
-            self.get_port("p2p"),
-            self.get_port("rest"),
-            self.get_port("http"),
-        ]
+        return [self.cc["entrypoint"]]
+        # return [
+        #     self.get_launcher(),
+        #     self.get_consensus_preset(),
+        #     self.get_genesis_fork(),
+        #     self.get_end_fork(),
+        #     self.cc["debug-level"],
+        #     self.get_testnet_dir(),
+        #     self.get_node_dir(),
+        #     self.get_web3_http(),
+        #     self.get_ip(),
+        #     self.get_port("p2p"),
+        #     self.get_port("rest"),
+        #     self.get_port("http"),
+        # ]
 
         # return [
         #    str(self.cc["entrypoint"]),
         #    str(self.cc["debug-level"]),
         #    str(self.cc["testnet-dir"]),
         #    f"{testnet_dir}/node_{self.curr_node}",
-        #    f'http://{geth_config["ip-start"]}:{geth_config["http-port"]}',
+        #    f'http://{geth_config["start-ip-addr"]}:{geth_config["http-port"]}',
         #    str(self.get_ip()),
         #    str(int(self.cc["start-p2p-port"]) + self.curr_node),
         #    str(int(self.cc["start-rest-port"]) + self.curr_node),
@@ -293,12 +490,11 @@ class NimbusClientWriter(ClientWriter):
         ]
 
 
-class PrysmClientWriter(ClientWriter):
+class PrysmClientWriter(ConsensusClientWriter):
     def __init__(self, global_config, client_config, curr_node):
         super().__init__(
             global_config,
             client_config,
-            f"prysm-consensus-client-{curr_node}",
             curr_node,
         )
         self.out = self.config()
@@ -321,24 +517,25 @@ class PrysmClientWriter(ClientWriter):
         GRAFFITI=${14}
         NETRESTRICT_RANGE=${15}
         """
-        return [
-            self.get_launcher(),
-            self.get_consensus_preset(),
-            self.get_genesis_fork(),
-            self.get_end_fork(),
-            self.cc["debug-level"],
-            self.get_testnet_dir(),
-            self.get_node_dir(),
-            self.get_web3_http(),
-            self.get_ip(),
-            self.get_port("p2p"),
-            self.get_port("metric"),
-            self.get_port("rpc"),
-            self.get_port("grpc"),
-            self.get_port("validator-metrics"),
-            str(self.cc["graffiti"] + str(self.curr_node)),
-            self.get_ip_subnet(),
-        ]
+        return [self.cc["entrypoint"]]
+        # return [
+        #     self.get_launcher(),
+        #     self.get_consensus_preset(),
+        #     self.get_genesis_fork(),
+        #     self.get_end_fork(),
+        #     self.cc["debug-level"],
+        #     self.get_testnet_dir(),
+        #     self.get_node_dir(),
+        #     self.get_web3_http(),
+        #     self.get_ip(),
+        #     self.get_port("p2p"),
+        #     self.get_port("metric"),
+        #     self.get_port("rpc"),
+        #     self.get_port("grpc"),
+        #     self.get_port("validator-metrics"),
+        #     str(self.cc["graffiti"] + str(self.curr_node)),
+        #     self.get_ip_subnet(),
+        # ]
 
 
 class Eth2BootnodeClientWriter(ClientWriter):
@@ -362,6 +559,28 @@ class Eth2BootnodeClientWriter(ClientWriter):
             str(self.cc["api-port"]),
             str(self.cc["private-key"]),
             str(self.cc["bootnode-enr-file"]),
+        ]
+
+
+class GethBootnodeClientWriter(ClientWriter):
+    def __init__(self, global_config, client_config, curr_node):
+        super().__init__(
+            global_config, client_config, f"geth-bootnode-{curr_node}", curr_node
+        )
+        self.out = self.config()
+
+    def _entrypoint(self):
+        """
+        ./launch-bootnode <ip-address> <enr-port> <api-port> <private-key> <enr-path>
+        launches a bootnode with a web port for fetching the enr, and
+        fetches that enr and puts it in the local dir for other clients
+        to find..
+        """
+        return [
+            str(self.cc["entrypoint"]),
+            str(self.cc["data-dir"]),
+            self.get_ip(),
+            self.get_port("execution-p2p"),
         ]
 
 
@@ -409,6 +628,7 @@ class DockerComposeWriter(object):
             "ethereum-testnet-bootstrapper": TestnetBootstrapper,
             "generic-module": GenericModule,
             "eth2-bootnode": Eth2BootnodeClientWriter,
+            "geth-bootnode": GethBootnodeClientWriter,
         }
 
     def _base(self):
@@ -425,10 +645,10 @@ class DockerComposeWriter(object):
     def add_services(self):
         # keep testnet-bootstrapper seperate
         client_modules = [
-            "consensus-clients",
             "execution-clients",
             "generic-modules",
             "consensus-bootnodes",
+            "execution-bootnodes",
         ]
 
         for module in client_modules:
@@ -449,6 +669,14 @@ class DockerComposeWriter(object):
                             writer = self.client_writers[client](self.gc, config, n)
                         self.yaml["services"][writer.name] = writer.get_config()
 
+        for consensus_client in self.gc["consensus-clients"]:
+            config = self.gc["consensus-clients"][consensus_client]
+            print(config)
+            consensus_config = self.gc["consensus-configs"][config["consensus-config"]]
+            client = config["client-name"]
+            for n in range(consensus_config["num-nodes"]):
+                writer = self.client_writers[client](self.gc, config, n)
+                self.yaml["services"][writer.name] = writer.get_config()
         # last we check for bootstrapper, if present all dockers must
         # depend on this.
         if "testnet-bootstrapper" in self.gc:

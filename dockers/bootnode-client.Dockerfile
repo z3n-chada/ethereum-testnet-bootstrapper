@@ -1,29 +1,17 @@
-FROM ubuntu:18.04 as builder
-
-# Update ubuntu
-RUN apt-get update && \
-	apt-get install -y --no-install-recommends \
-		ca-certificates \
-		software-properties-common \
-		curl \
-        wget \
-		git \
-		clang \
-		vim
-# Install golang
-RUN add-apt-repository ppa:longsleep/golang-backports
-RUN apt-get update && \
-	apt-get install -y \
-	golang
+FROM golang:1.17 as builder
 
 WORKDIR /git
 
-RUN git clone https://github.com/protolambda/eth2-bootnode.git
+RUN go install github.com/protolambda/eth2-bootnode@latest 
 
-RUN cd /git/eth2-bootnode && go install .
+RUN git clone https://github.com/ethereum/go-ethereum.git \
+    && cd go-ethereum && git checkout master \
+    && make geth && make all
 
 FROM debian:latest
 
 COPY --from=builder /root/go/bin/eth2-bootnode /usr/local/bin/eth2-bootnode
+COPY --from=builder /git/go-ethereum/build/bin/geth /usr/local/bin/geth
+COPY --from=builder /git/go-ethereum/build/bin/bootnode /usr/local/bin/geth-bootnode
 
 ENTRYPOINT ["/bin/bash"]

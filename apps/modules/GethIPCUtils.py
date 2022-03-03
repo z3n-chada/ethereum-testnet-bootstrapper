@@ -31,9 +31,13 @@ class GethIPC(object):
     def get_block_hash(self, blk="latest"):
         return self.get_block(blk)["hash"]
 
+    def get_enode(self):
+        return self.ipc.geth.admin.node_info()["enode"]
+
 
 if __name__ == "__main__":
     ipc_path = "data/local_testnet/geth/geth.ipc"
     g = GethIPC(ipc_path)
     print(g.get_block())
     print(g.get_block_hash().hex())
+    print(g.get_enode())

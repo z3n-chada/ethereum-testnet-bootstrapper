@@ -7,6 +7,7 @@ class TestnetDirectoryGenerator(object):
     def __init__(self, global_config, client_config, password=None):
         self.gc = global_config
         self.cc = client_config
+        self.ccc = global_config["consensus-configs"][client_config["consensus-config"]]
         self.password = password
         self.mnemonic = self.gc["accounts"]["validator-mnemonic"]
 
@@ -25,8 +26,8 @@ class TestnetDirectoryGenerator(object):
 
         self._generate_validator_stores(
             self.cc["validator-offset-start"],
-            self.cc["num-nodes"],
-            self.cc["num-validators"],
+            self.ccc["num-nodes"],
+            self.ccc["num-validators"],
             str(validator_dir),
             password=self.password,
         )
@@ -57,7 +58,7 @@ class TekuTestnetDirectoryGenerator(TestnetDirectoryGenerator):
         super().__init__(global_config, client_config)
 
     def finalize_testnet_dir(self):
-        for ndx in range(self.cc["num-nodes"]):
+        for ndx in range(self.ccc["num-nodes"]):
             node_dir = pathlib.Path(str(self.testnet_dir) + f"/node_{ndx}")
             node_dir.mkdir()
             keystore_dir = pathlib.Path(str(self.testnet_dir) + "/validators")
@@ -72,10 +73,12 @@ class PrysmTestnetGenerator(TestnetDirectoryGenerator):
     def __init__(self, global_config, client_config):
 
         super().__init__(
-            global_config, client_config, client_config["validator-password"]
+            global_config,
+            client_config,
+            client_config["consensus-additional-env"]["validator-password"],
         )
         # prysm only stuff.
-        self.password_file = self.cc["wallet-path"]
+        self.password_file = self.cc["consensus-additional-env"]["wallet-path"]
 
         with open(self.password_file, "w") as f:
             f.write(self.password)
@@ -85,7 +88,7 @@ class PrysmTestnetGenerator(TestnetDirectoryGenerator):
         Copy validator info into local client.
         """
         print(f"Finalizing prysm client {self.testnet_dir} testnet directory.")
-        for ndx in range(self.cc["num-nodes"]):
+        for ndx in range(self.ccc["num-nodes"]):
             node_dir = pathlib.Path(str(self.testnet_dir) + f"/node_{ndx}")
             node_dir.mkdir()
             keystore_dir = pathlib.Path(
@@ -111,7 +114,7 @@ class LighthouseTestnetGenerator(TestnetDirectoryGenerator):
         Copy validator info into local client.
         """
         print(f"Finalizing lighthouse client dir={self.testnet_dir}")
-        for ndx in range(self.cc["num-nodes"]):
+        for ndx in range(self.ccc["num-nodes"]):
             node_dir = pathlib.Path(str(self.testnet_dir) + f"/node_{ndx}")
             node_dir.mkdir()
             keystore_dir = pathlib.Path(str(self.testnet_dir) + "/validators")
@@ -131,7 +134,7 @@ class NimbusTestnetGenerator(TestnetDirectoryGenerator):
         Copy validator info into local client.
         """
         print(f"Finalizing lighthouse client dir={self.testnet_dir}")
-        for ndx in range(self.cc["num-nodes"]):
+        for ndx in range(self.ccc["num-nodes"]):
             node_dir = pathlib.Path(str(self.testnet_dir) + f"/node_{ndx}")
             node_dir.mkdir()
             keystore_dir = pathlib.Path(str(self.testnet_dir) + "/validators")

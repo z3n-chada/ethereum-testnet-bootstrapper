@@ -58,7 +58,7 @@ def generate_consensus_config():
 def generate_consensus_genesis():
     global global_config
     # we now use eth1_timestamp and block notation
-    geth_endpoint = GethIPC("/data/local_testnet/geth/geth.ipc")
+    geth_endpoint = GethIPC("/data/local_testnet/execution-bootstrapper/geth.ipc")
     latest_block = geth_endpoint.get_block()
     block_hash = latest_block["hash"].hex()[2:]
     block_time = latest_block["timestamp"]
