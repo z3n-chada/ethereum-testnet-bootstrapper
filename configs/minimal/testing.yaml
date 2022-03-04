@@ -162,7 +162,6 @@ consensus-clients:
     depends: "ethereum-testnet-bootstrapper"
     # beacon/validator flags
     consensus-config: "base-consensus-client"
-    # note execution data dir is testnet-dir/node_$NODE/geth/
 
     testnet-dir: '/data/local_testnet/prysm'
     validator-offset-start: 0 # so validators of different clients don't overlap
@@ -173,25 +172,23 @@ consensus-clients:
       wallet-path: '/data/local_testnet/prysm/wallet-password.txt'
       validator-password: "testnet-password"
 
-        #teku-genesis-deposits:
-        #  client-name: 'teku'
-        #  # docker-compose
-        #  image: "teku-client"
-        #  tag: "master"
-        #  container-name: "teku-client"
-        #  entrypoint: "/source/apps/launchers/launch-teku.sh"
-        #  start-ip-addr: "10.0.20.40"
-        #  depends: "ethereum-testnet-bootstrapper"
+  teku-genesis-deposits:
+    client-name: 'teku'
+    # docker-compose
+    image: "teku-client"
+    tag: "master"
+    container-name: "teku-client"
+    entrypoint: "/source/apps/launchers/launch-teku-kiln.sh"
+    start-ip-addr: "10.0.20.40"
+    depends: "ethereum-testnet-bootstrapper"
 
-        #  consensus-config: "base-consensus-client"
-        #  local-execution-client: true
-        #  execution-config: "base-geth-execution-client"
-        #  # note execution data dir is testnet-dir/node_$NODE/geth/
+    consensus-config: "base-consensus-client"
+    testnet-dir: '/data/local_testnet/teku'
+    validator-offset-start: 8 # so validators of different clients don't overlap
 
-        #  # args specific to teku nodes.
-        #  debug-level: "debug"
-        #  testnet-dir: '/data/local_testnet/teku'
-        #  validator-offset-start: 8 # so validators of different clients don't overlap
+    # args specific to teku nodes.
+    consensus-additional-env:
+      debug-level: "debug"
 
 # special case client that is the ethereum-testnet-bootstrapper
 # this allows you to create a new genesis everytime you call 

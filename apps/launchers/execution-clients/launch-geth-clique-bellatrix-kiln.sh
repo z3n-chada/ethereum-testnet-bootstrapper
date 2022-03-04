@@ -24,18 +24,21 @@ for var in "${env_vars[@]}" ; do
     fi
 done
 
+echo "Lauching execution client"
+
 echo "testnet-password" > /data/geth-account-passwords.txt
 
 while [ ! -f "/data/execution-clients-ready" ]; do
     sleep 1
     echo "Waiting on exeuction genesis"
 done
+echo "Detected execution genesis"
 
-while [ ! -f "data/local_testnet/execution-bootstrapper/enodes.txt" ]; do
+while [ ! -f "/data/local_testnet/execution-bootstrapper/enodes.txt" ]; do
     sleep 1
     echo "Waiting on the enodes /data/local_testnet/execution-bootstrapper/enodes.txt"
 done
-
+echo "found enodes"
 ENODES=`cat data/local_testnet/execution-bootstrapper/enodes.txt`
 echo $ENODES
 echo "Initing the genesis"

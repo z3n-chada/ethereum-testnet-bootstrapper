@@ -282,12 +282,13 @@ class ClientWriter(object):
 
 
 class ConsensusClientWriter(ClientWriter):
-    def __init__(self, global_config, client_config, curr_node):
+    def __init__(self, global_config, client_config, curr_node, use_root=False):
         super().__init__(
             global_config,
             client_config,
             f"{client_config['client-name']}-node-{curr_node}",
             curr_node,
+            use_root=use_root,
         )
         self.ccc = global_config["consensus-configs"][client_config["consensus-config"]]
         if self.ccc["local-execution-client"]:
@@ -309,25 +310,6 @@ class ConsensusClientWriter(ClientWriter):
             for k, v in self.cc["consensus-additional-env"].items():
                 environment.append(f'{k.upper().replace("-","_")}={v}')
         return list(set(environment))
-        # additional_envs = self._additional_consensus_environment()
-        # if "consensus-additional-env" in self.cc:
-        #     self.cc.pop("consensus-additional-env")
-        # if self.ecc is not None:
-        #     env_dict = self._base_consensus_environment() | self.ecc
-        # else:
-        #     env_dict = self._base_consensus_environment()
-        # env = {f'{k.upper().replace("-","_")}': f"{v}" for k, v in env_dict.items()}
-        # # overwrite defaults with custom values and add any new args for a client
-        # for k, v in additional_envs.items():
-        #     env[k] = v
-
-        # return [f"{k}={v}" for k, v in env.items()]
-        # """
-        # DEBUG_LEVEL=$4
-        # WEB3_PROVIDER=$7
-        # RPC_PORT=${11}
-        # GRPC_PORT=${12}
-        # """
 
 
 class ExecutionClientWriter(ClientWriter):
@@ -357,54 +339,18 @@ class GethClientWriter(ExecutionClientWriter):
         return [self.cc["entrypoint"]]
 
 
-class TekuClientWriter(ClientWriter):
+class TekuClientWriter(ConsensusClientWriter):
     def __init__(self, global_config, client_config, curr_node):
         super().__init__(
             global_config,
             client_config,
-            f"teku-consensus-client-{curr_node}",
             curr_node,
             use_root=True,
         )
         self.out = self.config()
 
     def _entrypoint(self):
-        """
-        DEBUG_LEVEL=$1
-        TESTNET_DIR=$2
-        NODE_DIR=$3
-        P2P_PORT=$4
-        METRIC_PORT=$5
-        REST_PORT=$6
-        ETH1_ENDPOINT=$7
-        """
         return [self.cc["entrypoint"]]
-        # return [
-        #     self.get_launcher(),
-        #     self.get_consensus_preset(),
-        #     self.get_genesis_fork(),
-        #     self.get_end_fork(),
-        #     self.cc["debug-level"],
-        #     self.get_testnet_dir(),
-        #     self.get_node_dir(),
-        #     self.get_web3_http(),
-        #     self.get_ip(),
-        #     self.get_port("p2p"),
-        #     self.get_port("rest"),
-        #     self.get_port("http"),
-        # ]
-
-        # return [
-        #    str(self.cc["entrypoint"]),
-        #    str(self.cc["debug-level"]),
-        #    str(self.cc["testnet-dir"]),
-        #    f"{testnet_dir}/node_{self.curr_node}",
-        #    f'http://{geth_config["start-ip-addr"]}:{geth_config["http-port"]}',
-        #    str(self.get_ip()),
-        #    str(int(self.cc["start-p2p-port"]) + self.curr_node),
-        #    str(int(self.cc["start-rest-port"]) + self.curr_node),
-        #    str(int(self.cc["start-http-port"]) + self.curr_node),
-        # ]
 
 
 class LighthouseClientWriter(ClientWriter):
@@ -500,42 +446,7 @@ class PrysmClientWriter(ConsensusClientWriter):
         self.out = self.config()
 
     def _entrypoint(self):
-        """
-        PRESET_BASE=$1
-        STARK_FORK=$2
-        END_FORK=$3
-        DEBUG_LEVEL=$4
-        TESTNET_DIR=$5
-        NODE_DATADIR=$6
-        WEB3_PROVIDER=$7
-        IP_ADDR=$8
-        P2P_PORT=$9
-        METRICS_PORT=${10}
-        RPC_PORT=${11}
-        GRPC_PORT=${12}
-        VALIDATOR_METRICS_PORT=${13}
-        GRAFFITI=${14}
-        NETRESTRICT_RANGE=${15}
-        """
         return [self.cc["entrypoint"]]
-        # return [
-        #     self.get_launcher(),
-        #     self.get_consensus_preset(),
-        #     self.get_genesis_fork(),
-        #     self.get_end_fork(),
-        #     self.cc["debug-level"],
-        #     self.get_testnet_dir(),
-        #     self.get_node_dir(),
-        #     self.get_web3_http(),
-        #     self.get_ip(),
-        #     self.get_port("p2p"),
-        #     self.get_port("metric"),
-        #     self.get_port("rpc"),
-        #     self.get_port("grpc"),
-        #     self.get_port("validator-metrics"),
-        #     str(self.cc["graffiti"] + str(self.curr_node)),
-        #     self.get_ip_subnet(),
-        # ]
 
 
 class Eth2BootnodeClientWriter(ClientWriter):

@@ -14,6 +14,7 @@ WS_APIS=$7
 IP_ADDR=$8
 NET_RESTRICT=$9
 TTD=${10}
+P2P_PORT=${11}
 
 echo "testnet-password" > /data/geth-account-passwords.txt
 
@@ -23,14 +24,19 @@ while [ ! -f "/data/execution-clients-ready" ]; do
 done
 
 echo "Initing the genesis"
-./go-ethereum/build/bin/geth init \
+geth init \
     --datadir "$GETH_DATA_DIR" \
     "$GENESIS_CONFIG"
 
 echo "Starting geth"
-./go-ethereum/build/bin/geth \
+
+python3 /source/apps/store_geth_enr.py --geth-ipc "$GETH_DATA_DIR/geth.ipc" --enode-file "$GETH_DATA_DIR/enodes.txt" & 
+
+geth \
   --datadir="$GETH_DATA_DIR" \
   --networkid="$NETWORK_ID" \
+  --port "$P2P_PORT" \
+  --nat "extip:$IP_ADDR" \
   --http --http.api "$HTTP_APIS" \
   --http.port "$HTTP_PORT" \
   --http.addr 0.0.0.0 \
@@ -45,3 +51,4 @@ echo "Starting geth"
   --rpc.allow-unprotected-txs \
   --override.terminaltotaldifficulty="$TTD" \
   --vmodule=rpc=5 
+

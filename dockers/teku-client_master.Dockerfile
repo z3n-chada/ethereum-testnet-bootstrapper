@@ -1,4 +1,9 @@
-FROM ubuntu:18.04
+FROM golang:1.17 as builder
+RUN git clone https://github.com/MariusVanDerWijden/go-ethereum.git \
+    && cd go-ethereum && git checkout merge-kiln-v2 \
+    && make geth
+
+FROM debian:latest
 
 WORKDIR /git
 LABEL version=master
@@ -15,6 +20,7 @@ RUN git clone https://github.com/Consensys/teku.git && \
 
 
 RUN ln -s /git/teku/build/install/teku/bin/teku /usr/local/bin/teku
+COPY --from=builder /go/go-ethereum/build/bin/geth /usr/local/bin/geth
 
 ENTRYPOINT ["/bin/bash"]
 
