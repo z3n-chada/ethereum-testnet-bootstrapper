@@ -44,13 +44,16 @@ class ConfigurationEnvironment(object):
             "node-dir": self.get_node_dir,
             "start-consensus-p2p-port": self.get_port,
             "start-beacon-api-port": self.get_port,
-            "graffiti": self.get_graffiti,
             "start-beacon-metric-port": self.get_port,
+            "start-beacon-rpc-port": self.get_port,
+            "start-validator-rpc-port": self.get_port,
             "start-validator-metric-port": self.get_port,
+            "graffiti": self.get_graffiti,
             "execution-launcher": self.get_execution_launcher,
             "local-execution-client": self.get_consensus_config,
             "http-web3-ip-addr": self.get_consensus_config,
             "ws-web3-ip-addr": self.get_consensus_config,
+            "consensus-target-peers": self.get_target_peers,
         }
 
         # how to fetch various ports.
@@ -173,6 +176,16 @@ class ConfigurationEnvironment(object):
     def get_node_dir(self, _unused="unused"):
         return f"{self.cc['testnet-dir']}/node_{self.cw.curr_node}"
 
+    def get_target_peers(self, _unused="unused"):
+        # count the number of consensus nodes in the network and subtract 1
+        total_nodes = 0
+        for cc in self.gc["consensus-clients"]:
+            ccc = self.gc["consensus-configs"][
+                self.gc["consensus-clients"][cc]["consensus-config"]
+            ]
+            total_nodes += ccc["num-nodes"]
+        return total_nodes - 1
+
 
 class ClientWriter(object):
     """
@@ -214,9 +227,12 @@ class ClientWriter(object):
             "graffiti",
             "netrestrict-range",
             "start-beacon-metric-port",
+            "start-beacon-rpc-port",
+            "start-validator-rpc-port",
             "start-validator-metric-port",
             "execution-launcher",
             "local-execution-client",
+            "consensus-target-peers",
         ]
         self.consensus_with_execution_env_vars = [
             "http-web3-ip-addr",
@@ -273,6 +289,60 @@ class ClientWriter(object):
 
     def _entrypoint(self):
         raise Exception("override this method")
+
+    def _config_sanity_check(self):
+        """
+        Sanity check and report exceptions for configs to help with people
+        debugging their own configurations.
+        """
+        required_ccc_vars = [
+            "num-nodes",  # how many beacon nodes
+            "num-validators",  # how many validators across all nodes
+            "start-consensus-p2p-port",  # the p2p port used by the beacon node
+            "start-beacon-api-port",  # the port for the beacon rest api
+            "start-beacon-rpc-port",  # some clients have seperate rpc ports
+            "start-validator-rpc-port",  # the rpc port for the validator
+            "start-beacon-metric-port",  # the port for the metric port
+            "local-execution-client",  # if we have a local execution client
+        ]
+        # if there is a local execution client we must specify the following.
+        required_ccc_if_lec = [
+            "execution-config",  # the config for the execution client
+            "execution-launcher",  # the launch script for the entrypoint
+            "http-web3-ip-addr",  # local execution client http port
+            "ws-web3-ip-addr",  # local execution client web-sockets port
+        ]
+        required_cc_vars = [
+            "client-name",  # the name of the client, implemented are prysm/lightouse/teku/nimbus
+            "image",  # the docker image for that client.
+            "tag",  # docker image tag
+            "container-name",  # name of the container
+            "entrypoint",  # the entrypoint, examples in apps/launchers
+            "start-ip-addr",  # ip address for client, incremented based on numnber of nodes.
+            "depends",  # ethereum-testnet-bootstrapper client.
+            "consensus-config",  # the consensus client config (ccc)
+            "testnet-dir",  # the testnet dir to use
+            "validator-offset-start",  # the offset to use for validator keys (since we use same mnemonic)
+        ]
+        # TODO: global config stuff and sanity checks on some vars.
+        # client-configs
+        for req_cc in required_cc_vars:
+            if req_cc not in self.cc:
+                raise Exception(
+                    f"The client must implement {req_cc} see source comments"
+                )
+
+        for req_ccc in required_ccc_vars:
+            if req_ccc not in self.ccc:
+                raise Exception(
+                    f"The consensus config must implement {req_ccc} see source comments"
+                )
+        if self.ccc["local-execution-client"]:
+            for req_ccc in required_ccc_if_lec:
+                if req_ccc not in self.ccc:
+                    raise Exception(
+                        f"The consensus config must implement {req_ccc} when using a local execution client."
+                    )
 
     def get_ip(self, _unused="unused"):
         prefix = ".".join(self.cc["start-ip-addr"].split(".")[:3]) + "."
@@ -353,46 +423,17 @@ class TekuClientWriter(ConsensusClientWriter):
         return [self.cc["entrypoint"]]
 
 
-class LighthouseClientWriter(ClientWriter):
+class LighthouseClientWriter(ConsensusClientWriter):
     def __init__(self, global_config, client_config, curr_node):
         super().__init__(
             global_config,
             client_config,
-            f"lighthouse-consensus-client-{curr_node}",
             curr_node,
         )
         self.out = self.config()
 
     def _entrypoint(self):
-        """
-        DEBUG_LEVEL=$1
-        TESTNET_DIR=$2
-        NODE_DIR=$3
-        ETH1_ENDPOINT=$4
-        IP_ADDR=$5
-        P2P_PORT=$6
-        REST_PORT=$7
-        HTTP_PORT=$8
-        METRICS_PORT=$9
-        TTD_OVERRIDE=${10}
-        """
-        return [
-            self.get_launcher(),
-            self.get_consensus_preset(),
-            self.get_genesis_fork(),
-            self.get_end_fork(),
-            self.cc["debug-level"],
-            self.get_testnet_dir(),
-            self.get_node_dir(),
-            self.get_web3_http(),
-            self.get_ip(),
-            self.get_port("p2p"),
-            self.get_port("rest"),
-            self.get_port("http"),
-            self.get_port("metric"),
-            self.get_ttd(),
-            self.get_consensus_target_peers(),
-        ]
+        return [self.cc["entrypoint"]]
 
 
 class NimbusClientWriter(ClientWriter):
