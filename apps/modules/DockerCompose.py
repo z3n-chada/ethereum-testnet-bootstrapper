@@ -397,6 +397,10 @@ class ExecutionClientWriter(ClientWriter):
         config_env = ConfigurationEnvironment(self)
         for beev in self.base_execution_env_vars:
             environment.append(config_env.get_environment_var(beev))
+
+        # in order for the launcher file to override TTD we need to know the
+        # end fork for the consensus clients.
+        environment.append(config_env.get_environment_var("end-fork"))
         return environment
 
 
@@ -436,45 +440,17 @@ class LighthouseClientWriter(ConsensusClientWriter):
         return [self.cc["entrypoint"]]
 
 
-class NimbusClientWriter(ClientWriter):
+class NimbusClientWriter(ConsensusClientWriter):
     def __init__(self, global_config, client_config, curr_node):
         super().__init__(
             global_config,
             client_config,
-            f"nimbus-consensus-client-{curr_node}",
             curr_node,
         )
         self.out = self.config()
 
     def _entrypoint(self):
-        """
-        DEBUG_LEVEL=$1
-        TESTNET_DIR=$2
-        NODE_DIR=$3
-        ETH1_ENDPOINT=$4
-        IP_ADDR=$5
-        P2P_PORT=$6
-        RPC_PORT=$7
-        METRICS_PORT=$9
-        TTD=$10
-        """
-        return [
-            self.get_launcher(),
-            self.get_consensus_preset(),
-            self.get_genesis_fork(),
-            self.get_end_fork(),
-            self.cc["debug-level"],
-            self.get_testnet_dir(),
-            self.get_node_dir(),
-            self.get_web3_ws(),
-            self.get_ip(),
-            self.get_port("p2p"),
-            self.get_port("rpc"),
-            self.get_port("rest"),
-            self.get_port("metric"),
-            self.get_ttd(),
-            self.get_consensus_target_peers(),
-        ]
+        return [self.cc["entrypoint"]]
 
 
 class PrysmClientWriter(ConsensusClientWriter):

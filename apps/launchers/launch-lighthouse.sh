@@ -14,6 +14,15 @@ METRICS_PORT=${12}
 TTD_OVERRIDE=${13}
 TARGET_PEERS=${14}
 
+env_vars=( "PRESET_BASE", "START_FORK", "END_FORK", "DEBUG_LEVEL", "TESTNET_DIR", "NODE_DIR", "HTTP_WEB3_IP_ADDR", "IP_ADDR", "CONSENSUS_P2P_PORT", "BEACON_METRIC_PORT", "BEACON_RPC_PORT", "BEACON_API_PORT", "VALIDATOR_METRIC_PORT", "GRAFFITI", "NETRESTRICT_RANGE" , "EXECUTION_HTTP_PORT", "TARGET_PEERS", "TERMINALTOTALDIFFICULTY")
+
+for var in "${env_vars[@]}" ; do
+    if [[ -z "$var" ]]; then
+        echo "$var not set"
+        exit 1
+    fi
+done
+
 ADDITIONAL_ARGS=""
 
 while [ ! -f "/data/consensus-clients-ready" ]; do
@@ -25,7 +34,7 @@ while [ ! -f "/data/local_testnet/bootnode/enr.dat" ]; do
     sleep 1
 done
 
-bootnode_enr=`cat $TESTNET_DIR/../bootnode/enr.dat`
+bootnode_enr=`cat /data/local_testnet/bootnode/enr.dat `
 
 if [ ! -f "$TESTNET_DIR/boot_enr.yaml" ]; then
     bootnode_enr=`cat /data/local_testnet/bootnode/enr.dat`

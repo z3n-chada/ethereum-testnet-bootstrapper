@@ -44,8 +44,8 @@ config-params:
       istanbulBlock: 0
       berlinBlock: 0
       londonBlock: 0
-      mergeForkBlock: 48
-      terminalTotalDifficulty: 95
+      mergeForkBlock: 111
+      terminalTotalDifficulty: 223
     clique:
       enabled: True
       signer: "51Dd070D1f6f8dB48CA5b0E47D7e899aea6b1AF5"
@@ -54,8 +54,8 @@ config-params:
     terminal-block-hash-activation-epoch: 18446744073709551615
   # used for generating the consensus config placed in /data/eth2-config.yaml
   consensus-layer:
-    genesis-delay: 224 #lets the clients get to eth1-follow-distance
-    preset-base: 'minimal'
+    genesis-delay: 0
+    preset-base: 'mainnet'
     min-genesis-active-validator-count: 16 # custom preseeded into genesis state.
 
     forks:
@@ -67,10 +67,10 @@ config-params:
       phase0-fork-epoch: 0 # genesis
 
       altair-fork-version: 0x02000666
-      altair-fork-epoch: 2 # slot 16
+      altair-fork-epoch: 2 # slot 64
 
       bellatrix-fork-version: 0x03000666
-      bellatrix-fork-epoch: 4 # slot 32
+      bellatrix-fork-epoch: 4 # slot 128
 
       sharding-fork-version: 0x04000666
       sharding-fork-epoch: 18446744073709551615
@@ -142,7 +142,7 @@ execution-clients:
     client-name: "geth-bootstrapper"
     start-ip-addr: "10.0.20.2"
     image: "geth-client"
-    tag: "merge-kiln-v2"
+    tag: "merge-kiln"
     depends: "ethereum-testnet-bootstrapper"
     entrypoint: "/source/apps/launchers/execution-clients/launch-bootstrapper-geth-clique.sh" #wrt to docker.
 
@@ -156,9 +156,9 @@ consensus-clients:
   prysm-genesis-deposits:
     client-name: 'prysm'
     # docker-compose
-    image: "prysm-client-minimal-geth"
+    image: "prysm-client-geth"
     tag: "kilnv2"
-    container-name: "prysm-client-minimal"
+    container-name: "prysm-client-geth"
     entrypoint: "/source/apps/launchers/launch-prysm.sh"
     start-ip-addr: "10.0.20.30"
     depends: "ethereum-testnet-bootstrapper"
@@ -195,9 +195,9 @@ consensus-clients:
   nimbus-genesis-deposits:
     client-name: 'nimbus'
     # docker-compose
-    image: "nimbus-client-minimal-geth"
+    image: "nimbus-client-geth"
     tag: "kiln"
-    container-name: "nimbus-client-minimal"
+    container-name: "nimbus-client-geth"
     entrypoint: "/source/apps/launchers/launch-nimbus.sh"
     start-ip-addr: "10.0.20.10"
     depends: "ethereum-testnet-bootstrapper"
@@ -213,9 +213,9 @@ consensus-clients:
   lighthouse-genesis-deposits:
     client-name: 'lighthouse'
     # docker-compose
-    image: "lighthouse-client-minimal-geth"
+    image: "lighthouse-client-geth"
     tag: "unstable"
-    container-name: "lighthouse-client"
+    container-name: "lighthouse-client-geth"
     entrypoint: "/source/apps/launchers/launch-lighthouse-kiln.sh"
     start-ip-addr: "10.0.20.20"
     depends: "ethereum-testnet-bootstrapper"
@@ -227,6 +227,7 @@ consensus-clients:
     consensus-additional-env:
       debug-level: "debug"
 
+
 # special case client that is the ethereum-testnet-bootstrapper
 # this allows you to create a new genesis everytime you call 
 # docker-compose up
@@ -237,7 +238,7 @@ testnet-bootstrapper:
     tag: "latest"
     container-name: "testnet-bootstrapper"
     start-ip-addr: "10.0.20.202"
-    config-file: '/source/configs/minimal/testing.yaml'
+    config-file: '/source/configs/mainnet/testing.yaml'
 
 generic-modules:
   status-check:
@@ -247,4 +248,4 @@ generic-modules:
     container-name: "status-check"
     start-ip-addr: "10.0.20.206"
     num-nodes: 1
-    entrypoint: "python3 /source/apps/status-check.py --config /source/configs/minimal/testing.yaml --phase0-slot 36 --experiment-slot 46 --phase1-slot 46 --phase2-slot 52 --genesis-delay 224 --number-of-checks 2"
+    entrypoint: "python3 /source/apps/status-check.py --config /source/configs/mainnet/testing.yaml --phase0-slot 36 --experiment-slot 46 --phase1-slot 46 --phase2-slot 52 --genesis-delay 224 --number-of-checks 2"

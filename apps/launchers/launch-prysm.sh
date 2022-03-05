@@ -8,7 +8,7 @@ for var in "${env_vars[@]}" ; do
     fi
 done
 
-ADDITIONAL_ARGS=""
+ADDITIONAL_ARGS="--accept-terms-of-use=true"
 BEACON_ADDITIONAL_ARGS=""
 
 while [ ! -f "/data/consensus-clients-ready" ]; do
@@ -25,7 +25,7 @@ if [[ $END_FORK == "bellatrix" ]]; then
 fi
 
 if [[ $PRESET_BASE == "minimal" ]]; then
-    ADDITIONAL_ARGS="--minimal-config"
+    ADDITIONAL_ARGS="$ADDITIONAL_ARGS --minimal-config"
 fi
 
 if [[ -n "$EXECUTION_LAUNCHER" ]]; then
@@ -33,39 +33,36 @@ if [[ -n "$EXECUTION_LAUNCHER" ]]; then
 fi
 
 beacon-chain \
-  --accept-terms-of-use=true \
-  --verbosity="$DEBUG_LEVEL" \
-  --log-file="$NODE_DIR/log.txt" \
-  --subscribe-all-subnets \
+  "$ADDITIONAL_ARGS" \
   --datadir="$NODE_DIR" \
-  --genesis-state="$TESTNET_DIR/genesis.ssz" \
   --chain-config-file="$TESTNET_DIR/config.yaml" \
+  --genesis-state="$TESTNET_DIR/genesis.ssz" \
   --http-web3provider="http://$HTTP_WEB3_IP_ADDR:$EXECUTION_HTTP_PORT" \
   --bootstrap-node="$(< /data/local_testnet/bootnode/enr.dat)" \
-  --p2p-max-peers=10 \
+  --verbosity="$DEBUG_LEVEL" \
+  --log-file="$NODE_DIR/log.txt" \
   --p2p-host-ip="$IP_ADDR" \
+  --p2p-max-peers=10 \
   --p2p-udp-port="$CONSENSUS_P2P_PORT" --p2p-tcp-port="$CONSENSUS_P2P_PORT" \
+  --monitoring-host=0.0.0.0 --monitoring-port="$BEACON_METRIC_PORT" \
+  --rpc-host=0.0.0.0 --rpc-port="$BEACON_RPC_PORT" \
   --grpc-gateway-host=0.0.0.0 \
   --grpc-gateway-port="$BEACON_API_PORT" \
-  --rpc-host=0.0.0.0 --rpc-port="$BEACON_RPC_PORT" \
-  --monitoring-host=0.0.0.0 --monitoring-port="$BEACON_METRIC_PORT" \
-  --enable-debug-rpc-endpoints \
+  --enable-debug-rpc-endpoints "$BEACON_ADDITIONAL_ARGS" \
   --p2p-allowlist="$NETRESTRICT_RANGE" \
-  --enable-debug-rpc-endpoints $ADDITIONAL_ARGS $BEACON_ADDITIONAL_ARGS\
+  --subscribe-all-subnets \
   --min-sync-peers 1 &
 
-sleep 20
+sleep 10
 
 validator \
-  --accept-terms-of-use=true $ADDITIONAL_ARGS \
-  --minimal-config \
+  "$ADDITIONAL_ARGS" \
   --datadir="$NODE_DIR" \
-  --beacon-rpc-provider="127.0.0.1:$BEACON_RPC_PORT" \
   --chain-config-file="$TESTNET_DIR/config.yaml" \
-  --graffiti="$GRAFFITI" \
+  --beacon-rpc-provider="127.0.0.1:$BEACON_RPC_PORT" \
+  --monitoring-host=0.0.0.0 --monitoring-port="$VALIDATOR_METRIC_PORT" \
+  --graffiti="prysm-kiln-minimal-node:$IP_ADDR" \
   --wallet-dir="$NODE_DIR" \
   --wallet-password-file="$TESTNET_DIR/wallet-password.txt" \
-  --monitoring-host=0.0.0.0 --monitoring-port="$VALIDATOR_METRIC_PORT" \
   --verbosity=debug
 
-  #--beacon-rpc-gateway-provider="127.0.0.1:$BEACON_API_PORT" \
