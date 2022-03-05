@@ -56,7 +56,7 @@ config-params:
   consensus-layer:
     genesis-delay: 224 #lets the clients get to eth1-follow-distance
     preset-base: 'minimal'
-    min-genesis-active-validator-count: 16 # custom preseeded into genesis state.
+    min-genesis-active-validator-count: 18 # custom preseeded into genesis state.
 
     forks:
       genesis-fork-version: 0x01000666
@@ -119,17 +119,19 @@ execution-configs:
 
 consensus-configs:
   base-consensus-client:
-    num-nodes: 2            # number of nodes for every client that inherits this config
-    num-validators: 16       # number of validators for every client that inherits this config
+    num-nodes: 1            # number of nodes for every client that inherits this config
+    num-validators: 6       # number of validators for every client that inherits this config
     # start ports increment each time we have a node.
     start-consensus-p2p-port: 4000    # start port used for discovery
     start-beacon-api-port: 5000   # start port used for the beacon rest API
+    start-beacon-rpc-port: 5500
+    start-validator-rpc-port: 6500
     start-beacon-metric-port: 8000 # start port used for beacon node metrics.
     start-validator-metric-port: 9000 # start port used for validator client metrics.
     # entrypoints placed here are used by the consensus clients
     local-execution-client: true
     execution-config: "base-geth-execution-client"
-    execution-launcher: "/source/apps/launchers/execution-clients/launch-geth-clique-bellatrix-kiln.sh"
+    execution-launcher: "/source/apps/launchers/execution-clients/launch-geth-clique.sh"
 
     http-web3-ip-addr: "127.0.0.1"
     ws-web3-ip-addr: "127.0.0.1"
@@ -140,9 +142,9 @@ execution-clients:
     client-name: "geth-bootstrapper"
     start-ip-addr: "10.0.20.2"
     image: "geth-client"
-    tag: "kiln"
+    tag: "merge-kiln"
     depends: "ethereum-testnet-bootstrapper"
-    entrypoint: "/source/apps/launchers/execution-clients/launch-bootstrapper-geth-clique-bellatrix-kiln.sh" #wrt to docker.
+    entrypoint: "/source/apps/launchers/execution-clients/launch-bootstrapper-geth-clique.sh" #wrt to docker.
 
     execution-config: "base-geth-execution-client"
     num-nodes: 1
@@ -154,8 +156,8 @@ consensus-clients:
   prysm-genesis-deposits:
     client-name: 'prysm'
     # docker-compose
-    image: "prysm-client-minimal"
-    tag: "kiln"
+    image: "prysm-client-minimal-geth"
+    tag: "kilnv2"
     container-name: "prysm-client-minimal"
     entrypoint: "/source/apps/launchers/launch-prysm.sh"
     start-ip-addr: "10.0.20.30"
@@ -167,7 +169,6 @@ consensus-clients:
     validator-offset-start: 0 # so validators of different clients don't overlap
     # args specific to prysm nodes, these are loaded into the dockers env at runtime.
     consensus-additional-env:
-      beacon-rpc-port: 3500
       debug-level: "debug"
       wallet-path: '/data/local_testnet/prysm/wallet-password.txt'
       validator-password: "testnet-password"
@@ -175,7 +176,7 @@ consensus-clients:
   teku-genesis-deposits:
     client-name: 'teku'
     # docker-compose
-    image: "teku-client"
+    image: "teku-client-geth"
     tag: "master"
     container-name: "teku-client"
     entrypoint: "/source/apps/launchers/launch-teku-kiln.sh"
@@ -189,6 +190,25 @@ consensus-clients:
     # args specific to teku nodes.
     consensus-additional-env:
       debug-level: "debug"
+      xee-version: "kilnv2"
+
+  lighthouse-genesis-deposits:
+    client-name: 'lighthouse'
+    # docker-compose
+    image: "lighthouse-client-minimal-geth"
+    tag: "unstable"
+    container-name: "lighthouse-client"
+    entrypoint: "/source/apps/launchers/launch-lighthouse-kiln.sh"
+    start-ip-addr: "10.0.20.20"
+    depends: "ethereum-testnet-bootstrapper"
+
+    consensus-config: "base-consensus-client"
+    testnet-dir: '/data/local_testnet/lighthouse'
+    validator-offset-start: 16 # so validators of different clients don't overlap
+    
+    consensus-additional-env:
+      debug-level: "debug"
+
 
 # special case client that is the ethereum-testnet-bootstrapper
 # this allows you to create a new genesis everytime you call 

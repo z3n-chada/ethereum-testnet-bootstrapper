@@ -26,7 +26,11 @@ done
 bootnode_enr=`cat $TESTNET_DIR/../bootnode/enr.dat`
 
 if [[ $END_FORK == "bellatrix" ]]; then
-    ADDITIONAL_ARGS="--Xee-version=kilnv2 --Xee-endpoint="http://$HTTP_WEB3_IP_ADDR:$EXECUTION_HTTP_PORT" --Xvalidators-proposer-default-fee-recipient=0xA18Fd83a55A9BEdB96d66C24b768259eED183be3 "
+    if [[ -z "$XEE_VERSION" ]]; then
+        echo "Failed to load the engine version, specify with consensus-additional-env: xee-version: {kintsugi/kiln/kilnv2}"
+        exit 1
+    fi
+    ADDITIONAL_ARGS="--Xee-version=$XEE_VERSION --Xee-endpoint="http://$HTTP_WEB3_IP_ADDR:$EXECUTION_HTTP_PORT" --Xvalidators-proposer-default-fee-recipient=0xA18Fd83a55A9BEdB96d66C24b768259eED183be3 "
 else
     ADDITIONAL_ARGS=""
 fi
