@@ -28,6 +28,14 @@ def setup_environment():
         shutil.rmtree(str(testnet_dir))
     testnet_dir.mkdir()
 
+    #we want a clean genesis each time we run the bootstrapper.
+    execution_bootstrapper_dir = pathlib.Path(
+        global_config["files"]["execution-bootstrap-dir"]
+    )
+    if execution_bootstrapper_dir.exists():
+        shutil.rmtree(str(execution_bootstrapper_dir))
+        "/data/execution-bootstrapper"
+
     # remove all checkpoints
     e_checkpoint = global_config["files"]["execution-checkpoint"]
     c_checkpoint = global_config["files"]["consensus-checkpoint"]
