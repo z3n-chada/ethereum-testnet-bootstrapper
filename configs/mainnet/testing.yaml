@@ -119,7 +119,7 @@ execution-configs:
 
 consensus-configs:
   base-consensus-client:
-    num-nodes: 2            # number of nodes for every client that inherits this config
+    num-nodes: 1            # number of nodes for every client that inherits this config
     num-validators: 4       # number of validators for every client that inherits this config
     # start ports increment each time we have a node.
     start-consensus-p2p-port: 4000    # start port used for discovery
@@ -248,4 +248,4 @@ generic-modules:
     container-name: "status-check"
     start-ip-addr: "10.0.20.206"
     num-nodes: 1
-    entrypoint: "python3 /source/apps/status-check.py --config /source/configs/mainnet/testing.yaml --phase0-slot 36 --experiment-slot 46 --phase1-slot 46 --phase2-slot 52 --genesis-delay 224 --number-of-checks 2"
+    entrypoint: "python3 /source/apps/status-check.py --config /source/configs/mainnet/testing.yaml --phase0-slot 32 --experiment-slot 128 --phase1-slot 128 --phase2-slot 160 --genesis-delay 0 --number-of-checks 2"
