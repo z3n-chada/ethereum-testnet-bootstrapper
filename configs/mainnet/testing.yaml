@@ -11,7 +11,7 @@ files:
   consensus-config: "/data/consensus-config.yaml"
   consensus-genesis: "/data/genesis.ssz"
   testnet-dir: "/data/local_testnet" # where client setups occur
-  geth-bootstrap-dir: "/data/local_testnet/geth"
+  execution-bootstrap-dir: "/data/local_testnet/execution-bootstrapper"
   docker-compose:  "/source/docker-compose.yaml" #wrt to docker config
 
   # this file is created when all testnet directories have been written.
@@ -119,7 +119,7 @@ execution-configs:
 
 consensus-configs:
   base-consensus-client:
-    num-nodes: 1            # number of nodes for every client that inherits this config
+    num-nodes: 2            # number of nodes for every client that inherits this config
     num-validators: 4       # number of validators for every client that inherits this config
     # start ports increment each time we have a node.
     start-consensus-p2p-port: 4000    # start port used for discovery
@@ -142,7 +142,7 @@ execution-clients:
     client-name: "geth-bootstrapper"
     start-ip-addr: "10.0.20.2"
     image: "geth-client"
-    tag: "merge-kiln"
+    tag: "merge-kiln-v2"
     depends: "ethereum-testnet-bootstrapper"
     entrypoint: "/source/apps/launchers/execution-clients/launch-bootstrapper-geth-clique.sh" #wrt to docker.
 
@@ -207,7 +207,7 @@ consensus-clients:
     validator-offset-start: 8 # so validators of different clients don't overlap
 
     consensus-additional-env:
-      debug-level: "debug"
+      debug-level: "trace"
 
 
   lighthouse-genesis-deposits:

@@ -22,7 +22,7 @@ ENV LLVM_CONFIG=llvm-config-13
 
 RUN git clone https://github.com/status-im/nimbus-eth2.git
 
-RUN cd nimbus-eth2 && git checkout V5X 
+RUN cd nimbus-eth2 && git checkout kiln-dev
 
 
 WORKDIR /git/nimbus-eth2

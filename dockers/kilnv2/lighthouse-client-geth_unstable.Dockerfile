@@ -3,7 +3,7 @@ RUN git clone https://github.com/MariusVanDerWijden/go-ethereum.git \
     && cd go-ethereum && git checkout merge-kiln-v2 \
     && make geth
 
-FROM rust:1.56.1-bullseye AS builder
+FROM rust:1.58.1-bullseye AS builder
 WORKDIR /git
 RUN apt-get update && apt-get -y upgrade && apt-get install -y cmake libclang-dev
 RUN git clone https://github.com/sigp/lighthouse.git && cd lighthouse && git checkout unstable
