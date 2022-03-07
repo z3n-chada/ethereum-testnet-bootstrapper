@@ -33,6 +33,7 @@ sleep 30
 nimbus_beacon_node \
     --non-interactive \
     --data-dir="$NODE_DIR" \
+    --log-file="$NODE_DIR/beacon-log.txt" \
     --network="$TESTNET_DIR" \
     --secrets-dir="$NODE_DIR/secrets" \
     --validators-dir="$NODE_DIR/keys" \
@@ -47,10 +48,9 @@ nimbus_beacon_node \
     --nat="extip:$IP_ADDR" \
     --discv5=true \
     --subscribe-all-subnets \
-    --web3-url="http://$HTTP_WEB3_IP_ADDR:$EXECUTION_HTTP_PORT" \
+    --web3-url="ws://$WS_WEB3_IP_ADDR:$EXECUTION_WS_PORT" \
     --insecure-netkey-password \
     --netkey-file="$NODE_DIR/netkey-file.txt" \
     --in-process-validators=true \
     --doppelganger-detection=false $ADDITIONAL_ARGS\
     --bootstrap-node="$bootnode_enr" 
-
