@@ -144,6 +144,10 @@ class NimbusTestnetGenerator(TestnetDirectoryGenerator):
         # done now clean up..
         shutil.rmtree(str(self.testnet_dir) + "/validators/")
 
+        # just in case set a deposit deploy block.
+        with open(f"{str(self.testnet_dir)}/deposit_contract_block.txt", 'w') as f:
+            f.write("0x0000000000000000000000000000000000000000000000000000000000000000")
+
 
 def generate_consensus_testnet_dirs(global_config):
     generators = {
