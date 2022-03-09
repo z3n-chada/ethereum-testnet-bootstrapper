@@ -249,3 +249,13 @@ generic-modules:
     start-ip-addr: "10.0.20.206"
     num-nodes: 1
     entrypoint: "python3 /source/apps/status-check.py --config /source/configs/mainnet/testing.yaml --phase0-slot 32 --experiment-slot 128 --phase1-slot 128 --phase2-slot 160 --genesis-delay 0 --number-of-checks 2"
+
+  transaction-fuzzer:
+    client-name: "transaction-fuzzer"
+    image: "tx-fuzzer"
+    tag: "latest"
+    container-name: "transaction-fuzzer"
+    start-ip-addr: "10.0.20.210"
+    num-nodes: 1
+    execution-config: "base-geth-execution-client"
+    entrypoint: "python3 /source/apps/transaction-spammer.py --config /source/configs/mainnet/testing.yaml --module-name transaction-fuzzer"
