@@ -44,8 +44,8 @@ config-params:
       istanbulBlock: 0
       berlinBlock: 0
       londonBlock: 0
-      mergeForkBlock: 111
-      terminalTotalDifficulty: 223
+      mergeForkBlock: 127 # consensus epoch 4 eth1_blocks + eth1-follow-distance
+      terminalTotalDifficulty: 256 # mergeForkBlock*2 + a little more.
     clique:
       enabled: True
       signer: "51Dd070D1f6f8dB48CA5b0E47D7e899aea6b1AF5"
@@ -54,9 +54,10 @@ config-params:
     terminal-block-hash-activation-epoch: 18446744073709551615
   # used for generating the consensus config placed in /data/eth2-config.yaml
   consensus-layer:
-    genesis-delay: 0
+    genesis-delay: 225 # eth1-follow-distance*seconds-per-eth1-block + 1
     preset-base: 'mainnet'
     min-genesis-active-validator-count: 16 # custom preseeded into genesis state.
+    eth1-follow-distance: 16 # allow past eth1 blocks to be processed.
 
     forks:
       genesis-fork-version: 0x01000666
@@ -157,7 +158,7 @@ consensus-clients:
     client-name: 'prysm'
     # docker-compose
     image: "prysm-client-geth"
-    tag: "kilnv2"
+    tag: "kiln"
     container-name: "prysm-client-geth"
     entrypoint: "/source/apps/launchers/launch-prysm.sh"
     start-ip-addr: "10.0.20.30"

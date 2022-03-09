@@ -45,6 +45,6 @@ RUN git clone https://github.com/prysmaticlabs/prysm && \
 
 from ubuntu:20.04
 
-COPY --from=builder /git/prysm/bazel-bin/cmd/beacon-chain/beacon-chain_/beacon-chain /usr/local/bin/beacon-chain
-COPY --from=builder /git/bin/beacon-chain /usr/local/bin/beacon-chain
-COPY --from=builder /git/bin/validator /usr/local/bin/validator
+COPY --from=builder /root/go/bin/beacon-chain /usr/local/bin/beacon-chain
+COPY --from=builder /root/go/bin/validator /usr/local/bin/validator
+COPY --from=builder /git/go-ethereum/build/bin/geth /usr/local/bin/geth
