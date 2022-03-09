@@ -11,3 +11,4 @@ The directories are setup as follows:
 
 In each of the folders you will find a build\_dockers.sh script that will build and tag all the Dockerfiles in that dir with the naming convention used in the config files.
 
+Additionally each src/ dir cooresponds to a dir that allows you to change the source of a client before building for debugging purposes (this hasn't been finalized yet)
