@@ -38,13 +38,13 @@ RUN go install github.com/bazelbuild/bazelisk@latest && \
 
 RUN git clone https://github.com/prysmaticlabs/prysm && \
     cd prysm && \
-    git checkout kiln
-
-RUN cd prysm && /root/go/bin/bazelisk build //beacon-chain:beacon-chain
-RUN cd prysm && /root/go/bin/bazelisk build //validator:validator
+    git checkout kiln && \
+    go get -t -d ./... && \
+    go build ./... && \
+    go install ./...
 
 from ubuntu:20.04
 
 COPY --from=builder /git/prysm/bazel-bin/cmd/beacon-chain/beacon-chain_/beacon-chain /usr/local/bin/beacon-chain
-COPY --from=builder /git/prysm/bazel-bin/cmd/validator/validator_/validator /usr/local/bin/validator
-COPY --from=geth_builder /go/go-ethereum/build/bin/geth /usr/local/bin/geth
+COPY --from=builder /git/bin/beacon-chain /usr/local/bin/beacon-chain
+COPY --from=builder /git/bin/validator /usr/local/bin/validator
