@@ -31,50 +31,6 @@ if [[ -n "$EXECUTION_LAUNCHER" ]]; then
     "$EXECUTION_LAUNCHER" &
 fi
 
-# beacon_start_args: >
-#   lighthouse
-#   --debug-level="{{ beacon_log_level | lower }}"
-#   --datadir "/beacondata"
-#   --testnet-dir="/custom_config_data"
-#   bn
-#   --disable-enr-auto-update
-#   --enr-address={{ansible_host}}
-#   --enr-tcp-port={{beacon_p2p_port}} --enr-udp-port={{beacon_p2p_port}}
-#   --port={{beacon_p2p_port}} --discovery-port={{beacon_p2p_port}}
-#   --eth1
-#   {% if (bootnode_enrs is defined) and bootnode_enrs %}
-#   --boot-nodes="{{ bootnode_enrs | join(',') }}"
-#   {% endif %}  --http
-#   --http-address=0.0.0.0
-#   --http-port="{{beacon_api_port}}"
-#   --metrics
-#   --metrics-address=0.0.0.0
-#   --metrics-port="{{beacon_metrics_port}}"
-#   --listen-address=0.0.0.0
-#   --graffiti="{{graffiti}}"
-#   --target-peers={{hi_peer_count}}
-#   --http-allow-sync-stalled
-#   --merge
-#   --disable-packet-filter
-#   --execution-endpoints={{execution_engine_endpoint}}
-#   --eth1-endpoints={{eth1endpoint}}
-#   --terminal-total-difficulty-override={{terminal_total_difficulty}}
-#   --validator-monitor-auto
-# # in case of eth1 deposit endpoint problems: --dummy-eth1
-# 
-# validator_start_args: >
-#   lighthouse
-#   --testnet-dir="/custom_config_data"
-#   vc
-#   --validators-dir="/validatordata/validators"
-#   --secrets-dir="/validatordata/secrets"
-#   --init-slashing-protection
-#   --server={{beacon_endpoint}}
-#   --graffiti="{{graffiti}}"
-#   --http --http-port={{validator_rpc_port}}
-#   --metrics --metrics-address 0.0.0.0 --metrics-port "{{validator_metrics_port}}"
-
-# --boot-nodes "$bootnode_enr" \
 lighthouse \
 	--debug-level=$DEBUG_LEVEL \
 	--datadir=$NODE_DIR \
@@ -88,11 +44,13 @@ lighthouse \
 	--http \
 	--http-address=0.0.0.0 \
 	--http-port="$BEACON_API_PORT" \
+    --http-allow-origin="*" \
     --metrics \
     --metrics-address=0.0.0.0 \
     --metrics-port="$BEACON_METRIC_PORT" \
+    --metrics-allow-origin="*" \
     --listen-address=0.0.0.0 \
-    --graffiti="lighthouse-minimal-$IP_ADDR" \
+    --graffiti="lighthouse-$IP_ADDR" \
     --target-peers="$CONSENSUS_TARGET_PEERS" \
     --http-allow-sync-stalled \
     --merge \
