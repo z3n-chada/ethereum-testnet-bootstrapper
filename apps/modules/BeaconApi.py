@@ -1,12 +1,13 @@
 import requests
 import time
+import sys
 from ruamel import yaml
 
 
 class APIResponse(object):
     def __init__(self, response):
         self.response = response
-        self.status_code = response.status_code
+        self.status_code = response.status_code if response else 500
         if self.status_code == 200:
             self.data = response.json()["data"]
         else:
@@ -31,7 +32,7 @@ class APIRequest(object):
 
     def _get_with_retry(self, host, port):
         url = f"http://{host}:{port}{self.path}"
-        print(f"Attempting {url}")
+        print(f"Attempting {url}", flush=True)
         attempt = 1
         last_response = None
         while attempt <= self.retries:
@@ -39,11 +40,11 @@ class APIRequest(object):
             try:
                 last_response = requests.get(url, timeout=self.timeout)
                 status_code = last_response.status_code
-                print(f"status_code={status_code}; response={last_response.json()}")
-            except:
-                pass
+                # print(f"status_code={status_code}; response={last_response.json()}", flush=True)
+            except requests.exceptions.RequestException as e:
+                print(e, file=sys.stderr, flush=True)
             if status_code != 200:
-                # print(f"\tattempt={attempt}/{self.retries}; delay={self.retry_delay}s")
+                print(f"\tattempt={attempt}/{self.retries}; delay={self.retry_delay}s", flush=True)
                 time.sleep(self.retry_delay)
                 attempt += 1
             else:
@@ -99,12 +100,13 @@ def get_api_manager_from_config(path):
         client_config = data["consensus-clients"][client_module]
         consensus_config = data["consensus-configs"][client_config["consensus-config"]]
         client_name = client_config["client-name"]
+        ip_segments = client_config["start-ip-addr"].split(".")
+        prefix = ".".join(ip_segments[:3]) + "."
+        base = int(ip_segments[-1])
+
         for ndx in range(consensus_config["num-nodes"]):
-            prefix = ".".join(client_config["start-ip-addr"].split(".")[:3]) + "."
-            base = int(client_config["start-ip-addr"].split(".")[-1])
             ip = prefix + str(base + ndx)
             port = consensus_config["start-beacon-api-port"] + ndx
-
             api_client = BeaconAPIClient(ip, port, client_name)
             manager.add_client(api_client)
     return manager
