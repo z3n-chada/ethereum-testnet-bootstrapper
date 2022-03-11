@@ -3,37 +3,20 @@ RUN git clone https://github.com/MariusVanDerWijden/go-ethereum.git \
     && cd go-ethereum && git checkout merge-kiln-v2 \
     && make geth
 
-FROM ubuntu:18.04
+FROM node:16-bullseye
 
-# Update ubuntu
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        ca-certificates \
-        software-properties-common \
-        curl \
-        gpg-agent \
-        git \
-        build-essential \
-        make \
-        gcc
+WORKDIR /usr/app
 
+ARG VERSION=next
+ENV VERSION=$VERSION
+RUN npm install -g npm@8.5.4
+RUN npm install @chainsafe/lodestar-cli@$VERSION
 
-# Install nodejs
-RUN curl -sL https://deb.nodesource.com/setup_14.x | bash
-
-# Install npm & nodejs
-RUN apt-get update && \
-    apt-get install -y \
-    nodejs
-
-WORKDIR /git
-
-# Install lodestar
-RUN npm i @chainsafe/lodestar-beacon-state-transition
-RUN npm i @chainsafe/lodestar-types
-RUN npm i @chainsafe/lodestar-config
-RUN npm i @chainsafe/discv5
+RUN apt update; apt install -y g++ build-essential python3 python3-dev nodejs
 
 COPY --from=geth_builder /go/go-ethereum/build/bin/geth /usr/local/bin/geth
 
+RUN ln -s /usr/app/node_modules/.bin/lodestar /usr/local/bin/lodestar
+
 ENTRYPOINT ["/bin/bash"]
+

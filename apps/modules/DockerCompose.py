@@ -466,6 +466,18 @@ class PrysmClientWriter(ConsensusClientWriter):
         return [self.cc["entrypoint"]]
 
 
+class LodestarClientWriter(ConsensusClientWriter):
+    def __init__(self, global_config, client_config, curr_node):
+        super().__init__(
+            global_config,
+            client_config,
+            curr_node,
+        )
+        self.out = self.config()
+
+    def _entrypoint(self):
+        return [self.cc["entrypoint"]]
+
 class Eth2BootnodeClientWriter(ClientWriter):
     def __init__(self, global_config, client_config, curr_node):
         super().__init__(
@@ -551,6 +563,7 @@ class DockerComposeWriter(object):
             "teku": TekuClientWriter,
             "prysm": PrysmClientWriter,
             "lighthouse": LighthouseClientWriter,
+            "lodestar": LodestarClientWriter,
             "nimbus": NimbusClientWriter,
             "geth-bootstrapper": GethClientWriter,
             "ethereum-testnet-bootstrapper": TestnetBootstrapper,

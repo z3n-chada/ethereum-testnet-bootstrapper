@@ -133,7 +133,7 @@ class NimbusTestnetGenerator(TestnetDirectoryGenerator):
         """
         Copy validator info into local client.
         """
-        print(f"Finalizing lighthouse client dir={self.testnet_dir}")
+        print(f"Finalizing nimbus client dir={self.testnet_dir}")
         for ndx in range(self.ccc["num-nodes"]):
             node_dir = pathlib.Path(str(self.testnet_dir) + f"/node_{ndx}")
             node_dir.mkdir()
@@ -145,8 +145,33 @@ class NimbusTestnetGenerator(TestnetDirectoryGenerator):
         shutil.rmtree(str(self.testnet_dir) + "/validators/")
 
         # just in case set a deposit deploy block.
-        with open(f"{str(self.testnet_dir)}/deposit_contract_block.txt", 'w') as f:
-            f.write("0x0000000000000000000000000000000000000000000000000000000000000000")
+        with open(f"{str(self.testnet_dir)}/deposit_contract_block.txt", "w") as f:
+            f.write(
+                "0x0000000000000000000000000000000000000000000000000000000000000000"
+            )
+
+
+class LodestarTestnetGenerator(TestnetDirectoryGenerator):
+    def __init__(self, global_config, client_config):
+        super().__init__(global_config, client_config)
+
+    def finalize_testnet_dir(self):
+        """
+        Copy validator info into local client.
+        """
+        for ndx in range(self.ccc["num-nodes"]):
+            node_dir = pathlib.Path(str(self.testnet_dir) + f"/node_{ndx}")
+            node_dir.mkdir()
+            keystore_dir = pathlib.Path(str(self.testnet_dir) + "/validators")
+            src_dir = pathlib.Path(str(keystore_dir) + f"/node_{ndx}")
+            shutil.copytree(str(src_dir) + "/keys", str(node_dir) + "/keys")
+            shutil.copytree(
+                str(src_dir) + "/lodestar-secrets", str(node_dir) + "/secrets"
+            )
+            validator_db = pathlib.Path(str(node_dir) + "/validatordb")
+            validator_db.mkdir()
+        # done now clean up..
+        shutil.rmtree(str(self.testnet_dir) + "/validators/")
 
 
 def generate_consensus_testnet_dirs(global_config):
@@ -155,6 +180,7 @@ def generate_consensus_testnet_dirs(global_config):
         "prysm": PrysmTestnetGenerator,
         "lighthouse": LighthouseTestnetGenerator,
         "nimbus": NimbusTestnetGenerator,
+        "lodestar": LodestarTestnetGenerator,
     }
     for cc in global_config["consensus-clients"]:
         print(f"Creating testnet directory for {cc}")
