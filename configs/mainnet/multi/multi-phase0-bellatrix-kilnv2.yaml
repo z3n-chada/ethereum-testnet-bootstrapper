@@ -56,7 +56,7 @@ config-params:
   consensus-layer:
     genesis-delay: 225 # eth1-follow-distance*seconds-per-eth1-block + 1
     preset-base: 'mainnet'
-    min-genesis-active-validator-count: 16 # custom preseeded into genesis state.
+    min-genesis-active-validator-count: 20 # custom preseeded into genesis state.
     eth1-follow-distance: 16 # allow past eth1 blocks to be processed.
 
     forks:
@@ -161,7 +161,7 @@ consensus-clients:
     tag: "kiln"
     container-name: "prysm-client-geth"
     entrypoint: "/source/apps/launchers/launch-prysm.sh"
-    start-ip-addr: "10.0.20.30"
+    start-ip-addr: "10.0.20.10"
     depends: "ethereum-testnet-bootstrapper"
     # beacon/validator flags
     consensus-config: "base-consensus-client"
@@ -181,7 +181,7 @@ consensus-clients:
     tag: "master"
     container-name: "teku-client"
     entrypoint: "/source/apps/launchers/launch-teku-kiln.sh"
-    start-ip-addr: "10.0.20.40"
+    start-ip-addr: "10.0.20.20"
     depends: "ethereum-testnet-bootstrapper"
 
     consensus-config: "base-consensus-client"
@@ -200,7 +200,7 @@ consensus-clients:
     tag: "kiln"
     container-name: "nimbus-client-geth"
     entrypoint: "/source/apps/launchers/launch-nimbus.sh"
-    start-ip-addr: "10.0.20.10"
+    start-ip-addr: "10.0.20.30"
     depends: "ethereum-testnet-bootstrapper"
 
     testnet-dir: '/data/local_testnet/nimbus'
@@ -218,7 +218,7 @@ consensus-clients:
     tag: "unstable"
     container-name: "lighthouse-client-geth"
     entrypoint: "/source/apps/launchers/launch-lighthouse-kiln.sh"
-    start-ip-addr: "10.0.20.20"
+    start-ip-addr: "10.0.20.40"
     depends: "ethereum-testnet-bootstrapper"
 
     consensus-config: "base-consensus-client"
@@ -228,6 +228,22 @@ consensus-clients:
     consensus-additional-env:
       debug-level: "debug"
 
+  lodestar-genesis-deposits:
+    client-name: 'lodestar'
+    # docker-compose
+    image: "lodestar-client-geth"
+    tag: "master"
+    container-name: "lodestar-client-geth"
+    entrypoint: "/source/apps/launchers/launch-lodestar.sh"
+    start-ip-addr: "10.0.20.50"
+    depends: "ethereum-testnet-bootstrapper"
+
+    consensus-config: "base-consensus-client"
+    testnet-dir: '/data/local_testnet/lodestar'
+    validator-offset-start: 16 # so validators of different clients don't overlap
+    
+    consensus-additional-env:
+      debug-level: "debug"
 
 # special case client that is the ethereum-testnet-bootstrapper
 # this allows you to create a new genesis everytime you call 
