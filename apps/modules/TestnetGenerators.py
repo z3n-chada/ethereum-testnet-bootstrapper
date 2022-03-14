@@ -16,10 +16,11 @@ class TestnetDirectoryGenerator(object):
         self.testnet_dir = pathlib.Path(self.cc["testnet-dir"])
         validator_dir = pathlib.Path(self.cc["testnet-dir"] + "/validators/")
         if self.testnet_dir.exists():
-            shutil.rmtree(str(self.testnet_dir))  # clean old run
+            print(f"WARNING: {self.testnet_dir} already exists", flush=True)
+            # shutil.rmtree(str(self.testnet_dir))  # clean old run
 
-        self.testnet_dir.mkdir()
-        validator_dir.mkdir()
+        self.testnet_dir.mkdir(exist_ok=True)
+        validator_dir.mkdir(exist_ok=True)
 
         shutil.copy(genesis_ssz, str(self.testnet_dir) + "/genesis.ssz")
         shutil.copy(consensus_config, str(self.testnet_dir) + "/config.yaml")
