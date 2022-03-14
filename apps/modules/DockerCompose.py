@@ -1,7 +1,10 @@
-from ruamel import yaml
 import re
 
+from ruamel import yaml
+
 # TODO: use this to clean up client writers.
+
+
 class ConfigurationEnvironment(object):
     """
     Crawler that goes through all of the configurations of a module
@@ -161,7 +164,6 @@ class ConfigurationEnvironment(object):
 
     # Consensus Config
     def get_execution_launcher(self, _unused="unused"):
-        print(self.ccc)
         if self.ccc["local-execution-client"]:
             return str(self.ccc["execution-launcher"])
         else:
@@ -193,18 +195,25 @@ class ClientWriter(object):
     Just use this template and add your entrypoint in child class.
     """
 
-    def __init__(self, global_config, client_config, name, curr_node, use_root=False):
+    def __init__(self, global_config, client_config, curr_node, use_root=False):
         self.use_root = use_root
         self.gc = global_config
         self.cc = client_config
         # used when we have multiple of the same client.
         self.curr_node = curr_node
         # constants.
-        self.name = name
+        if "client-name" in self.cc:
+            self.name = f"{self.cc['client-name']}-node-{curr_node}"
+        else:
+            self.name = f"{self.cc['container-name']}-node-{curr_node}"
         self.image = self.cc["image"]
         self.tag = self.cc["tag"]
         self.network_name = self.gc["docker"]["network-name"]
         self.volumes = [str(x) for x in self.gc["docker"]["volumes"]]
+
+        # be default there are not consensus/execution client configs for a module
+        self.ccc = None
+        self.ecc = None
 
         self.env = []
 
@@ -253,6 +262,56 @@ class ClientWriter(object):
             "terminaltotaldifficulty",
         ]
 
+        # if we have a consensus config or execution config set the ecc and ccc
+        if "consensus-config" in client_config:
+            self.ccc = global_config["consensus-configs"][
+                client_config["consensus-config"]
+            ]
+            # if there is also a local execution client
+            if self.ccc["local-execution-client"]:
+                self.ecc = self.ccc["execution-config"]
+
+        # if it has a execution config then add on the execution consensus vars.
+        if "execution-config" in client_config:
+            self.ecc = global_config["execution-configs"][
+                client_config["execution-config"]
+            ]
+
+    def _environment(self):
+        """
+        Modules use environmental variables to define how to launch themselves.
+        """
+        environment = []
+        # base case.
+        if self.ecc is None and self.ccc is None and "additional-env" not in self.cc:
+            return environment
+
+        config_env = ConfigurationEnvironment(self)
+        # consensus client env vars
+        if self.ccc is not None:
+            print("adding consensus environment")
+            for bcev in self.base_consensus_env_vars:
+                environment.append(config_env.get_environment_var(bcev))
+        # execution client env vars
+        if self.ecc is not None:
+            print("adding execution environment")
+            for beev in self.base_execution_env_vars:
+                environment.append(config_env.get_environment_var(beev))
+            # go ahead and add the end fork just in case
+            environment.append(config_env.get_environment_var("end-fork"))
+        # consensus with local execution client
+        if self.ccc is not None and self.ecc is not None:
+            print("adding execution enviroment for consensus module")
+            for ceev in self.consensus_with_execution_env_vars:
+                environment.append(config_env.get_environment_var(ceev))
+        # any additional env vars
+        if "additional-env" in self.cc:
+            for k, v in self.cc["additional-env"].items():
+                print(f"adding additional envs {k} {v}")
+                environment.append(f'{k.upper().replace("-","_")}={v}')
+
+        return list(set(environment))
+
     # inits for child classes.
     def config(self):
         out = {
@@ -276,19 +335,24 @@ class ClientWriter(object):
                 config["entrypoint"] = self._entrypoint()
         else:
             config["entrypoint"] = self._entrypoint()
+        print("doing enviroment")
         config["environment"] = self._environment()
         return config
 
-    # override this if neccessary
-    def _environment(self):
-        return []
+    # # override this if neccessary
+    # def _environment(self):
+    #     return []
 
     def _networking(self):
         # first calculate the ip.
         return {self.network_name: {"ipv4_address": self.get_ip()}}
 
     def _entrypoint(self):
-        raise Exception("override this method")
+        if isinstance(self.cc["entrypoint"], str):
+            return self.cc["entrypoint"].split()
+
+        else:
+            return self.cc["entrypoint"]
 
     def _config_sanity_check(self):
         """
@@ -318,11 +382,13 @@ class ClientWriter(object):
             "tag",  # docker image tag
             "container-name",  # name of the container
             "entrypoint",  # the entrypoint, examples in apps/launchers
-            "start-ip-addr",  # ip address for client, incremented based on numnber of nodes.
+            # ip address for client, incremented based on numnber of nodes.
+            "start-ip-addr",
             "depends",  # ethereum-testnet-bootstrapper client.
             "consensus-config",  # the consensus client config (ccc)
             "testnet-dir",  # the testnet dir to use
-            "validator-offset-start",  # the offset to use for validator keys (since we use same mnemonic)
+            # the offset to use for validator keys (since we use same mnemonic)
+            "validator-offset-start",
         ]
         # TODO: global config stuff and sanity checks on some vars.
         # client-configs
@@ -351,138 +417,196 @@ class ClientWriter(object):
         return ip
 
 
-class ConsensusClientWriter(ClientWriter):
-    def __init__(self, global_config, client_config, curr_node, use_root=False):
-        super().__init__(
-            global_config,
-            client_config,
-            f"{client_config['client-name']}-node-{curr_node}",
-            curr_node,
-            use_root=use_root,
-        )
-        self.ccc = global_config["consensus-configs"][client_config["consensus-config"]]
-        if self.ccc["local-execution-client"]:
-            self.ecc = self.ccc["execution-config"]
-        else:
-            self.ecc = None
-
-    def _environment(self):
-        environment = []
-        config_env = ConfigurationEnvironment(self)
-        for bcev in self.base_consensus_env_vars:
-            environment.append(config_env.get_environment_var(bcev))
-        if self.ecc is not None:
-            for beev in self.base_execution_env_vars:
-                environment.append(config_env.get_environment_var(beev))
-            for ceev in self.consensus_with_execution_env_vars:
-                environment.append(config_env.get_environment_var(ceev))
-        if "consensus-additional-env" in self.cc:
-            for k, v in self.cc["consensus-additional-env"].items():
-                environment.append(f'{k.upper().replace("-","_")}={v}')
-        return list(set(environment))
-
-
-class ExecutionClientWriter(ClientWriter):
-    def __init__(self, global_config, client_config, curr_node):
-        super().__init__(
-            global_config,
-            client_config,
-            f"{client_config['client-name']}-node-{curr_node}",
-            curr_node,
-        )
-        self.ecc = global_config["execution-configs"][client_config["execution-config"]]
-
-    def _environment(self):
-        environment = []
-        config_env = ConfigurationEnvironment(self)
-        for beev in self.base_execution_env_vars:
-            environment.append(config_env.get_environment_var(beev))
-
-        # in order for the launcher file to override TTD we need to know the
-        # end fork for the consensus clients.
-        environment.append(config_env.get_environment_var("end-fork"))
-        return environment
-
-
-class GethClientWriter(ExecutionClientWriter):
-    def __init__(self, global_config, client_config, curr_node):
-        super().__init__(global_config, client_config, curr_node)
-        self.out = self.config()
-
-    def _entrypoint(self):
-        return [self.cc["entrypoint"]]
-
-
-class TekuClientWriter(ConsensusClientWriter):
-    def __init__(self, global_config, client_config, curr_node):
-        super().__init__(
-            global_config,
-            client_config,
-            curr_node,
-            use_root=True,
-        )
-        self.out = self.config()
-
-    def _entrypoint(self):
-        return [self.cc["entrypoint"]]
-
-
-class LighthouseClientWriter(ConsensusClientWriter):
-    def __init__(self, global_config, client_config, curr_node):
-        super().__init__(
-            global_config,
-            client_config,
-            curr_node,
-        )
-        self.out = self.config()
-
-    def _entrypoint(self):
-        return [self.cc["entrypoint"]]
-
-
-class NimbusClientWriter(ConsensusClientWriter):
-    def __init__(self, global_config, client_config, curr_node):
-        super().__init__(
-            global_config,
-            client_config,
-            curr_node,
-        )
-        self.out = self.config()
-
-    def _entrypoint(self):
-        return [self.cc["entrypoint"]]
-
-
-class PrysmClientWriter(ConsensusClientWriter):
-    def __init__(self, global_config, client_config, curr_node):
-        super().__init__(
-            global_config,
-            client_config,
-            curr_node,
-        )
-        self.out = self.config()
-
-    def _entrypoint(self):
-        return [self.cc["entrypoint"]]
+# class GlobalClientWriter(ClientWriter):
+#     def __init__(self, global_config, client_config, curr_node, use_root=False):
+#         super().__init__(
+#             global_config,
+#             client_config,
+#             f"{client_config['client-name']}-node-{curr_node}",
+#             curr_node,
+#             use_root=use_root,
+#         )
+#         # be default there are not consensus/execution client configs for a module
+#         self.ccc = None
+#         self.ecc = None
+#         # if it has a consensus config that add on the consensus env vars.
+#         if "consensus-config" in client_config:
+#             self.ccc = global_config["consensus-configs"][
+#                 client_config["consensus-config"]
+#             ]
+#             # if there is also a local execution client
+#             if self.ccc["local-execution-client"]:
+#                 self.ecc = self.ccc["execution-config"]
+#
+#         # if it has a execution config then add on the execution consensus vars.
+#         if "execution-config" in client_config:
+#             self.ecc = global_config["execution-configs"][
+#                 client_config["execution-config"]
+#             ]
+#
+#     def _environment(self):
+#         """
+#         Modules use environmental variables to define how to launch themselves.
+#         """
+#         environment = []
+#         # base case.
+#         if self.ecc is None and self.ccc is None and "additional-env" not in self.cc:
+#             return environment
+#
+#         config_env = ConfigurationEnvironment(self)
+#         # consensus client env vars
+#         if self.ccc is not None:
+#             for bcev in self.base_consensus_env_vars:
+#                 environment.append(config_env.get_environment_var(bcev))
+#         # execution client env vars
+#         if self.ecc is not None:
+#             for beev in self.base_execution_env_vars:
+#                 environment.append(config_env.get_environment_var(beev))
+#             # go ahead and add the end fork just in case
+#             environment.append(config_env.get_environment_var("end-fork"))
+#         # consensus with local execution client
+#         if self.ccc is not None and self.ecc is not None:
+#             for ceev in self.consensus_with_execution_env_vars:
+#                 environment.append(config_env.get_environment_var(ceev))
+#         # any additional env vars
+#         if "additional-env" in self.cc:
+#             for k, v in self.cc["additional-env"].items():
+#                 environment.append(f'{k.upper().replace("-","_")}={v}')
+#
+#         return list(set(environment))
+#
+#
+# class ConsensusClientWriter(ClientWriter):
+#     def __init__(self, global_config, client_config, curr_node, use_root=False):
+#         super().__init__(
+#             global_config,
+#             client_config,
+#             f"{client_config['client-name']}-node-{curr_node}",
+#             curr_node,
+#             use_root=use_root,
+#         )
+#         self.ccc = global_config["consensus-configs"][client_config["consensus-config"]]
+#         if self.ccc["local-execution-client"]:
+#             self.ecc = self.ccc["execution-config"]
+#         else:
+#             self.ecc = None
+#
+#     def _environment(self):
+#         environment = []
+#         config_env = ConfigurationEnvironment(self)
+#         for bcev in self.base_consensus_env_vars:
+#             environment.append(config_env.get_environment_var(bcev))
+#         if self.ecc is not None:
+#             for beev in self.base_execution_env_vars:
+#                 environment.append(config_env.get_environment_var(beev))
+#             for ceev in self.consensus_with_execution_env_vars:
+#                 environment.append(config_env.get_environment_var(ceev))
+#         if "consensus-additional-env" in self.cc:
+#             for k, v in self.cc["consensus-additional-env"].items():
+#                 environment.append(f'{k.upper().replace("-","_")}={v}')
+#         return list(set(environment))
+#
+#
+# class ExecutionClientWriter(ClientWriter):
+#     def __init__(self, global_config, client_config, curr_node):
+#         super().__init__(
+#             global_config,
+#             client_config,
+#             f"{client_config['client-name']}-node-{curr_node}",
+#             curr_node,
+#         )
+#         self.ecc = global_config["execution-configs"][client_config["execution-config"]]
+#
+#     def _environment(self):
+#         environment = []
+#         config_env = ConfigurationEnvironment(self)
+#         for beev in self.base_execution_env_vars:
+#             environment.append(config_env.get_environment_var(beev))
+#
+#         # in order for the launcher file to override TTD we need to know the
+#         # end fork for the consensus clients.
+#         environment.append(config_env.get_environment_var("end-fork"))
+#         return environment
 
 
-class LodestarClientWriter(ConsensusClientWriter):
-    def __init__(self, global_config, client_config, curr_node):
-        super().__init__(
-            global_config,
-            client_config,
-            curr_node,
-        )
-        self.out = self.config()
+# class GethClientWriter(ClientWriter):
+#    def __init__(self, global_config, client_config, curr_node):
+#        super().__init__(global_config, client_config, curr_node)
+#        self.out = self.config()
+#
+#    def _entrypoint(self):
+#        return [self.cc["entrypoint"]]
 
-    def _entrypoint(self):
-        return [self.cc["entrypoint"]]
+
+# class TekuClientWriter(ClientWriter):
+#     def __init__(self, global_config, client_config, curr_node):
+#         super().__init__(
+#             global_config,
+#             client_config,
+#             curr_node,
+#             use_root=True,
+#         )
+#         self.out = self.config()
+#
+#     def _entrypoint(self):
+#         return [self.cc["entrypoint"]]
+#
+#
+# class LighthouseClientWriter(ClientWriter):
+#     def __init__(self, global_config, client_config, curr_node):
+#         super().__init__(
+#             global_config,
+#             client_config,
+#             curr_node,
+#         )
+#         self.out = self.config()
+#
+#     def _entrypoint(self):
+#         return [self.cc["entrypoint"]]
+#
+#
+# class NimbusClientWriter(ClientWriter):
+#     def __init__(self, global_config, client_config, curr_node):
+#         super().__init__(
+#             global_config,
+#             client_config,
+#             curr_node,
+#         )
+#         self.out = self.config()
+#
+#     def _entrypoint(self):
+#         return [self.cc["entrypoint"]]
+#
+#
+# class PrysmClientWriter(ClientWriter):
+#     def __init__(self, global_config, client_config, curr_node):
+#         super().__init__(
+#             global_config,
+#             client_config,
+#             curr_node,
+#         )
+#         self.out = self.config()
+#
+#     def _entrypoint(self):
+#         return [self.cc["entrypoint"]]
+#
+#
+# class LodestarClientWriter(ClientWriter):
+#     def __init__(self, global_config, client_config, curr_node):
+#         super().__init__(
+#             global_config,
+#             client_config,
+#             curr_node,
+#         )
+#         self.out = self.config()
+#
+#     def _entrypoint(self):
+#         return [self.cc["entrypoint"]]
+
 
 class Eth2BootnodeClientWriter(ClientWriter):
     def __init__(self, global_config, client_config, curr_node):
-        super().__init__(
-            global_config, client_config, f"eth2-bootnode-{curr_node}", curr_node
-        )
+        super().__init__(global_config, client_config, curr_node)
         self.out = self.config()
 
     def _entrypoint(self):
@@ -526,9 +650,7 @@ class GethBootnodeClientWriter(ClientWriter):
 
 class GenericModule(ClientWriter):
     def __init__(self, global_config, client_config, curr_node):
-        super().__init__(
-            global_config, client_config, client_config["container-name"], curr_node
-        )
+        super().__init__(global_config, client_config, curr_node)
         self.out = self.config()
 
     def _entrypoint(self):
@@ -541,9 +663,7 @@ class GenericModule(ClientWriter):
 
 class TestnetBootstrapper(ClientWriter):
     def __init__(self, global_config, client_config):
-        super().__init__(
-            global_config, client_config, client_config["container-name"], 0
-        )
+        super().__init__(global_config, client_config, 0)
         self.out = self.config()
 
     def _entrypoint(self):
@@ -560,12 +680,12 @@ class DockerComposeWriter(object):
         self.gc = global_config
         self.yaml = self._base()
         self.client_writers = {
-            "teku": TekuClientWriter,
-            "prysm": PrysmClientWriter,
-            "lighthouse": LighthouseClientWriter,
-            "lodestar": LodestarClientWriter,
-            "nimbus": NimbusClientWriter,
-            "geth-bootstrapper": GethClientWriter,
+            "teku": ClientWriter,
+            "prysm": ClientWriter,
+            "lighthouse": ClientWriter,
+            "lodestar": ClientWriter,
+            "nimbus": ClientWriter,
+            "geth-bootstrapper": ClientWriter,
             "ethereum-testnet-bootstrapper": TestnetBootstrapper,
             "generic-module": GenericModule,
             "eth2-bootnode": Eth2BootnodeClientWriter,
@@ -601,6 +721,7 @@ class DockerComposeWriter(object):
                         exception += f"\tfound: {config.keys()}\n"
                         raise Exception(exception)
                     client = config["client-name"]
+                    print(f"Generating docker-compose entry for {client}")
                     for n in range(config["num-nodes"]):
                         if module == "generic-modules":
                             writer = self.client_writers["generic-module"](
@@ -612,11 +733,15 @@ class DockerComposeWriter(object):
 
         for consensus_client in self.gc["consensus-clients"]:
             config = self.gc["consensus-clients"][consensus_client]
-            print(config)
             consensus_config = self.gc["consensus-configs"][config["consensus-config"]]
             client = config["client-name"]
+            print(f"Generating docker-compose entry for {client}")
             for n in range(consensus_config["num-nodes"]):
-                writer = self.client_writers[client](self.gc, config, n)
+                if client == "teku":
+                    use_root = True
+                else:
+                    use_root = False
+                writer = self.client_writers[client](self.gc, config, n, use_root)
                 self.yaml["services"][writer.name] = writer.get_config()
         # last we check for bootstrapper, if present all dockers must
         # depend on this.

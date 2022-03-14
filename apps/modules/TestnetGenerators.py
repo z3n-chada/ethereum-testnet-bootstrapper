@@ -75,10 +75,10 @@ class PrysmTestnetGenerator(TestnetDirectoryGenerator):
         super().__init__(
             global_config,
             client_config,
-            client_config["consensus-additional-env"]["validator-password"],
+            client_config["additional-env"]["validator-password"],
         )
         # prysm only stuff.
-        self.password_file = self.cc["consensus-additional-env"]["wallet-path"]
+        self.password_file = self.cc["additional-env"]["wallet-path"]
 
         with open(self.password_file, "w") as f:
             f.write(self.password)
