@@ -9,9 +9,9 @@ RUN git clone https://github.com/skylenet/eth2-testnet-genesis.git \
     && go install github.com/wealdtech/ethereal/v2@latest \
     && go install github.com/protolambda/eth2-bootnode@latest 
 
-RUN git clone https://github.com/ethereum/go-ethereum.git \
-    && cd go-ethereum && git checkout master \
-    && make geth && make all
+#RUN git clone https://github.com/ethereum/go-ethereum.git \
+#    && cd go-ethereum && git checkout master \
+#    && make geth && make all
 
 FROM debian:latest
 WORKDIR /work
@@ -31,7 +31,7 @@ COPY --from=builder /go/bin/eth2-testnet-genesis /usr/local/bin/eth2-testnet-gen
 COPY --from=builder /go/bin/eth2-val-tools /usr/local/bin/eth2-val-tools
 COPY --from=builder /go/bin/eth2-bootnode /usr/local/bin/eth2-bootnode
 COPY --from=builder /go/bin/ethereal /usr/local/bin/ethereal
-COPY --from=builder /git/go-ethereum/build/bin/geth /usr/local/bin/geth
-COPY --from=builder /git/go-ethereum/build/bin/bootnode /usr/local/bin/geth-bootnode
+#COPY --from=builder /git/go-ethereum/build/bin/geth /usr/local/bin/geth
+#COPY --from=builder /git/go-ethereum/build/bin/bootnode /usr/local/bin/geth-bootnode
 COPY ./ /source
 ENTRYPOINT [ "/source/entrypoint.sh" ]
