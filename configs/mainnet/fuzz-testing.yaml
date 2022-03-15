@@ -120,7 +120,7 @@ execution-configs:
 
 consensus-configs:
   base-consensus-client:
-    num-nodes: 2            # number of nodes for every client that inherits this config
+    num-nodes: 1            # number of nodes for every client that inherits this config
     num-validators: 4       # number of validators for every client that inherits this config
     # start ports increment each time we have a node.
     start-consensus-p2p-port: 4000    # start port used for discovery
