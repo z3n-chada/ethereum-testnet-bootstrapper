@@ -17,12 +17,19 @@ class ConfigurationEnvironment(object):
         self.cc = self.cw.cc
         self.ecc = None
         self.ccc = None
-        if "consensus-config" in self.cc:
-            self.ccc = self.gc["consensus-configs"][self.cc["consensus-config"]]
-        if "execution-config" in self.cc:
-            self.ecc = self.gc["execution-configs"][self.cc["execution-config"]]
-        elif "execution-config" in self.ccc:  # cl client with el client
-            self.ecc = self.gc["execution-configs"][self.ccc["execution-config"]]
+        # configs
+        self.ecc = self.cw.ecc
+        self.ccc = self.cw.ccc
+        self.ebc = self.cw.ebc
+        self.cbc = self.cw.cbc
+
+        print(f"{self.cc} \n{self.ecc}\n{self.ccc}\n{self.ebc}\n{self.cbc}")
+        # if "consensus-config" in self.cc:
+        #     self.ccc = self.gc["consensus-configs"][self.cc["consensus-config"]]
+        # if "execution-config" in self.cc:
+        #     self.ecc = self.gc["execution-configs"][self.cc["execution-config"]]
+        # elif "execution-config" in self.ccc:  # cl client with el client
+        #     self.ecc = self.gc["execution-configs"][self.ccc["execution-config"]]
 
         self.variable_getters = {
             # generic
@@ -57,6 +64,19 @@ class ConfigurationEnvironment(object):
             "http-web3-ip-addr": self.get_consensus_config,
             "ws-web3-ip-addr": self.get_consensus_config,
             "consensus-target-peers": self.get_target_peers,
+            # bootnodes
+            "execution-bootnode-start-ip-addr": self.get_eb_ip_addr,
+            "execution-bootnode-enode": self.get_eb_enode,
+            "execution-bootnode-disc-port": self.get_eb_disc_port,
+            "execution-bootnode-private-key": self.get_eb_private_key,
+            "execution-bootnode-enode-file": self.get_eb_enode_file,
+            "execution-bootnode-enode-dir": self.get_eb_enode_dir,
+            "execution-bootnode-verbosity": self.get_eb_verbosity,
+            "consensus-bootnode-start-ip-addr": self.get_cb_ip_addr,
+            "consensus-bootnode-private-key": self.get_cb_private_key,
+            "consensus-bootnode-enr-port": self.get_cb_enr_port,
+            "consensus-bootnode-api-port": self.get_cb_api_port,  # should drop when we add more bootnodes
+            "consensus-bootnode-enr-file": self.get_cb_enr_file,
         }
 
         # how to fetch various ports.
@@ -86,6 +106,44 @@ class ConfigurationEnvironment(object):
                 variable = var
 
             return f'{variable.upper().replace("-","_")}={value}'
+
+    # Bootnodes
+    # TODO: implement me for more situations
+    def get_eb_ip_addr(self, unused):
+        return self.ebc["execution-bootnode-start-ip-addr"]
+
+    def get_eb_verbosity(self, unused):
+        return self.ebc["execution-bootnode-verbosity"]
+
+    def get_eb_enode(self, unused):
+        return self.ebc["execution-bootnode-enode"]
+
+    def get_eb_disc_port(self, unused):
+        return self.ebc["execution-bootnode-disc-port"]
+
+    def get_eb_private_key(self, unused):
+        return self.ebc["execution-bootnode-private-key"]
+
+    def get_eb_enode_file(self, unused):
+        return self.ebc["execution-bootnode-enode-file"]
+
+    def get_eb_enode_dir(self, unused):
+        return self.ebc["execution-bootnode-enode-dir"]
+
+    def get_cb_ip_addr(self, unused):
+        return self.cbc["consensus-bootnode-start-ip-addr"]
+
+    def get_cb_private_key(self, unused):
+        return self.cbc["consensus-bootnode-private-key"]
+
+    def get_cb_enr_port(self, unused):
+        return self.cbc["consensus-bootnode-enr-port"]
+
+    def get_cb_api_port(self, unused):
+        return self.cbc["consensus-bootnode-api-port"]
+
+    def get_cb_enr_file(self, unused):
+        return self.cbc["consensus-bootnode-enr-file"]
 
     # Generic
     def get_client_config(self, var):
@@ -211,9 +269,8 @@ class ClientWriter(object):
         self.network_name = self.gc["docker"]["network-name"]
         self.volumes = [str(x) for x in self.gc["docker"]["volumes"]]
 
-        # be default there are not consensus/execution client configs for a module
-        self.ccc = None
-        self.ecc = None
+        # setup the configs for various modules needed by this client
+        self._setup_configs()
 
         self.env = []
 
@@ -261,21 +318,97 @@ class ClientWriter(object):
             "execution-genesis",
             "terminaltotaldifficulty",
         ]
+        self.base_execution_bootnode_env_vars = [
+            "netrestrict-range",
+            "execution-bootnode-start-ip-addr",
+            "execution-bootnode-enode",
+            "execution-bootnode-disc-port",
+            "execution-bootnode-private-key",
+            "execution-bootnode-enode-file",
+            "execution-bootnode-enode-dir",
+            "execution-bootnode-verbosity",
+        ]
+        self.base_consensus_bootnode_env_vars = [
+            "consensus-bootnode-start-ip-addr",
+            "consensus-bootnode-private-key",
+            "consensus-bootnode-enr-port",
+            "consensus-bootnode-api-port",  # should drop when we add more bootnodes
+            "consensus-bootnode-enr-file",
+        ]
 
-        # if we have a consensus config or execution config set the ecc and ccc
-        if "consensus-config" in client_config:
-            self.ccc = global_config["consensus-configs"][
-                client_config["consensus-config"]
+    def _setup_configs(self):
+        """
+        Modules for various clients can include multiple configs and
+        sometimes require some information for those.
+
+        consensus-client:
+            1. consensus-config (for its beacon and validator args)
+            2. consensus-bootnode (bootnode to point the beacon node at)
+            also inherits from the execution client if it is running one.
+
+        execution-client:
+            1. execution-config (for the local execution client if it has one)
+            2. execution-bootnode (bootnode to point the execution client at)
+
+        consensus-bootnode:
+            1. consensus-bootnode
+
+        execution-bootnode:
+            1. execution-bootnode
+
+        a consensus client has one config: consensus-config
+            if local execution node the consensus-config has the config.
+            consensus-bootnode contained in consensus-config
+            execution-bootnode contained in execution-config
+
+        a execution client has one config: exeuction-config
+            execution bootnode contained in that config
+
+        a consensus bootnode has one config: consensus-bootnode-config
+        an execution bootnode has on config: execution-bootnode-config
+        """
+        self.ecc = None  # execution client config
+        self.ccc = None  # consensus client config
+        self.ebc = None  # execution bootnode config
+        self.cbc = None  # consensus bootnode config
+
+        print(f"Setting up configs for {self.name}: {self.cc}")
+        # Consensus client check:
+        if "consensus-config" in self.cc:
+            self.ccc = self.gc["consensus-configs"][self.cc["consensus-config"]]
+
+            self.cbc = self.gc["consensus-bootnode-configs"][
+                self.ccc["consensus-bootnode-config"]
             ]
             # if there is also a local execution client
             if self.ccc["local-execution-client"]:
-                self.ecc = self.ccc["execution-config"]
-
-        # if it has a execution config then add on the execution consensus vars.
-        if "execution-config" in client_config:
-            self.ecc = global_config["execution-configs"][
-                client_config["execution-config"]
+                self.ecc = self.gc["execution-configs"][self.ccc["execution-config"]]
+                print(self.ecc)
+            self.ebc = self.gc["execution-bootnode-configs"][
+                self.ecc["execution-bootnode-config"]
             ]
+            return
+
+        # Execution client check
+        if "execution-config" in self.cc:
+            self.ecc = self.gc["execution-configs"][self.cc["execution-config"]]
+            self.ebc = self.gc["execution-bootnode-configs"][
+                self.ecc["execution-bootnode-config"]
+            ]
+            return
+
+        # consensus bootnode check
+        if "consensus-bootnode-config" in self.cc:
+            self.cbc = self.gc["consensus-bootnode-configs"][
+                self.cc["consensus-bootnode-config"]
+            ]
+            return
+
+        if "execution-bootnode-config" in self.cc:
+            self.ebc = self.gc["execution-bootnode-configs"][
+                self.cc["execution-bootnode-config"]
+            ]
+            return
 
     def _environment(self):
         """
@@ -283,9 +416,16 @@ class ClientWriter(object):
         """
         environment = []
         # base case.
-        if self.ecc is None and self.ccc is None and "additional-env" not in self.cc:
+        if (
+            self.ecc is None
+            and self.ccc is None
+            and "additional-env" not in self.cc
+            and self.ebc is None
+            and self.cbc is None
+        ):
             return environment
 
+        print(f"environment setup for: {self.cc}")
         config_env = ConfigurationEnvironment(self)
         # consensus client env vars
         if self.ccc is not None:
@@ -305,6 +445,16 @@ class ClientWriter(object):
             for ceev in self.consensus_with_execution_env_vars:
                 environment.append(config_env.get_environment_var(ceev))
         # any additional env vars
+        if self.cbc is not None:
+            print("adding consensus bootnode enviroment for module")
+            for bcbev in self.base_consensus_bootnode_env_vars:
+                environment.append(config_env.get_environment_var(bcbev))
+
+        if self.ebc is not None:
+            print("adding consensus bootnode enviroment for module")
+            for bebev in self.base_execution_bootnode_env_vars:
+                environment.append(config_env.get_environment_var(bebev))
+
         if "additional-env" in self.cc:
             for k, v in self.cc["additional-env"].items():
                 print(f"adding additional envs {k} {v}")
@@ -439,10 +589,25 @@ class Eth2BootnodeClientWriter(ClientWriter):
         ]
 
 
-class GethBootnodeClientWriter(ClientWriter):
+class ExecutionBootnodeClientWriter(ClientWriter):
     def __init__(self, global_config, client_config, curr_node):
         super().__init__(
             global_config, client_config, f"geth-bootnode-{curr_node}", curr_node
+        )
+        self.out = self.config()
+
+    def _environment(self):
+        environment = []
+        config_env = ConfigurationEnvironment(self)
+        # consensus client env vars
+        for bebev in self.base_execution_bootnode_env_vars:
+            environment.append(config_env.get_environment_var(bebev))
+
+
+class GethBootnodeClientWriter(ClientWriter):
+    def __init__(self, global_config, client_config, curr_node):
+        super().__init__(
+            global_config, client_config, f"geth-bootstrapper-{curr_node}", curr_node
         )
         self.out = self.config()
 
@@ -501,8 +666,8 @@ class DockerComposeWriter(object):
             "geth-bootstrapper": ClientWriter,
             "ethereum-testnet-bootstrapper": TestnetBootstrapper,
             "generic-module": GenericModule,
-            "eth2-bootnode": Eth2BootnodeClientWriter,
-            "geth-bootnode": GethBootnodeClientWriter,
+            "eth2-bootnode": ClientWriter,
+            "geth-bootnode": ClientWriter,
         }
 
     def _base(self):

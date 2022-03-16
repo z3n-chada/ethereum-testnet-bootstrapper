@@ -34,6 +34,9 @@ class GethIPC(object):
     def get_enode(self):
         return self.ipc.geth.admin.node_info()["enode"]
 
+    def add_peer(self, enode):
+        self.ipc.geth.admin.addPeer(enode)
+
 
 if __name__ == "__main__":
     ipc_path = "data/local_testnet/geth/geth.ipc"
