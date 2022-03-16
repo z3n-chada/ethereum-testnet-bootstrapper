@@ -260,10 +260,7 @@ class ClientWriter(object):
         # used when we have multiple of the same client.
         self.curr_node = curr_node
         # constants.
-        if "client-name" in self.cc:
-            self.name = f"{self.cc['client-name']}-node-{curr_node}"
-        else:
-            self.name = f"{self.cc['container-name']}-node-{curr_node}"
+        self.name = f"{self.cc['container-name']}-node-{curr_node}"
         self.image = self.cc["image"]
         self.tag = self.cc["tag"]
         self.network_name = self.gc["docker"]["network-name"]
@@ -692,22 +689,23 @@ class DockerComposeWriter(object):
 
         for module in client_modules:
             if module in self.gc:
-                for client_module in self.gc[module]:
-                    config = self.gc[module][client_module]
-                    if not "client-name" in config:
-                        exception = f"module {module}, {client_module} expects client-name attribute\n"
-                        exception += f"\tfound: {config.keys()}\n"
-                        raise Exception(exception)
-                    client = config["client-name"]
-                    print(f"Generating docker-compose entry for {client}")
-                    for n in range(config["num-nodes"]):
-                        if module == "generic-modules":
-                            writer = self.client_writers["generic-module"](
-                                self.gc, config, n
-                            )
-                        else:
-                            writer = self.client_writers[client](self.gc, config, n)
-                        self.yaml["services"][writer.name] = writer.get_config()
+                if self.gc[module] is not None:
+                    for client_module in self.gc[module]:
+                        config = self.gc[module][client_module]
+                        if not "client-name" in config:
+                            exception = f"module {module}, {client_module} expects client-name attribute\n"
+                            exception += f"\tfound: {config.keys()}\n"
+                            raise Exception(exception)
+                        client = config["client-name"]
+                        print(f"Generating docker-compose entry for {client}")
+                        for n in range(config["num-nodes"]):
+                            if module == "generic-modules":
+                                writer = self.client_writers["generic-module"](
+                                    self.gc, config, n
+                                )
+                            else:
+                                writer = self.client_writers[client](self.gc, config, n)
+                            self.yaml["services"][writer.name] = writer.get_config()
 
         for consensus_client in self.gc["consensus-clients"]:
             config = self.gc["consensus-clients"][consensus_client]
