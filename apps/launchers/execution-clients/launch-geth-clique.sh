@@ -34,8 +34,16 @@ while [ ! -f "/data/execution-clients-ready" ]; do
     sleep 1
     echo "Waiting on exeuction genesis"
 done
+
 echo "Detected execution genesis"
 
+while [ ! -f "$EXECUTION_BOOTNODE_ENODE_FILE" ]; 
+do sleep 1
+    echo "waiting for the execution bootnode to come up."
+done
+
+# ENODE="$EXECUTION_BOOTNODE_ENODE@$EXECUTION_BOOTNODE_START_IP_ADDR:$EXECUTION_BOOTNODE_DISC_PORT"
+echo "using bootnode: $ENODE"
 while [ ! -f "/data/local_testnet/execution-bootstrapper/enodes.txt" ]; do
     sleep 1
     echo "Waiting on the enodes /data/local_testnet/execution-bootstrapper/enodes.txt"
@@ -44,6 +52,9 @@ done
 echo "found enodes"
 ENODES=`cat /data/local_testnet/execution-bootstrapper/enodes.txt | tr -d "\n"`
 echo $ENODES
+#get the bootnode we are going to use.
+
+
 echo "Initing the genesis"
 geth init \
     --datadir "$EXECUTION_DATA_DIR" \
@@ -67,5 +78,7 @@ geth \
   --netrestrict "$NETRESTRICT_RANGE" \
   --keystore '/source/apps/data/geth-keystores/' \
   --rpc.allow-unprotected-txs "$MERGE_ARGS" \
+  --maxpeers=200 \
+  --v5disc \
   --vmodule=rpc=5 
 

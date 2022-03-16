@@ -48,10 +48,20 @@ geth init \
 echo "starting the python script to save the enodes"
 #python3 /source/apps/store_geth_enr.py --geth-ipc "$EXECUTION_DATA_DIR/geth.ipc" --enode-file "$EXECUTION_DATA_DIR/enodes.txt" & 
 ( sleep 5; geth attach $EXECUTION_DATA_DIR/geth.ipc --exec admin.nodeInfo.enr | tr -d "\"" > $EXECUTION_DATA_DIR/enodes.txt ) &
+( sleep 30; python3 /source/apps/really-dumb-peering-workaround.py) &
+
+
+#while [ ! -f "$EXECUTION_BOOTNODE_ENODE_FILE" ]; 
+#do sleep 1
+#    echo "waiting for the execution bootnode to come up."
+#done
+
+ENODE="$EXECUTION_BOOTNODE_ENODE@$EXECUTION_BOOTNODE_START_IP_ADDR:$EXECUTION_BOOTNODE_DISC_PORT"
+echo "using bootnode: $ENODE"
 
 echo "Starting geth"
-
 geth \
+  --nodekeyhex="522d5e0fd25b33b2d9a28c0376013c3704aa79c1dc5424d107531f22d54f9d58" \
   --datadir="$EXECUTION_DATA_DIR" \
   --networkid="$NETWORK_ID" \
   --port="$EXECUTION_P2P_PORT" \
@@ -68,4 +78,6 @@ geth \
   --unlock="0x51Dd070D1f6f8dB48CA5b0E47D7e899aea6b1AF5" --password=/data/geth-account-passwords.txt --mine \
   --allow-insecure-unlock \
   --rpc.allow-unprotected-txs "$MERGE_ARGS" \
+  --maxpeers=200 \
+  --v5disc \
   --vmodule=rpc=5 

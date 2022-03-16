@@ -28,7 +28,7 @@ def setup_environment():
         shutil.rmtree(str(testnet_dir))
     testnet_dir.mkdir()
 
-    #we want a clean genesis each time we run the bootstrapper.
+    # we want a clean genesis each time we run the bootstrapper.
     execution_bootstrapper_dir = pathlib.Path(
         global_config["files"]["execution-bootstrap-dir"]
     )
@@ -84,6 +84,7 @@ def write_docker_compose():
     docker_compose = global_config["files"]["docker-compose"]
     with open(docker_compose, "w", opener=rw_all_user) as f:
         yaml.dump(dcyaml, f)
+
 
 
 def bootstrap_testnet(args):
