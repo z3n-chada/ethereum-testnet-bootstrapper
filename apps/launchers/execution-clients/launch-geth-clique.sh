@@ -37,11 +37,6 @@ done
 
 echo "Detected execution genesis"
 
-while [ ! -f "$EXECUTION_BOOTNODE_ENODE_FILE" ]; 
-do sleep 1
-    echo "waiting for the execution bootnode to come up."
-done
-
 # ENODE="$EXECUTION_BOOTNODE_ENODE@$EXECUTION_BOOTNODE_START_IP_ADDR:$EXECUTION_BOOTNODE_DISC_PORT"
 echo "using bootnode: $ENODE"
 while [ ! -f "/data/local_testnet/execution-bootstrapper/enodes.txt" ]; do
