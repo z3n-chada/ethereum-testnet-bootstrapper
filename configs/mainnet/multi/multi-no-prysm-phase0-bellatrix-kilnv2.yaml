@@ -56,7 +56,7 @@ config-params:
   consensus-layer:
     genesis-delay: 225 # eth1-follow-distance*seconds-per-eth1-block + 1
     preset-base: 'mainnet'
-    min-genesis-active-validator-count: 20 # custom preseeded into genesis state.
+    min-genesis-active-validator-count: 16 # custom preseeded into genesis state.
     eth1-follow-distance: 16 # allow past eth1 blocks to be processed.
 
     forks:
@@ -210,25 +210,6 @@ execution-clients:
 
 consensus-clients:
   # nimbus nodes whose deposits were done pre-genesis
-  prysm-genesis-deposits:
-    client-name: 'prysm'
-    # docker-compose
-    image: "prysm-client-geth"
-    tag: "kiln"
-    container-name: "prysm-client-geth"
-    entrypoint: "/source/apps/launchers/consensus-clients/launch-prysm.sh"
-    start-ip-addr: "10.0.20.10"
-    depends: "ethereum-testnet-bootstrapper"
-    # beacon/validator flags
-    consensus-config: "base-consensus-client"
-
-    testnet-dir: '/data/local_testnet/prysm'
-    validator-offset-start: 0 # so validators of different clients don't overlap
-    # args specific to prysm nodes, these are loaded into the dockers env at runtime.
-    additional-env:
-      debug-level: "debug"
-      wallet-path: '/data/local_testnet/prysm/wallet-password.txt'
-      validator-password: "testnet-password"
 
   teku-genesis-deposits:
     client-name: 'teku'
@@ -242,7 +223,7 @@ consensus-clients:
 
     consensus-config: "base-consensus-client"
     testnet-dir: '/data/local_testnet/teku'
-    validator-offset-start: 4 # so validators of different clients don't overlap
+    validator-offset-start: 0 # so validators of different clients don't overlap
 
     # args specific to teku nodes.
     additional-env:
@@ -261,7 +242,7 @@ consensus-clients:
 
     testnet-dir: '/data/local_testnet/nimbus'
     consensus-config: "base-consensus-client"
-    validator-offset-start: 8 # so validators of different clients don't overlap
+    validator-offset-start: 4 # so validators of different clients don't overlap
 
     additional-env:
       debug-level: "trace"
@@ -279,7 +260,7 @@ consensus-clients:
 
     consensus-config: "base-consensus-client"
     testnet-dir: '/data/local_testnet/lighthouse'
-    validator-offset-start: 12 # so validators of different clients don't overlap
+    validator-offset-start: 8 # so validators of different clients don't overlap
     
     additional-env:
       debug-level: "debug"
@@ -296,7 +277,7 @@ consensus-clients:
 
     consensus-config: "base-consensus-client"
     testnet-dir: '/data/local_testnet/lodestar'
-    validator-offset-start: 16 # so validators of different clients don't overlap
+    validator-offset-start: 12 # so validators of different clients don't overlap
     
     additional-env:
       debug-level: "debug"
@@ -311,7 +292,7 @@ testnet-bootstrapper:
     tag: "latest"
     container-name: "testnet-bootstrapper"
     start-ip-addr: "10.0.20.202"
-    config-file: '/source/configs/mainnet/multi/multi-phase0-bellatrix-kilnv2.yaml'
+    config-file: '/source/configs/mainnet/multi/multi-no-prysm-phase0-bellatrix-kilnv2.yaml'
 
 generic-modules:
   status-check:
@@ -321,5 +302,5 @@ generic-modules:
     container-name: "status-check"
     start-ip-addr: "10.0.20.206"
     num-nodes: 1
-    entrypoint: "python3 /source/apps/status-check.py --config /source/configs/mainnet/multi/multi-phase0-bellatrix-kilnv2.yaml --phase0-slot 32 --experiment-slot 128 --phase1-slot 128 --phase2-slot 160 --genesis-delay 225 --number-of-checks 2"
+    entrypoint: "python3 /source/apps/status-check.py --config /source/configs/mainnet/multi/multi-no-prysm-phase0-bellatrix-kilnv2.yaml --phase0-slot 32 --experiment-slot 128 --phase1-slot 128 --phase2-slot 160 --genesis-delay 225 --number-of-checks 2"
 
