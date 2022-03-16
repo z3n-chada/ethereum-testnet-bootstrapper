@@ -34,6 +34,20 @@ mainnet_defaults = {
     "churn-limit-quotient": 65536,
 }
 
+potential_overrides = ["eth1-follow-distance", "min-genesis-active-validator-count"]
+
+
+def get_potential_overrides(global_config):
+    # fetch potential overrides for config-params
+    overrides = {}
+    cc = global_config["config-params"]["consensus-layer"]
+    ec = global_config["config-params"]["execution-layer"]
+    print(cc, flush=True)
+    for po in potential_overrides:
+        if po in cc:
+            overrides[po] = cc[po]
+
+    return overrides
 
 def create_consensus_config(global_config):
     cp = global_config["config-params"]
@@ -49,6 +63,11 @@ def create_consensus_config(global_config):
         raise Exception(
             f"Invalid preset base for consensus config: {cc['preset-base']}"
         )
+
+    overrides = get_potential_overrides(global_config)
+    for k, v in overrides.items():
+        pd[k] = v
+
     return f"""
 PRESET_BASE: \"{cc['preset-base']}\"
 
@@ -88,7 +107,6 @@ SECONDS_PER_ETH1_BLOCK: {ec['seconds-per-eth1-block']}
 MIN_VALIDATOR_WITHDRAWABILITY_DELAY: 256
 SHARD_COMMITTEE_PERIOD: {pd['shard-committee-period']}
 ETH1_FOLLOW_DISTANCE: {pd['eth1-follow-distance']}
-EPOCHS_PER_ETH1_VOTING_PERIOD: {pd['epochs-per-eth1-voting-period']}
 
 # Validator cycle
 # ---------------------------------------------------------------
@@ -120,3 +138,5 @@ DEPOSIT_NETWORK_ID: {cp['deposit-network-id']}
 # Allocated in Execution-layer genesis
 DEPOSIT_CONTRACT_ADDRESS: {cp['deposit-contract-address']}
 """
+
+#EPOCHS_PER_ETH1_VOTING_PERIOD: {pd['epochs-per-eth1-voting-period']}

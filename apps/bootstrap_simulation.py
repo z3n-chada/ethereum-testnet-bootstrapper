@@ -28,6 +28,14 @@ def setup_environment():
         shutil.rmtree(str(testnet_dir))
     testnet_dir.mkdir()
 
+    # we want a clean genesis each time we run the bootstrapper.
+    execution_bootstrapper_dir = pathlib.Path(
+        global_config["files"]["execution-bootstrap-dir"]
+    )
+    if execution_bootstrapper_dir.exists():
+        shutil.rmtree(str(execution_bootstrapper_dir))
+        "/data/execution-bootstrapper"
+
     # remove all checkpoints
     e_checkpoint = global_config["files"]["execution-checkpoint"]
     c_checkpoint = global_config["files"]["consensus-checkpoint"]
@@ -58,7 +66,7 @@ def generate_consensus_config():
 def generate_consensus_genesis():
     global global_config
     # we now use eth1_timestamp and block notation
-    geth_endpoint = GethIPC("/data/local_testnet/geth/geth.ipc")
+    geth_endpoint = GethIPC("/data/local_testnet/execution-bootstrapper/geth.ipc")
     latest_block = geth_endpoint.get_block()
     block_hash = latest_block["hash"].hex()[2:]
     block_time = latest_block["timestamp"]
@@ -76,6 +84,7 @@ def write_docker_compose():
     docker_compose = global_config["files"]["docker-compose"]
     with open(docker_compose, "w", opener=rw_all_user) as f:
         yaml.dump(dcyaml, f)
+
 
 
 def bootstrap_testnet(args):

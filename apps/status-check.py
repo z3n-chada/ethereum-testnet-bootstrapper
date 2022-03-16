@@ -8,16 +8,20 @@
         allow the network to come up, confirm that things are behaving properly.
 
     Phase1:
-        runs post experiment. If there is chaos, there should be some failing
-        testcases here.
-
+    	experiment time -- chaos happens and disrupts to network, expect failing
+    	test cases.
+    	
     Phase2:
-        after some time has passed and the experiment is over we check to see
-        if we were able to heal.
+        runs post-experiment and is a recovery period -- there may be some failing
+        test cases here.
+
+    Phase3:
+        post-recovery verification -- there should not be any failing test cases 
+        here.
 """
 import time
-
 from modules.BeaconApi import APIRequest, get_api_manager_from_config
+import concurrent.futures
 
 # api_requests to run to comapre nodes.
 health_check_apis = {
@@ -50,16 +54,16 @@ def perform_experiment():
     # import experiment modules here.
 
 
-def check_health(manager, num_checks, check_delay):
+def check_health(manager, num_checks, check_delay, log_prefix):
     for i in range(num_checks):
         for qp in health_check_apis["queryPaths"]:
             vals = []
             for client in manager.clients.values():
                 vals.append(str(qp.get_response(client)))
             if len(list(set(vals))) > 1:
-                print("Error")
+                print(f"{log_prefix}: Error, query={qp}")
             else:
-                print("Consensus")
+                print(f"{log_prefix}: Consensus, query={qp}")
 
         for sp in statePaths:
             for s in states:
@@ -68,28 +72,27 @@ def check_health(manager, num_checks, check_delay):
                 for client in manager.clients.values():
                     vals.append(str(r.get_response(client)))
                 if len(list(set(vals))) > 1:
-                    print("Error")
+                    print(f"{log_prefix}: Error, query={r}")
                 else:
-                    print("Consensus")
+                    print(f"{log_prefix}: Consensus, query={r}")
 
         time.sleep(check_delay)
 
 
 def wait_for_slot(manager, goal_slot):
-    goal = [goal_slot for x in range(len(manager.clients.keys()))]
-    curr_slots = []
-    # should be more robust.
-    while curr_slots != goal:
-        curr_slots = []
-        for c in manager.clients:
-            slot = (
-                manager.clients[c]
-                .get_head_block_header()
-                .data["header"]["message"]["slot"]
-            )
-            curr_slots.append(int(slot))
-        time.sleep(1)
-        print(curr_slots, flush=True)
+    node_count = len(manager.clients)
+    curr_slots = [0 for _ in manager.clients.keys()]
+    with concurrent.futures.ThreadPoolExecutor() as e:
+        while len([s for s in curr_slots if s >= goal_slot]) < node_count:
+            tasks = [e.submit(c.get_head_block_header) for c in manager.clients.values()]
+            # get_head_block_header() has a built-in retry to protect against node failures. If
+            # all retries have been exhausted, the response has data set to None.
+            # If the response data is None, we don't want the loop to continue indefinitely so 
+            # return the goal slot.
+            resps = [t.result() for t in tasks]
+            curr_slots = [int(r.data["header"]["message"]["slot"]) if r.data else goal_slot for r in resps]
+            print(curr_slots, flush=True)
+            time.sleep(5)
 
 
 if __name__ == "__main__":
@@ -168,18 +171,19 @@ if __name__ == "__main__":
 
     # wait for network init.
     time.sleep(args.genesis_delay)
-    # phase0 testing.
+    # phase0
     wait_for_slot(manager, args.phase0_slot)
-    check_health(manager, args.num_checks, args.check_delay)
-
-    # start experiment
-    wait_for_slot(manager, args.experiment_slot)
+    
+    # phase1
     perform_experiment()
-
-    # start phase1
+    check_health(manager, args.num_checks, args.check_delay, "phase1")
     wait_for_slot(manager, args.phase1_slot)
-    check_health(manager, args.num_checks, args.check_delay)
-
-    # start phase2
+    
+    # phase2
+    check_health(manager, args.num_checks, args.check_delay, "phase2")
     wait_for_slot(manager, args.phase2_slot)
-    check_health(manager, args.num_checks, args.check_delay)
+    
+    # phase3
+    check_health(manager, args.num_checks, args.check_delay, "phase3")
+    
+    print("workload_complete", flush=True)
