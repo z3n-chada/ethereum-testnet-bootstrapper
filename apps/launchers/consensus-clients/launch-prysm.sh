@@ -61,7 +61,7 @@ validator \
   --chain-config-file="$TESTNET_DIR/config.yaml" \
   --beacon-rpc-provider="127.0.0.1:$BEACON_RPC_PORT" \
   --monitoring-host=0.0.0.0 --monitoring-port="$VALIDATOR_METRIC_PORT" \
-  --graffiti="prysm-kiln-minimal-node:$IP_ADDR" \
+  --graffiti="prysm-kiln:$IP_ADDR" \
   --wallet-dir="$NODE_DIR" \
   --wallet-password-file="$TESTNET_DIR/wallet-password.txt" \
   --verbosity=debug
