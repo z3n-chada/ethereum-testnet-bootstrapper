@@ -14,6 +14,7 @@ from modules.DockerCompose import generate_docker_compose
 # from modules.GethGenesis import create_geth_genesis
 from modules.ExecutionGenesis import ExecutionGenesisWriter
 from modules.GethIPCUtils import GethIPC
+from modules.ExecutionRPC import ExecutionClientJsonRPC
 from modules.TestnetGenerators import generate_consensus_testnet_dirs
 
 global global_config
@@ -21,6 +22,21 @@ global global_config
 
 def rw_all_user(path, flag):
     return os.open(path, flag, 0o666)
+
+
+def get_execution_bootstrapper_block():
+    # get the bootstrapper and ask for the latest block.
+    bootstrapper = global_config["execution-clients"][
+        global_config["config-params"]["execution-layer"]["execution-bootstrapper"]
+    ]
+    bs_ip = bootstrapper["start-ip-addr"]
+    bs_http_port = global_config["execution-configs"][bootstrapper["execution-config"]][
+        "execution-http-port"
+    ]
+
+    bs_rpc = ExecutionClientJsonRPC(bs_ip, bs_http_port, timeout=60)
+    block = bs_rpc.eth_get_block(blk="latest")
+    return block
 
 
 def setup_environment():
@@ -50,12 +66,18 @@ def setup_environment():
 
 
 def generate_execution_genesis():
+    egw = ExecutionGenesisWriter(global_config)
     # geth first
     geth_genesis_path = global_config["files"]["geth-genesis"]
-    egw = ExecutionGenesisWriter(global_config)
     geth_genesis = egw.create_geth_genesis()
     with open(geth_genesis_path, "w", opener=rw_all_user) as f:
         json.dump(geth_genesis, f)
+
+    besu_genesis_path = global_config["files"]["besu-genesis"]
+    besu_genesis = egw.create_besu_genesis()
+    with open(besu_genesis_path, "w", opener=rw_all_user) as f:
+        json.dump(besu_genesis, f)
+
     e_checkpoint = global_config["files"]["execution-checkpoint"]
 
     with open(e_checkpoint, "w", opener=rw_all_user) as f:
@@ -71,9 +93,13 @@ def generate_consensus_config():
 def generate_consensus_genesis():
     global global_config
     # we now use eth1_timestamp and block notation
-    geth_endpoint = GethIPC("/data/local_testnet/execution-bootstrapper/geth.ipc")
-    latest_block = geth_endpoint.get_block()
-    block_hash = latest_block["hash"].hex()[2:]
+
+    # geth_endpoint = GethIPC("/data/local_testnet/execution-bootstrapper/geth.ipc")
+    # latest_block = geth_endpoint.get_block()
+    # block_hash = latest_block["hash"].hex()[2:]
+    # block_time = latest_block["timestamp"]
+    latest_block = get_execution_bootstrapper_block()
+    block_hash = latest_block["hash"][2:]
     block_time = latest_block["timestamp"]
     print(f"{block_hash} : {block_time}")
     preset_base = global_config["config-params"]["consensus-layer"]["preset-base"]

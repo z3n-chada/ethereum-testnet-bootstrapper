@@ -38,15 +38,16 @@ done
 echo "Detected execution genesis"
 
 # ENODE="$EXECUTION_BOOTNODE_ENODE@$EXECUTION_BOOTNODE_START_IP_ADDR:$EXECUTION_BOOTNODE_DISC_PORT"
-echo "using bootnode: $ENODE"
-while [ ! -f "/data/local_testnet/execution-bootstrapper/enodes.txt" ]; do
-    sleep 1
-    echo "Waiting on the enodes /data/local_testnet/execution-bootstrapper/enodes.txt"
-done
-
-echo "found enodes"
-ENODES=`cat /data/local_testnet/execution-bootstrapper/enodes.txt | tr -d "\n"`
-echo $ENODES
+##"we no longer use this method for now"
+#echo "using bootnode: $ENODE"
+#while [ ! -f "/data/local_testnet/execution-bootstrapper/enodes.txt" ]; do
+#    sleep 1
+#    echo "Waiting on the enodes /data/local_testnet/execution-bootstrapper/enodes.txt"
+#done
+#
+#echo "found enodes"
+#ENODES=`cat /data/local_testnet/execution-bootstrapper/enodes.txt | tr -d "\n"`
+#echo $ENODES
 #get the bootnode we are going to use.
 
 
@@ -57,8 +58,8 @@ geth init \
 
 echo "Starting geth"
 
+# --bootnodes "$ENODES" \
 geth \
-  --bootnodes "$ENODES" \
   --datadir="$EXECUTION_DATA_DIR" \
   --networkid="$NETWORK_ID" \
   --port "$EXECUTION_P2P_PORT" \
