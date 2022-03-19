@@ -114,17 +114,15 @@ class ExecutionGenesisWriter(object):
 
         if "clique" in self.ec:
             if self.ec["clique"]["enabled"]:
-                clique = {}
-                params = {
-                    "blockperiodseconds": self.ec["seconds-per-eth1-block"],
-                    "epochlength": self.ec["clique"]["epoch"],
+                clique = {
+                    "blockPeriodSeconds": self.ec["seconds-per-eth1-block"],
+                    "epochLength": self.ec["clique"]["epoch"],
                 }
-                clique["params"] = params
                 signers = "".join(s for s in self.ec["clique"]["signers"])
                 extradata = f"0x{'0'*64}{signers}{'0'*130}"
 
                 self.genesis["extraData"] = extradata
-                self.genesis['config']["clique"] = clique
+                self.genesis["config"]["clique"] = clique
         else:
             self.genesis["config"]["ethash"] = {}
             raise Exception("not implemented in launchers")
@@ -144,3 +142,88 @@ class ExecutionGenesisWriter(object):
 
         return self.genesis
 
+    def create_nethermind_genesis(self):
+        self.genesis = {
+            "name": "kilnv2",
+            "engine": {},
+            "params": {
+                "gasLimitBoundDivisor": "0x400",
+                "registrar": "0x0000000000000000000000000000000000000000",
+                "accountStartNonce": "0x0",
+                "maximumExtraDataSize": "0xffff",
+                "minGasLimit": "0x1388",
+                "networkID": hex(int(self.ec["chain-id"])),
+                "MergeForkIdTransition": hex(int(self.ec["merge-fork-block"])),
+                "eip150Transition": "0x0",
+                "eip158Transition": "0x0",
+                "eip160Transition": "0x0",
+                "eip161abcTransition": "0x0",
+                "eip161dTransition": "0x0",
+                "eip155Transition": "0x0",
+                "eip140Transition": "0x0",
+                "eip211Transition": "0x0",
+                "eip214Transition": "0x0",
+                "eip658Transition": "0x0",
+                "eip145Transition": "0x0",
+                "eip1014Transition": "0x0",
+                "eip1052Transition": "0x0",
+                "eip1283Transition": "0x0",
+                "eip1283DisableTransition": "0x0",
+                "eip152Transition": "0x0",
+                "eip1108Transition": "0x0",
+                "eip1344Transition": "0x0",
+                "eip1884Transition": "0x0",
+                "eip2028Transition": "0x0",
+                "eip2200Transition": "0x0",
+                "eip2565Transition": "0x0",
+                "eip2929Transition": "0x0",
+                "eip2930Transition": "0x0",
+                "eip1559Transition": "0x0",
+                "eip3198Transition": "0x0",
+                "eip3529Transition": "0x0",
+                "eip3541Transition": "0x0",
+            },
+            "genesis": {
+                "seal": {
+                    "ethereum": {
+                        "nonce": "0x1234",
+                        "mixHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                    }
+                },
+                "difficulty": "0x01",
+                "author": "0x0000000000000000000000000000000000000000",
+                "timestamp": hex(self.now),
+                "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                "extraData": "",
+                "gasLimit": "0x400000",
+            },
+            "accounts": self.get_allocs(),
+            "nodes": [],
+        }
+
+        if "clique" in self.ec:
+            if self.ec["clique"]["enabled"]:
+                self.genesis["engine"]["clique"] = {
+                    "params": {
+                        "period": hex(self.ec["seconds-per-eth1-block"]),
+                        "epoch": hex(self.ec["clique"]["epoch"]),
+                    }
+                }
+                signers = "".join(s for s in self.ec["clique"]["signers"])
+                extradata = f"0x{'0'*64}{signers}{'0'*130}"
+                self.genesis["genesis"]["extraData"] = extradata
+            else:
+                self.genesis["engine"]["Ethash"] = {
+                    "params": {
+                        "minimumDifficulty": "0x20000",
+                        "difficultyBoundDivisor": "0x800",
+                        "durationLimit": "0xd",
+                        "blockReward": {"0x0": "0x1BC16D674EC80000"},
+                        "homesteadTransition": "0x0",
+                        "eip100bTransition": "0x0",
+                        "difficultyBombDelays": {},
+                    }
+                }
+                raise Exception("ethash network not implemented")
+
+        return self.genesis
