@@ -44,7 +44,10 @@ class APIRequest(object):
             except requests.exceptions.RequestException as e:
                 print(e, file=sys.stderr, flush=True)
             if status_code != 200:
-                print(f"\tattempt={attempt}/{self.retries}; delay={self.retry_delay}s", flush=True)
+                print(
+                    f"\tattempt={attempt}/{self.retries}; delay={self.retry_delay}s",
+                    flush=True,
+                )
                 time.sleep(self.retry_delay)
                 attempt += 1
             else:
@@ -86,9 +89,33 @@ class BeaconAPIClient(object):
             raise Exception("Failed to get genesis")
         return genesis_time
 
-    def get_head_block_header(self):
-        api_request = APIRequest("/eth/v1/beacon/headers/head")
+    def get_block_header(self, block_number, timeout=5, retries=30, retry_delay=15):
+        api_request = APIRequest(
+            f"/eth/v1/beacon/headers/{block_number}", timeout, retries, retry_delay
+        )
         return api_request.get_response(self)
+
+    def get_head_block_header(self):
+        return self.get_block_header("head")
+
+    def get_block_roots(self, max_block=None, version=2):
+        """
+        Find the current block_header and
+        extract all roots in the list from 0 to that number.
+        """
+        if max_block is None:
+            block_header = self.get_head_block_header()
+            slot = block_header.data["header"]["message"]["slot"]
+
+        else:
+            slot = max_block
+
+        blocks = []
+
+        for i in range(int(slot)):
+            blocks.append(self.get_block_header(i, timeout=1, retries=1, retry_delay=1))
+
+        return blocks
 
 
 def get_api_manager_from_config(path):

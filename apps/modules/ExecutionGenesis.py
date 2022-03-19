@@ -54,29 +54,93 @@ class ExecutionGenesisWriter(object):
             "timestamp": str(self.now),
         }
 
-        config = {}
-        config["chainId"] = self.ec["chain-id"]
-        config["homesteadBlock"] = 0
-        config["eip150Block"] = 0
-        config["eip155Block"] = 0
-        config["eip158Block"] = 0
-        config["byzantiumBlock"] = 0
-        config["constantinopleBlock"] = 0
-        config["petersburgBlock"] = 0
-        config["istanbulBlock"] = 0
-        config["berlinBlock"] = 0
-        config["londonBlock"] = 0
-        config["mergeForkBlock"] = self.ec["merge-fork-block"]
-        config["terminalTotalDifficulty"] = self.ec["terminal-total-difficulty"]
+        config = {
+            "chainId": self.ec["chain-id"],
+            "homesteadBlock": 0,
+            "eip150Block": 0,
+            "eip155Block": 0,
+            "eip158Block": 0,
+            "byzantiumBlock": 0,
+            "constantinopleBlock": 0,
+            "petersburgBlock": 0,
+            "istanbulBlock": 0,
+            "berlinBlock": 0,
+            "londonBlock": 0,
+            "mergeForkBlock": self.ec["merge-fork-block"],
+            "terminalTotalDifficulty": self.ec["terminal-total-difficulty"],
+        }
         self.genesis["config"] = config
 
         if "clique" in self.ec:
             if self.ec["clique"]["enabled"]:
-                signer = self.ec["clique"]["signer"]
-                extradata = f"0x{'00'*32}{signer}{'00'*65}"
+                signers = "".join(s for s in self.ec["clique"]["signers"])
+                extradata = f"0x{'0'*64}{signers}{'0'*130}"
                 self.genesis["extraData"] = extradata
                 self.genesis["config"]["clique"] = {
                     "period": self.ec["seconds-per-eth1-block"],
                     "epoch": self.ec["clique"]["epoch"],
                 }
         return self.genesis
+
+    def create_besu_genesis(self):
+        # "baseFeePerGas": self.ec["base-fee-per-gas"],
+        self.genesis = {
+            "alloc": self.get_allocs(),
+            "coinbase": "0x0000000000000000000000000000000000000000",
+            "difficulty": "0x01",
+            "extraData": "",
+            "gasLimit": "0x400000",
+            "nonce": "0x1234",
+            "mixhash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+            "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+            "timestamp": str(self.now),
+        }
+        config = {
+            "chainId": self.ec["chain-id"],
+            "homesteadBlock": 0,
+            "eip150Block": 0,
+            "eip155Block": 0,
+            "eip158Block": 0,
+            "byzantiumBlock": 0,
+            "constantinopleBlock": 0,
+            "petersburgBlock": 0,
+            "istanbulBlock": 0,
+            "berlinBlock": 0,
+            "londonBlock": 0,
+            "preMergeForkBlock": self.ec["merge-fork-block"],
+            "terminalTotalDifficulty": self.ec["terminal-total-difficulty"],
+        }
+        self.genesis["config"] = config
+
+        if "clique" in self.ec:
+            if self.ec["clique"]["enabled"]:
+                clique = {}
+                params = {
+                    "blockperiodseconds": self.ec["seconds-per-eth1-block"],
+                    "epochlength": self.ec["clique"]["epoch"],
+                }
+                clique["params"] = params
+                signers = "".join(s for s in self.ec["clique"]["signers"])
+                extradata = f"0x{'0'*64}{signers}{'0'*130}"
+
+                self.genesis["extraData"] = extradata
+                self.genesis['config']["clique"] = clique
+        else:
+            self.genesis["config"]["ethash"] = {}
+            raise Exception("not implemented in launchers")
+
+        # besu doesn't use keystores like geth, however you can embed the accounts in the genesis.
+        mnemonic = self.gc["accounts"]["eth1-account-mnemonic"]
+        password = self.gc["accounts"]["eth1-passphrase"]
+        premines = self.gc["accounts"]["eth1-premine"]
+        for acc in premines:
+            acct = w3.eth.account.from_mnemonic(
+                mnemonic, account_path=acc, passphrase=password
+            )
+
+            self.genesis["alloc"][acct.address]["privateKey"] = acct.privateKey.hex()[
+                2:
+            ]
+
+        return self.genesis
+

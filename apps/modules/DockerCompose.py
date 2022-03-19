@@ -40,10 +40,11 @@ class ConfigurationEnvironment(object):
             "execution-p2p-port": self.get_static_port,
             "execution-http-port": self.get_static_port,
             "execution-ws-port": self.get_static_port,
+            "execution-engine-port": self.get_execution_config,
             "http-apis": self.get_execution_config,
             "ws-apis": self.get_execution_config,
-            "chain-id": self.get_execution_config,
-            "network-id": self.get_execution_config,
+            "chain-id": self.get_chain_id,
+            "network-id": self.get_network_id,
             "geth-execution-genesis": self.get_geth_execution_genesis,
             "besu-execution-genesis": self.get_besu_execution_genesis,
             "nethermind-execution-genesis": self.get_nethermind_execution_genesis,
@@ -183,6 +184,12 @@ class ConfigurationEnvironment(object):
             raise Exception(f"Can't find a reference to {goal_port}")
 
     # Global Config
+    def get_network_id(self, _unused="unused"):
+        return self.gc["config-params"]["execution-layer"]["network-id"]
+
+    def get_chain_id(self, _unused="unused"):
+        return self.gc["config-params"]["execution-layer"]["chain-id"]
+
     def get_ttd(self, _unused="unused"):
         return self.gc["config-params"]["execution-layer"]["terminal-total-difficulty"]
 
@@ -312,6 +319,7 @@ class ClientWriter(object):
         self.base_execution_env_vars = [
             "start-ip-addr",
             "execution-data-dir",
+            "execution-engine-port",
             "execution-p2p-port",
             "execution-http-port",
             "execution-ws-port",
@@ -670,6 +678,7 @@ class DockerComposeWriter(object):
             "lighthouse": ClientWriter,
             "lodestar": ClientWriter,
             "nimbus": ClientWriter,
+            "besu": ClientWriter,
             "geth-bootstrapper": ClientWriter,
             "ethereum-testnet-bootstrapper": TestnetBootstrapper,
             "generic-module": GenericModule,

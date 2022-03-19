@@ -133,8 +133,8 @@ TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH: {ec['terminal-block-hash-activation-epoch'
 # Deposit contract
 # ---------------------------------------------------------------
 # Execution layer chain
-DEPOSIT_CHAIN_ID: {cp['deposit-chain-id']}
-DEPOSIT_NETWORK_ID: {cp['deposit-network-id']}
+DEPOSIT_CHAIN_ID: {ec['chain-id']}
+DEPOSIT_NETWORK_ID: {ec['network-id']}
 # Allocated in Execution-layer genesis
 DEPOSIT_CONTRACT_ADDRESS: {cp['deposit-contract-address']}
 """
