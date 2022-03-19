@@ -39,6 +39,21 @@ def get_execution_bootstrapper_block():
     return block
 
 
+def get_execution_bootstrapper_enode():
+    # get the bootstrapper and ask for the latest block.
+    bootstrapper = global_config["execution-clients"][
+        global_config["config-params"]["execution-layer"]["execution-bootstrapper"]
+    ]
+    bs_ip = bootstrapper["start-ip-addr"]
+    bs_http_port = global_config["execution-configs"][bootstrapper["execution-config"]][
+        "execution-http-port"
+    ]
+
+    bs_rpc = ExecutionClientJsonRPC(bs_ip, bs_http_port, timeout=60)
+    node_info = bs_rpc.admin_node_info()
+    return node_info["enode"]
+
+
 def setup_environment():
     # clean up previous runs and remake the required directories.
     testnet_dir = pathlib.Path(global_config["files"]["testnet-dir"])
@@ -78,10 +93,19 @@ def generate_execution_genesis():
     with open(besu_genesis_path, "w", opener=rw_all_user) as f:
         json.dump(besu_genesis, f)
 
+    nethermind_genesis_path = global_config["files"]["nethermind-genesis"]
+    nethermind_genesis = egw.create_nethermind_genesis()
+    with open(nethermind_genesis_path, "w", opener=rw_all_user) as f:
+        json.dump(nethermind_genesis, f)
+
     e_checkpoint = global_config["files"]["execution-checkpoint"]
 
     with open(e_checkpoint, "w", opener=rw_all_user) as f:
         f.write("1")
+
+    enode = get_execution_bootstrapper_enode()
+    with open("/data/local_testnet/execution-bootstrapper/enodes.txt", "w") as f:
+        f.write(enode)
 
 
 def generate_consensus_config():
