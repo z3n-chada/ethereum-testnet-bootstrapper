@@ -128,6 +128,7 @@ The issues listed here are not neccesarily related to security bugs, they could 
     - (non-security) invalid config file parsing for PRESET\_BASE field.
     - (non-security, non-spec) handeling 0 hash for eth1 root hash.
     - (non-security) handle genesis from non-phase0 genesis beaconstates.
+    - (non-security) api /eth/vX/beacon/headers/X uses the incorrect htr (SignedBeaconBlockHeader instead of BeaconBlockHeader)
 - eth2-testnet-genesis
     - (non-security) fix altair beaconstate genesis
 

@@ -4,7 +4,7 @@
 
 # args are: <data_dir> <generated_genesis.json> <network_id> <http_port> <http_apis> <ws_port> <ws_apis>
 
-env_vars=( "EXECUTION_DATA_DIR" "EXECUTION_GENESIS" "NETWORK_ID" "EXECUTION_P2P_PORT" "EXECUTION_HTTP_PORT" "EXECUTION_WS_PORT" "HTTP_APIS" "WS_APIS" "IP_ADDR" "NETRESTRICT_RANGE" "END_FORK")
+env_vars=( "EXECUTION_DATA_DIR" "GETH_EXECUTION_GENESIS" "NETWORK_ID" "EXECUTION_P2P_PORT" "EXECUTION_HTTP_PORT" "EXECUTION_WS_PORT" "HTTP_APIS" "WS_APIS" "IP_ADDR" "NETRESTRICT_RANGE" "END_FORK")
 
 for var in "${env_vars[@]}" ; do
     if [[ -z "$var" ]]; then
@@ -42,7 +42,7 @@ done
 echo "Initing the genesis"
 geth init \
     --datadir "$EXECUTION_DATA_DIR" \
-    "$EXECUTION_GENESIS"
+    "$GETH_EXECUTION_GENESIS"
 
 
 echo "starting the python script to save the enodes"

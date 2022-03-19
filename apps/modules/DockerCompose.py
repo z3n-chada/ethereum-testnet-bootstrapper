@@ -44,7 +44,9 @@ class ConfigurationEnvironment(object):
             "ws-apis": self.get_execution_config,
             "chain-id": self.get_execution_config,
             "network-id": self.get_execution_config,
-            "execution-genesis": self.get_execution_genesis,
+            "geth-execution-genesis": self.get_geth_execution_genesis,
+            "besu-execution-genesis": self.get_besu_execution_genesis,
+            "nethermind-execution-genesis": self.get_nethermind_execution_genesis,
             "terminaltotaldifficulty": self.get_ttd,
             # consensus
             "preset-base": self.get_consensus_preset,
@@ -182,11 +184,17 @@ class ConfigurationEnvironment(object):
 
     # Global Config
     def get_ttd(self, _unused="unused"):
-        return self.gc["config-params"]["execution-layer"]["genesis-config"][
-            "terminalTotalDifficulty"
-        ]
+        return self.gc["config-params"]["execution-layer"]["terminal-total-difficulty"]
 
-    def get_execution_genesis(self, _unused="unused"):
+    def get_besu_execution_genesis(self, _unused="unused"):
+        # TODO: generic
+        return self.gc["files"]["besu-genesis"]
+
+    def get_nethermind_execution_genesis(self, _unused="unused"):
+        # TODO: generic
+        return self.gc["files"]["nethermind-genesis"]
+
+    def get_geth_execution_genesis(self, _unused="unused"):
         # TODO: generic
         return self.gc["files"]["geth-genesis"]
 
@@ -312,7 +320,9 @@ class ClientWriter(object):
             "ws-apis",
             "chain-id",
             "network-id",
-            "execution-genesis",
+            "geth-execution-genesis",
+            "besu-execution-genesis",
+            "nethermind-execution-genesis",
             "terminaltotaldifficulty",
         ]
         self.base_execution_bootnode_env_vars = [

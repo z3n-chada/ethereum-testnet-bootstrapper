@@ -124,7 +124,7 @@ CHURN_LIMIT_QUOTIENT: {pd['churn-limit-quotient']}
 # Transition
 # ---------------------------------------------------------------
 # TBD, 2**256-2**10 is a placeholder
-TERMINAL_TOTAL_DIFFICULTY: {ec['genesis-config']['terminalTotalDifficulty']}
+TERMINAL_TOTAL_DIFFICULTY: {ec['terminal-total-difficulty']}
 # By default, don't use these params
 TERMINAL_BLOCK_HASH: {ec['terminal-block-hash']}
 TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH: {ec['terminal-block-hash-activation-epoch']}

@@ -10,7 +10,9 @@ import ruamel.yaml as yaml
 from modules.ConsensusConfig import create_consensus_config
 from modules.ConsensusGenesis import deploy_consensus_genesis
 from modules.DockerCompose import generate_docker_compose
-from modules.GethGenesis import create_geth_genesis
+
+# from modules.GethGenesis import create_geth_genesis
+from modules.ExecutionGenesis import ExecutionGenesisWriter
 from modules.GethIPCUtils import GethIPC
 from modules.TestnetGenerators import generate_consensus_testnet_dirs
 
@@ -48,11 +50,14 @@ def setup_environment():
 
 
 def generate_execution_genesis():
-    genesis = create_geth_genesis(global_config)
-    genesis_file = global_config["files"]["geth-genesis"]
+    # geth first
+    geth_genesis_path = global_config["files"]["geth-genesis"]
+    egw = ExecutionGenesisWriter(global_config)
+    geth_genesis = egw.create_geth_genesis()
+    with open(geth_genesis_path, "w", opener=rw_all_user) as f:
+        json.dump(geth_genesis, f)
     e_checkpoint = global_config["files"]["execution-checkpoint"]
-    with open(genesis_file, "w", opener=rw_all_user) as f:
-        json.dump(genesis, f)
+
     with open(e_checkpoint, "w", opener=rw_all_user) as f:
         f.write("1")
 
@@ -84,7 +89,6 @@ def write_docker_compose():
     docker_compose = global_config["files"]["docker-compose"]
     with open(docker_compose, "w", opener=rw_all_user) as f:
         yaml.dump(dcyaml, f)
-
 
 
 def bootstrap_testnet(args):
