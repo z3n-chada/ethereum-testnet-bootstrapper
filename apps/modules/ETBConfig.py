@@ -6,30 +6,28 @@
 """
 from .ExecutionRPC import ExecutionClientJsonRPC
 from ruamel import yaml
+import logging
 
 
 class GenericConfigurationEntry(object):
+    """
+    A configuration entry contains config value pairs, it may
+    use num-nodes and have multiptle entries, but that should
+    never effect the return value for a configuration item.
+
+    (e.g. a ConfigEntry should never have a start-ip-addr)
+    """
+
     def __init__(self, config_entry):
         self.config = config_entry
-        self.reserved_values = []
+        self.__name__ = "GenericConfigurationEntry"
 
     def has(self, value):
-        if value in self.reserved_values:
-            return True
         return value in self.config
 
     def get(self, value):
-        if value in self.reserved_values:
-            if hasattr(self, f"get_{value}"):
-                return getattr(self, f"get_{value}")()
-            else:
-                raise Exception(
-                    f"{self.__name__}: getter for reserved entry: {value} not implemented."
-                )
-
         if value in self.config:
             return self.config[value]
-
         else:
             raise Exception(f"{self.__name__} has no entry: {value}")
 
@@ -43,37 +41,69 @@ class ConsensusConfig(GenericConfigurationEntry):
 class ExecutionConfig(GenericConfigurationEntry):
     def __init__(self, execution_config):
         super().__init__(execution_config)
+        self.__name__ = "ExecutionConfig"
 
 
 class ConsensusBootnodeConfig(GenericConfigurationEntry):
     def __init__(self, consensus_bootnode_config):
         super().__init__(consensus_bootnode_config)
+        self.__name__ = "ConsensusBootnodeConfig"
 
 
 class GenericClient(GenericConfigurationEntry):
     """
-    Main class that has basic information about a client, be it exectuion,
-    consensus, bootnode, or a generic module.
+    A GenericClient is a step up form a config entry. The values that it
+    stores may be influenced by the node which we are discussing.
+
+    In the current implementation a GenericClient is one of the following:
+
+    ConsensusClient
+    ExecutionClient
+    ConsensusBootnodeClient
+    GenericModule (GenericClient)
+
+    If the config value we are seeking changes based on the node which we are
+    accessing (e.g. ip-address) , or the value of the config entry is derrived
+    from multiple configuration values (e.g. rpc endoint = protocol://ip:port)
+    this constitutes as reserved_value. When we do the lookup and access this
+    entry we use get_(config_entry)(node).
+
+    Reserved values can also be used to specify a client specific
+    implemenation. For example ExecutionClient's use execution-data-dir as
+    the root directory, however consensus clients use
+    testnet-dir/node_X/{execution-client-name}
+
+    GenericClients can implement all the different ConfigEntries, so their
+    respective client implemenatations need to observe this.
+
+    Lastly additional-env values that are specified must be node agnostic
+    and always be returned first so values can be overwritten in the config
+    with ease.
     """
 
     def __init__(self, name, etb_config, client_config):
         super().__init__(client_config)
+        self.__name__ = "GenericClient"
         self.etb_config = etb_config
         self.name = name
-        self.num_nodes = self.config["num-nodes"]
 
-        self.reserved_buckets = []
-        rv = ["ip-addr", "consensus-target-peers", "netrestrict-range", "graffiti"]
-        for v in rv:
-            self.reserved_values.append(v)
+        # these values require you to know the node number.
+        # self.reserved_buckets = []
+        # rv = ["ip-addr", "consensus-target-peers", "netrestrict-range", "graffiti"]
+        # for v in rv:
+        #    self.reserved_buckets.append(v)
 
+        # additional env entry.
         self.additional_env = {}
+
+        # the nested config_entries to search after all else fails.
+        self.config_entries = []
 
         if "consensus-config" in self.config:
             self.consensus_config = self.etb_config.get_consensus_config(
                 self.config["consensus-config"]
             )
-            self.reserved_buckets.append(self.consensus_config)
+            self.config_entries.append(self.consensus_config)
         else:
             self.consensus_config = None
 
@@ -81,7 +111,7 @@ class GenericClient(GenericConfigurationEntry):
             self.execution_config = self.etb_config.get_execution_config(
                 self.config["execution-config"]
             )
-            self.reserved_buckets.append(self.execution_config)
+            self.config_entries.append(self.execution_config)
         else:
             self.execution_config = None
 
@@ -91,7 +121,7 @@ class GenericClient(GenericConfigurationEntry):
                     self.config["consensus-bootnode-config"]
                 )
             )
-            self.reserved_buckets.append(self.consensus_bootnode_config)
+            self.config_entries.append(self.consensus_bootnode_config)
         else:
             self.consensus_bootnode_config = None
 
@@ -99,74 +129,76 @@ class GenericClient(GenericConfigurationEntry):
             self.additional_env = self.config["additional-env"]
 
     def has(self, value):
-        if value in self.reserved_values:
+        if value in self.additional_env:
+            logging.debug(f"{self.__name__}:has {value} in additional-env")
             return True
 
         if value in self.config:
+            logging.debug(f"{self.__name__}:has {value} in config")
             return True
 
-        for bucket in self.reserved_buckets:
-            if bucket.has(value):
+        if hasattr(self, f'get_{value.replace("-","_")}'):
+            logging.debug(f"{self.__name__}:has custom getter for {value}")
+            return True
+
+        for config_entry in self.config_entries:
+            if config_entry.has(value):
+                logging.debug(
+                    f"{self.__name__}:has config entry {config_entry} with {value}"
+                )
                 return True
         # lastly check the main etb-config
         if self.etb_config.has(value):
+            logging.debug(f"{self.__name__}:has found {value} in etb_config")
             return True
 
-        if value in self.additional_env:
-            return True
+    def custom_get(self, value, node=None):
+
+        return None
 
     def get(self, value, node=None):
-        # additional-env trumps all
+        """
+        Find and return the value which you seek. Values may be stored
+        in the following, ordered by priority.
+
+        1. additional-env
+        2. (special client dependent values) overridden in the client object.
+        3. the local objects get_{value}(node) function.
+        4. its config
+        5. one of its associated config entries
+        6. the root etb_config object.
+
+        """
+        if not self.has(value):
+            raise Exception(
+                f"{self.__name__}:requested value:{value} it doesn't have. "
+            )
+
+        if isinstance(node, int):
+            if node > self.get("num-nodes"):
+                raise Exception(
+                    f"{self.__name__} requested value with node > num-nodes"
+                )
         if value in self.additional_env:
             return self.additional_env[value]
-        # tha case where we don't need to do a calculation.
-        if node is None:
-            # the value doesn't depend on which node we are asking about.
-            if value in self.reserved_values:
-                if hasattr(self, f"get_{value.replace('-','_')}"):
-                    return getattr(self, f"get_{value.replace('-','_')}")()
-                else:
-                    raise Exception(
-                        f"{self.__name__}: getter for reserved entry: {value} not implemented."
-                    )
-            # the value is in a nested configuration.
-            for bucket in self.reserved_buckets:
-                if bucket.has(value):
-                    print(f"self.__name__: get() returning {value} from {bucket}")
-                    return bucket.get(value)
 
-            if value in self.config:
-                return self.config[value]
+        if self.custom_get(value, node) is not None:
+            return self.custom_get(value, node)
 
-            # lastly check the root configuation (geneis files, terminal-total-difficulty etc
-            if self.etb_config.has(value):
-                return self.etb_config.get(value)
+        if hasattr(self, f"get_{value.replace('-','_')}"):
+            return getattr(self, f"get_{value.replace('-','_')}")(node)
 
-            raise Exception(f"{self.__name__} has no entry: {value}")
+        if value in self.config:
+            return self.config[value]
 
-        else:
-            if value in self.reserved_values:
-                if hasattr(self, f"get_{value.replace('-','_')}"):
-                    return getattr(self, f"get_{value.replace('-','_')}")(node)
+        for config_entry in self.config_entries:
+            if config_entry.has(value):
+                return config_entry.get(value)
 
-                raise Exception(
-                    f"{self.__name__}: get with non-none node failed to get {value} for {node}"
-                )
-            # value is in a bucket.
-            for bucket in self.reserved_buckets:
-                if bucket.has(value):
-                    print(f"self.__name__: get() returning {value} from {bucket}")
-                    return bucket.get(value)
+        # we couldn't find a client implementation check the etb-config object.
+        # this will raise an exception if it not found.
 
-            # lastly check our own store, in case node was passed by accident.
-            if value in self.config:
-                return self.config[value]
-
-            if self.etb_config.has(value):
-                return self.etb_config.get(value)
-
-            else:
-                raise Exception(f"{self.__name__} has no entry: {value}")
+        return self.etb_config.get(value)
 
     def get_ip_addr(self, node):
         prefix = ".".join(self.config["start-ip-addr"].split(".")[:3]) + "."
@@ -185,10 +217,43 @@ class GenericClient(GenericConfigurationEntry):
         else:
             return f"{self.name}-{node}-graffiti"
 
+    def get_execution_http_endpoint(self, node):
+        ip = self.get("ip-addr", node)
+        port = self.get("execution-http-port")
+        return f"http://{ip}:{port}"
+
+    def get_ws_web3_ip_addr(self, node):
+        # if we have our one local one, use it. else check the local config
+        if "ws-web3-ip-addr" in self.config:
+            return self.config["ws-web3-ip-addr"]
+
+        if self.has_local_exectuion_client:
+            return "127.0.0.1"
+
+        raise Exception(
+            f"{self.__name__} is requesting execution endpoint but does "
+            + "not have a local one, or a config entry for ws-web3-ip-addr"
+        )
+
+    def get_http_web3_ip_addr(self, node):
+        # if we have our one local one, use it. else check the local config
+        if "http-web3-ip-addr" in self.config:
+            return self.config["http-web3-ip-addr"]
+
+        if self.has_local_exectuion_client:
+            return "127.0.0.1"
+
+        raise Exception(
+            f"{self.__name__} is requesting execution endpoint but does "
+            + "not have a local one, or a config entry for "
+            + "http-web3-ip-addr"
+        )
+
 
 class ConsensusBootnodeClient(GenericClient):
     def __init__(self, name, etb_config, bootnode_config):
         super().__init__(name, etb_config, bootnode_config)
+        self.__name__ = "ConsensusBootnodeClient"
 
 
 class ConsensusClient(GenericClient):
@@ -207,11 +272,6 @@ class ConsensusClient(GenericClient):
         else:
             self.has_local_exectuion_client = False
 
-        rv = ["node-dir", "execution-data-dir"]
-        for v in rv:
-            self.reserved_values.append(v)
-
-    # single client queries must supply node
     def get_node_dir(self, node):
         return f"{self.get('testnet-dir')}/node_{node}"
 
@@ -246,21 +306,14 @@ class ConsensusClient(GenericClient):
         port = self.ccc["beacon-api-port"]
         return [f"http://{ip}:{port}" for ip in self.get_ip_addrs()]
 
-    def get_ip_addrs(self):
-        return [self.get_ip_addr(node) for node in range(self.num_nodes)]
-
-    # use this method to create a dict of services to append to a docker-compose.yaml
-
 
 class ExecutionClient(GenericClient):
     def __init__(self, name, etb_config, execution_config):
         super().__init__(name, etb_config, execution_config)
-        rv = ["execution-data-dir"]
-        for v in rv:
-            self.reserved_values.append(v)
+        self.__name__ = "ExecutionClient"
 
-    def get_execution_http_endpoint(self, node):
-        return f"{self.get_ip_addr(node)}:{self.get_execution_http_port()}"
+    # def get_execution_http_endpoint(self, node):
+    #     return f"{self.get('ip-addr',node)}:{self.get('execution-http-port')}"
 
     # differentiates itself from the consensus client.
     def get_execution_data_dir(self, node):
@@ -276,10 +329,6 @@ class ETBConfig(GenericConfigurationEntry):
 
         super().__init__(self.config)
         self.__name__ = "ETBConfig"
-
-        rv = ["num-beacon-nodes", "execution-bootstrapper-client", "netrestrict-range"]
-        for v in rv:
-            self.reserved_values.append(v)
 
         self.get_value_paths = {
             "files": [
@@ -346,7 +395,7 @@ class ETBConfig(GenericConfigurationEntry):
     # node will never be used
     def has(self, value, node=None):
 
-        if value in self.reserved_values:
+        if hasattr(self, f'get_{value.replace("-","_")}'):
             return True
 
         for nested_path in self.get_value_paths:
@@ -362,13 +411,16 @@ class ETBConfig(GenericConfigurationEntry):
         if not self.has(value, node):
             raise Exception(f"{self.__name__}: has no value: {value}")
 
-        if value in self.reserved_values:
-            if hasattr(self, f"get_{value.replace('-','_')}"):
-                return getattr(self, f"get_{value.replace('-','_')}")()
-            else:
-                raise Exception(
-                    f"{self.__name__}: getter for reserved entry: {value.replace('-','_')} not implemented."
-                )
+        if hasattr(self, f'get_{value.replace("-","_")}'):
+            return getattr(self, f'get_{value.replace("-","_")}')()
+
+        # if value in self.reserved_values:
+        #    if hasattr(self, f"get_{value.replace('-','_')}"):
+        #        return getattr(self, f"get_{value.replace('-','_')}")()
+        #    else:
+        #        raise Exception(
+        #            f"{self.__name__}: getter for reserved entry: {value.replace('-','_')} not implemented."
+        #        )
 
         for nested_path in self.get_value_paths:
             full_path = nested_path.split(":")
@@ -440,7 +492,7 @@ class ETBConfig(GenericConfigurationEntry):
     def get_num_beacon_nodes(self):
         num_nodes = 0
         for c in self.get_consensus_clients().values():
-            num_nodes += c.num_nodes
+            num_nodes += c.get("num-nodes")
         return num_nodes
 
     def get_consensus_client(self, name):
@@ -461,78 +513,18 @@ class ETBConfig(GenericConfigurationEntry):
     def get_netrestrict_range(self):
         return self.config["docker"]["ip-subnet"]
 
-    # def get_preset_base(self):
-    #    return self.c["config-params"]["consensus-layer"]["preset-base"]
+    def get_all_clients_with_execution_clients(self):
+        all_clients = self.get_execution_clients()
+        consensus_clients = self.get_consensus_clients()
+        for name, client in consensus_clients.items():
+            if client.execution_config is not None:
+                all_clients[name] = client
 
-    # def get_start_fork(self):
-    #    return self.c["config-params"]["consensus-layer"]["forks"]["genesis-fork-name"]
+        for name, client in self.get_generic_modules().items():
+            if client.execution_config is not None:
+                all_clients[name] = client
 
-    # def get_end_fork(self):
-    #    return self.c["config-params"]["consensus-layer"]["forks"]["end-fork-name"]
-
-    # def get_consensus_genesis_delay(self):
-    #    return self.config_params["consensus-layer"]["genesis-delay"]
-
-    # def get_min_genesis_active_validator_count(self):
-    #    return self.config_params["consensus-layer"][
-    #        "min-genesis-active-validator-count"
-    #    ]
-
-    # def get_deposit_contract_address(self):
-    #    return self.config_params["deposit-contract-address"]
-
-    # def get_seconds_per_eth1_block(self):
-    #    return self.config_params["execution-layer"]["seconds-per-eth1-block"]
-
-    # def get_terminaltotaldifficulty(self):
-    #    return self.config_params["execution-layer"]["terminal-total-difficulty"]
-
-    # def get_chain_id(self):
-    #    return self.config_params["execution-layer"]["chain-id"]
-
-    # def get_network_id(self):
-    #    return self.config_params["execution-layer"]["network-id"]
-
-    # def get_genesis_fork_name(self):
-    #    return self.config_params["consensus-layer"]["forks"]["genesis-fork-name"]
-
-    # def get_genesis_fork_version(self):
-    #    return self.config_params["consensus-layer"]["forks"]["genesis-fork-version"]
-
-    # def get_altair_fork_version(self):
-    #    return self.config_params["consensus-layer"]["forks"]["altair-fork-version"]
-
-    # def get_altair_fork_epoch(self):
-    #    return self.config_params["consensus-layer"]["forks"]["altair-fork-epoch"]
-
-    # def get_bellatrix_fork_version(self):
-    #    return self.config_params["consensus-layer"]["forks"]["bellatrix-fork-version"]
-
-    # def get_bellatrix_fork_epoch(self):
-    #    return self.config_params["consensus-layer"]["forks"]["bellatrix-fork-epoch"]
-
-    # def get_sharding_fork_version(self):
-    #    return self.config_params["consensus-layer"]["forks"]["sharding-fork-version"]
-
-    # def get_sharding_fork_epoch(self):
-    #    return self.config_params["consensus-layer"]["forks"]["sharding-fork-epoch"]
-
-    # def get_terminal_block_hash(self):
-    #    return self.config_params["execution-layer"]["terminal-block-hash"]
-
-    # def get_terminal_block_hash_activation_epoch(self):
-    #    return self.config_params["execution-layer"][
-    #        "terminal-block-hash-activation-epoch"
-    #    ]
-
-    # def get_geth_execution_genesis(self):
-    #    return self.files["geth-genesis"]
-
-    # def get_besu_execution_genesis(self):
-    #    return self.files["besu-genesis"]
-
-    # def get_nethermind_execution_genesis(self):
-    #    return self.files["nethermind-genesis"]
+        return all_clients
 
     # def get_execution_client_http_rpc_endpoint(
     #    self, client_name, node, timeout=5, non_error=True
