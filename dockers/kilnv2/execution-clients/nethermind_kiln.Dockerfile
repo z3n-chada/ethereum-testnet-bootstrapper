@@ -28,14 +28,11 @@ RUN wget https://packages.microsoft.com/config/debian/11/packages-microsoft-prod
 
 RUN apt-get update && apt-get install -y --no-install-recommends aspnetcore-runtime-6.0 
 
-ARG USER=nethermind
-ARG UID=10001
-
 RUN adduser \
     --disabled-password \
     --gecos "" \
+    --home "/home/nethermind" \
     --shell "/sbin/nologin" \
-    --no-create-home \
     --uid "${UID}" \
     "${USER}"
 

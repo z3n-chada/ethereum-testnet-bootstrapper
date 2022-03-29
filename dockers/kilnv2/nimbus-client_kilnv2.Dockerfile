@@ -41,6 +41,5 @@ WORKDIR /home/nimbus
 # where all of the ethereum-testnet-bootstrapper volumes get mounted in. 
 RUN mkdir -p /data && mkdir -p /source && chown -R ${USER}:${USER} /data && chown -R ${USER}:${USER} /source
 
-USER ${USER}
 
 ENTRYPOINT ["/bin/bash"]
