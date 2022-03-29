@@ -4,7 +4,7 @@
     many config operations can be repetitive so we add these functions
     here to speed up module/app development.
 """
-from .ExecutionRPC import ExecutionClientJsonRPC
+# from .ExecutionRPC import ExecutionClientJsonRPC
 from ruamel import yaml
 import logging
 
@@ -86,12 +86,6 @@ class GenericClient(GenericConfigurationEntry):
         self.__name__ = "GenericClient"
         self.etb_config = etb_config
         self.name = name
-
-        # these values require you to know the node number.
-        # self.reserved_buckets = []
-        # rv = ["ip-addr", "consensus-target-peers", "netrestrict-range", "graffiti"]
-        # for v in rv:
-        #    self.reserved_buckets.append(v)
 
         # additional env entry.
         self.additional_env = {}
@@ -278,26 +272,6 @@ class ConsensusClient(GenericClient):
     def get_execution_data_dir(self, node):
         return f'{self.get_node_dir(node)}/{self.execution_config.get("client")}'
 
-    # def get_ws_web3_ip_addr(self, unused=""):
-    #    if "ws-web3-ip-addr" in self.cc:
-    #        return self.cc["ws-web3-ip-addr"]
-    #    elif "ws-web3-ip-addr" in self.ccc:
-    #        return self.ccc["ws-web3-ip-addr"]
-    #    elif self.has_local_exectuion_client:
-    #        return "127.0.0.1"
-    #    else:
-    #        raise Exception(f"Could not get ws-web3-ip-addr for {self.name}")
-
-    # def get_http_web3_ip_addr(self, unused=""):
-    #    if "http-web3-ip-addr" in self.cc:
-    #        return self.cc["http-web3-ip-addr"]
-    #    elif "http-web3-ip-addr" in self.ccc:
-    #        return self.ccc["http-web3-ip-addr"]
-    #    elif self.has_local_exectuion_client:
-    #        return "127.0.0.1"
-    #    else:
-    #        raise Exception(f"Could not get http-web3-ip-addr for {self.name}")
-
     def get_consensus_target_peers(self, unused=""):
         return self.etb_config.get("num-beacon-nodes") - 1
 
@@ -311,9 +285,6 @@ class ExecutionClient(GenericClient):
     def __init__(self, name, etb_config, execution_config):
         super().__init__(name, etb_config, execution_config)
         self.__name__ = "ExecutionClient"
-
-    # def get_execution_http_endpoint(self, node):
-    #     return f"{self.get('ip-addr',node)}:{self.get('execution-http-port')}"
 
     # differentiates itself from the consensus client.
     def get_execution_data_dir(self, node):
@@ -413,14 +384,6 @@ class ETBConfig(GenericConfigurationEntry):
 
         if hasattr(self, f'get_{value.replace("-","_")}'):
             return getattr(self, f'get_{value.replace("-","_")}')()
-
-        # if value in self.reserved_values:
-        #    if hasattr(self, f"get_{value.replace('-','_')}"):
-        #        return getattr(self, f"get_{value.replace('-','_')}")()
-        #    else:
-        #        raise Exception(
-        #            f"{self.__name__}: getter for reserved entry: {value.replace('-','_')} not implemented."
-        #        )
 
         for nested_path in self.get_value_paths:
             full_path = nested_path.split(":")
@@ -525,26 +488,6 @@ class ETBConfig(GenericConfigurationEntry):
                 all_clients[name] = client
 
         return all_clients
-
-    # def get_execution_client_http_rpc_endpoint(
-    #    self, client_name, node, timeout=5, non_error=True
-    # ):
-    #    # TODO: add logic for exceptions on a bad node (more than num_nodes)
-    #    if client_name in self.execution_clients:
-    #        ec = ExecutionClient(client_name, self, self.execution_clients[client_name])
-    #        ip = ec.get_ip_addr(node)
-    #        port = ec.get_execution_http_port()
-    #    elif client_name in self.consensus_clients:
-    #        cc = ConsensusClient(client_name, self, self.consensus_clients[client_name])
-    #        if cc.has_local_exectuion_client:
-    #            ip = cc.get_ip_addr(node)
-    #            port = cc.get_execution_http_port()
-    #    else:
-    #        raise Exception("Could not find client {client_name}")
-
-    #    return ExecutionClientJsonRPC(
-    #        f"http://{ip}:{port}", timeout=timeout, non_error=non_error
-    #    )
 
 
 if __name__ == "__main__":

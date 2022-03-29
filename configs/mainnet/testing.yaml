@@ -3,55 +3,60 @@ docker:
     ip-subnet: "10.0.20.0/24" 
     volumes: ['./data:/data/', './:/source/']
     # for writing the docker-compose.yaml
-
 files:
   # all files with respect to docker path
   testnet-root: '/data/'
 
   # execution genesis files.
-  geth-genesis: "/data/geth-genesis.json"
-  besu-genesis: "/data/besu-genesis.json"
-  nethermind-genesis: "/data/nethermind-genesis.json"
+  geth-genesis-file: "/data/geth-genesis.json"
+  besu-genesis-file: "/data/besu-genesis.json"
+  nethermind-genesis-file: "/data/nethermind-genesis.json"
 
-  consensus-config: "/data/consensus-config.yaml"
-  consensus-genesis: "/data/genesis.ssz"
+  consensus-config-file: "/data/consensus-config.yaml"
+  consensus-genesis-file: "/data/genesis.ssz"
   testnet-dir: "/data/local_testnet" # where client setups occur
   execution-bootstrap-dir: "/data/local_testnet/execution-bootstrapper"
-  docker-compose:  "/source/docker-compose.yaml" #wrt to docker config
+  docker-compose-file:  "/source/docker-compose.yaml" #wrt to docker config
 
   # this file is created when all testnet directories have been written.
-  consensus-checkpoint: "/data/consensus-clients-ready"
+  consensus-checkpoint-file: "/data/consensus-clients-ready"
   #this file is written with its time for the first execution client to come up.
-  execution-checkpoint: "/data/execution-clients-ready"
+  execution-checkpoint-file: "/data/execution-clients-ready"
   # execution client bootnode/bootstrapper. Contains enode+\n for all bootstrap
   # nodes
   execution-enode-file: "/data/execution-bootstrapper/enodes.txt"
+  # the enr for the bootnode we chose.
+
 
 config-params:
   
   deposit-contract-address: "0x8c594691c0e592ffa21f153a16ae41db5befcaaa"
-  deposit-chain-id: 0x01000666
-  deposit-network-id: 0x01000666
 
-  # used for configuring geth genesis. placed in /data/eth1-genesis.json
+  # used for configuring execution genesis
   execution-layer:
     seconds-per-eth1-block: 14
-    genesis-delay: 0
+    execution-genesis-delay: 0
     chain-id: 0x01000666
+    network-id: 0x01000666
     merge-fork-block: 127 # consensus epoch 4 eth1_blocks + eth1-follow-distance
     terminal-total-difficulty: 256 # mergeForkBlock*2 + a little more.
     terminal-block-hash: "0x0000000000000000000000000000000000000000000000000000000000000000"
     terminal-block-hash-activation-epoch: 18446744073709551615
     # for now this always needs to be true.
     clique:
-      enabled: True
-      signer: "51Dd070D1f6f8dB48CA5b0E47D7e899aea6b1AF5"
-      epoch: 3000
+      clique-enabled: True
+      clique-signers: 
+        "51Dd070D1f6f8dB48CA5b0E47D7e899aea6b1AF5"
+      clique-epoch: 3000
+
+    # the first execution node that comes alive to bootstrap the network.
+    execution-bootstrapper: "geth-bootstrapper"
+
   # used for generating the consensus config placed in /data/eth2-config.yaml
   consensus-layer:
-    genesis-delay: 225 # eth1-follow-distance*seconds-per-eth1-block + 1
+    consensus-genesis-delay: 225 # eth1-follow-distance*seconds-per-eth1-block + 1
     preset-base: 'mainnet'
-    min-genesis-active-validator-count: 24 # custom preseeded into genesis state.
+    min-genesis-active-validator-count: 16 # custom preseeded into genesis state.
     eth1-follow-distance: 16 # allow past eth1 blocks to be processed.
 
     forks:
@@ -95,12 +100,12 @@ execution-bootnode-configs:
     execution-bootnode-verbosity: 4
 
 consensus-bootnode-configs:
-  base-consensus-bootnode:
+  eth2-bootnode-config:
     consensus-bootnode-start-ip-addr: "10.0.20.201"
     consensus-bootnode-private-key: "bc971f814d7bd37f7502cc67408c4f2c5a06e1b3d48dc041e42b5478154df1a8" # private key for the bootnode to use
     consensus-bootnode-enr-port: 9001 #port in the enr  
     consensus-bootnode-api-port: 6000 # port for web api.
-    consensus-bootnode-enr-file: "/data/local_testnet/bootnode/enr.dat"
+    consensus-bootnode-enr-file: "/data/eth2-bootnode-enr.dat"
     num-nodes: 1 # not implemented must be 1
 
 
@@ -118,7 +123,7 @@ execution-bootnodes:
 
 
 consensus-bootnodes:
-  bootnode:
+  eth2-bootnode:
     # args for docker-compose
     client-name: "eth2-bootnode"
     container-name: "eth2-bootnode"
@@ -128,64 +133,49 @@ consensus-bootnodes:
     entrypoint: "/source/apps/launchers/bootnodes/launch-eth2-bootnode.sh"
     num-nodes: 1 # not implemented must be 1 and match the consensus-bootnode-config
 
-    consensus-bootnode-config: "base-consensus-bootnode"
+    consensus-bootnode-config: "eth2-bootnode-config"
 
 execution-configs:
+
   base-geth-execution-client:
     client: "geth"
-    network-id: 0x01000666
-    chain-id: 0x01000666
     http-apis: "admin,net,eth,web3,personal,engine"
     ws-apis: "admin,net,eth,web3,personal,engine"
     execution-http-port: 8645
     execution-ws-port: 8646
+    execution-engine-port: 8645
     execution-p2p-port: 666
-    geth-genesis: "/data/geth-genesis.json"
-    terminalTotalDifficulty: 90
 
-    execution-bootnode-config: "base-execution-bootnode"
+      # execution-bootnode-config: "base-execution-bootnode"
+
+  base-besu-execution-client:
+    client: "besu"
+    http-apis: "ADMIN,MINER,CLIQUE,ETH,NET,DEBUG,TXPOOL,ENGINE"
+    ws-apis: "ADMIN,MINER,CLIQUE,ETH,NET,DEBUG,TXPOOL,ENGINE"
+    execution-http-port: 8645
+    execution-ws-port: 8646
+    execution-engine-port: 8647
+    execution-p2p-port: 666
+
+      # execution-bootnode-config: "base-execution-bootnode"
 
 consensus-configs:
 
   base-consensus-client:
-    num-nodes: 1            # number of nodes for every client that inherits this config
-    num-validators: 4       # number of validators for every client that inherits this config
+    num-validators: 2       # number of validators for every client node
     # start ports increment each time we have a node.
-    start-consensus-p2p-port: 4000    # start port used for discovery
-    start-beacon-api-port: 5000   # start port used for the beacon rest API
-    start-beacon-rpc-port: 5500
-    start-validator-rpc-port: 6500
-    start-beacon-metric-port: 8000 # start port used for beacon node metrics.
-    start-validator-metric-port: 9000 # start port used for validator client metrics.
+
+    consensus-p2p-port: 4000    # start port used for discovery
+    beacon-api-port: 5000   # start port used for the beacon rest API
+    beacon-rpc-port: 5500
+    validator-rpc-port: 6500
+    beacon-metric-port: 8000 # start port used for beacon node metrics.
+    validator-metric-port: 9000 # start port used for validator client metrics.
     # entrypoints placed here are used by the consensus clients
-    local-execution-client: true
-    execution-config: "base-geth-execution-client"
-    execution-launcher: "/source/apps/launchers/execution-clients/launch-geth-clique.sh"
 
     http-web3-ip-addr: "127.0.0.1"
     ws-web3-ip-addr: "127.0.0.1"
 
-    consensus-bootnode-config: "base-consensus-bootnode"
-
-  teku-beacon:
-    num-nodes: 1            # number of nodes for every client that inherits this config
-    num-validators: 2       # number of validators for every client that inherits this config
-    # start ports increment each time we have a node.
-    start-consensus-p2p-port: 4000    # start port used for discovery
-    start-beacon-api-port: 5000   # start port used for the beacon rest API
-    start-beacon-rpc-port: 5500
-    start-validator-rpc-port: 6500
-    start-beacon-metric-port: 8000 # start port used for beacon node metrics.
-    start-validator-metric-port: 9000 # start port used for validator client metrics.
-    # entrypoints placed here are used by the consensus clients
-    local-execution-client: true
-    execution-config: "base-geth-execution-client"
-    execution-launcher: "/source/apps/launchers/execution-clients/launch-geth-clique.sh"
-
-    http-web3-ip-addr: "127.0.0.1"
-    ws-web3-ip-addr: "127.0.0.1"
-
-    consensus-bootnode-config: "base-consensus-bootnode"
 
 execution-clients:
   # the origianl node that starts the network.
@@ -200,30 +190,155 @@ execution-clients:
 
     execution-config: "base-geth-execution-client"
     num-nodes: 1
-    data-dir: '/data/local_testnet/execution-bootstrapper'
+    execution-data-dir: '/data/local_testnet/execution-bootstrapper'
     debug: False
+  # besu-bootstrapper: 
+  #   client-name: "besu"
+  #   container-name: "besu-bootstrapper"
+  #   start-ip-addr: "10.0.20.2"
+  #   image: "besu"
+  #   tag: "main"
+  #   depends: "ethereum-testnet-bootstrapper"
+  #   entrypoint: "/source/apps/launchers/execution-clients/launch-bootstrapper-besu-clique.sh" #wrt to docker.
+  #   execution-config: "base-besu-execution-client"
+  #   num-nodes: 1
+  #   data-dir: '/data/local_testnet/execution-bootstrapper'
+  #   debug: False
+
+  #   additional-env:
+  #     besu-private-key: "0x1e48147d3eb2af708706c71188703913e3b2dead2716dbe0caa8ccf4ff1d5573"
 
 consensus-clients:
   # nimbus nodes whose deposits were done pre-genesis
   prysm-genesis-deposits:
     client-name: 'prysm'
     # docker-compose
-    image: "prysm-client-geth"
-    tag: "kiln"
+    image: "prysm-client"
+    tag: "kilnv2"
     container-name: "prysm-client-geth"
     entrypoint: "/source/apps/launchers/consensus-clients/launch-prysm.sh"
     start-ip-addr: "10.0.20.10"
     depends: "ethereum-testnet-bootstrapper"
     # beacon/validator flags
+    num-nodes: 2 # how many beacon nodes
     consensus-config: "base-consensus-client"
+
+    consensus-bootnode-config: "eth2-bootnode-config"
+
+    local-execution-client: true
+      #execution-config: "base-besu-execution-client"
+    execution-config: "base-geth-execution-client"
+    execution-launcher: "/source/apps/launchers/execution-clients/launch-geth-clique.sh"
 
     testnet-dir: '/data/local_testnet/prysm'
     validator-offset-start: 0 # so validators of different clients don't overlap
     # args specific to prysm nodes, these are loaded into the dockers env at runtime.
     additional-env:
-      debug-level: "debug"
+      prysm-debug-level: "debug"
       wallet-path: '/data/local_testnet/prysm/wallet-password.txt'
       validator-password: "testnet-password"
+
+  teku-genesis-deposits:
+    client-name: 'teku'
+    # docker-compose
+    image: "teku-client"
+    tag: "kilnv2"
+    container-name: "teku-client-geth"
+    entrypoint: "/source/apps/launchers/consensus-clients/launch-teku.sh"
+    start-ip-addr: "10.0.20.20"
+    depends: "ethereum-testnet-bootstrapper"
+
+    num-nodes: 2 # how many beacon nodes
+    consensus-config: "base-consensus-client"
+
+    consensus-bootnode-config: "eth2-bootnode-config"
+    local-execution-client: true
+    execution-config: "base-geth-execution-client"
+      #execution-config: "base-besu-execution-client"
+    execution-launcher: "/source/apps/launchers/execution-clients/launch-geth-clique.sh"
+
+    testnet-dir: '/data/local_testnet/teku'
+
+    validator-offset-start: 4 # so validators of different clients don't overlap
+
+    # args specific to teku nodes.
+    additional-env:
+      teku-debug-level: "DEBUG"
+
+  nimbus-genesis-deposits:
+    client-name: 'nimbus'
+    # docker-compose
+    image: "nimbus-client"
+    tag: "kilnv2"
+    container-name: "nimbus-client-geth"
+    entrypoint: "/source/apps/launchers/consensus-clients/launch-nimbus.sh"
+    start-ip-addr: "10.0.20.30"
+    depends: "ethereum-testnet-bootstrapper"
+
+    num-nodes: 2 # how many beacon nodes
+    testnet-dir: '/data/local_testnet/nimbus'
+
+    consensus-config: "base-consensus-client"
+    consensus-bootnode-config: "eth2-bootnode-config"
+
+    local-execution-client: true
+    execution-config: "base-geth-execution-client"
+    execution-launcher: "/source/apps/launchers/execution-clients/launch-geth-clique.sh"
+
+    validator-offset-start: 8 # so validators of different clients don't overlap
+
+    additional-env:
+      nimbus-debug-level: "trace"
+
+
+  lighthouse-genesis-deposits:
+    client-name: 'lighthouse'
+    # docker-compose
+    image: "lighthouse-client"
+    tag: "kilnv2"
+    container-name: "lighthouse-client-geth"
+    entrypoint: "/source/apps/launchers/consensus-clients/launch-lighthouse.sh"
+    start-ip-addr: "10.0.20.40"
+    depends: "ethereum-testnet-bootstrapper"
+
+    consensus-config: "base-consensus-client"
+    consensus-bootnode-config: "eth2-bootnode-config"
+
+    local-execution-client: true
+    execution-config: "base-geth-execution-client"
+    execution-launcher: "/source/apps/launchers/execution-clients/launch-geth-clique.sh"
+
+    num-nodes: 2 # how many beacon nodes
+    testnet-dir: '/data/local_testnet/lighthouse'
+    validator-offset-start: 12 # so validators of different clients don't overlap
+    
+    additional-env:
+      lighthouse-debug-level: "debug"
+
+        #  lodestar-genesis-deposits:
+        #    client-name: 'lodestar'
+        #    # docker-compose
+        #    image: "lodestar-client"
+        #    tag: "kilnv2"
+        #    container-name: "lodestar-client-geth"
+        #    entrypoint: "/source/apps/launchers/consensus-clients/launch-lodestar.sh"
+        #    start-ip-addr: "10.0.20.50"
+        #    depends: "ethereum-testnet-bootstrapper"
+        #  
+        #    num-nodes: 2 # how many beacon nodes
+        #    consensus-config: "base-consensus-client"
+        #    consensus-bootnode-config: "eth2-bootnode-config"
+        #  
+        #    local-execution-client: true
+        #    execution-config: "base-geth-execution-client"
+        #    execution-launcher: "/source/apps/launchers/execution-clients/launch-geth-clique.sh"
+        #  
+        #    testnet-dir: '/data/local_testnet/lodestar'
+        #    validator-offset-start: 16 # so validators of different clients don't overlap
+        #    
+        #    additional-env:
+        #      lodestar-debug-level: "DEBUG"
+
 
 # special case client that is the ethereum-testnet-bootstrapper
 # this allows you to create a new genesis everytime you call 
@@ -236,6 +351,8 @@ testnet-bootstrapper:
     container-name: "testnet-bootstrapper"
     start-ip-addr: "10.0.20.202"
     config-file: '/source/configs/mainnet/testing.yaml'
+    num-nodes: 1
+    entrypoint: "/source/entrypoint.sh --config /source/configs/mainnet/testing.yaml --no-docker-compose" 
 
 generic-modules:
   status-check:
@@ -246,4 +363,5 @@ generic-modules:
     start-ip-addr: "10.0.20.206"
     num-nodes: 1
     entrypoint: "python3 /source/apps/status-check.py --config /source/configs/mainnet/testing.yaml --phase0-slot 32 --experiment-slot 128 --phase1-slot 128 --phase2-slot 160 --genesis-delay 225 --number-of-checks 2"
+
 

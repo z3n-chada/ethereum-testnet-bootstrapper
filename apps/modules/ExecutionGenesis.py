@@ -6,13 +6,9 @@ w3.eth.account.enable_unaudited_hdwallet_features()
 
 class ExecutionGenesisWriter(object):
     def __init__(self, global_config):
-        self.gc = global_config
+        self.etb_config = global_config
         self.genesis = {}
-        self.ec = self.gc["config-params"]["execution-layer"]
-        self.now = (
-            self.gc["now"]
-            + self.gc["config-params"]["execution-layer"]["genesis-delay"]
-        )
+        self.now = self.etb_config.now + self.etb_config.get("execution-genesis-delay")
 
     def get_allocs(self):
         allocs = {}
@@ -23,9 +19,9 @@ class ExecutionGenesisWriter(object):
             }
 
         # account allocations
-        mnemonic = self.gc["accounts"]["eth1-account-mnemonic"]
-        password = self.gc["accounts"]["eth1-passphrase"]
-        premines = self.gc["accounts"]["eth1-premine"]
+        mnemonic = self.etb_config.get("eth1-account-mnemonic")
+        password = self.etb_config.get("eth1-passphrase")
+        premines = self.etb_config.get("eth1-premine")
         for acc in premines:
             acct = w3.eth.account.from_mnemonic(
                 mnemonic, account_path=acc, passphrase=password
@@ -34,9 +30,7 @@ class ExecutionGenesisWriter(object):
             # genesis["alloc"][acct.address] = {"balance": premines[acc] + "0" * 18}
 
         # deposit contract
-        allocs[
-            self.gc["config-params"]["deposit-contract-address"]
-        ] = deposit_contract_json
+        allocs[self.etb_config.get("deposit-contract-address")] = deposit_contract_json
 
         return allocs
 
@@ -55,7 +49,7 @@ class ExecutionGenesisWriter(object):
         }
 
         config = {
-            "chainId": self.ec["chain-id"],
+            "chainId": self.etb_config.get("chain-id"),
             "homesteadBlock": 0,
             "eip150Block": 0,
             "eip155Block": 0,
@@ -66,20 +60,19 @@ class ExecutionGenesisWriter(object):
             "istanbulBlock": 0,
             "berlinBlock": 0,
             "londonBlock": 0,
-            "mergeForkBlock": self.ec["merge-fork-block"],
-            "terminalTotalDifficulty": self.ec["terminal-total-difficulty"],
+            "mergeForkBlock": self.etb_config.get("merge-fork-block"),
+            "terminalTotalDifficulty": self.etb_config.get("terminal-total-difficulty"),
         }
         self.genesis["config"] = config
 
-        if "clique" in self.ec:
-            if self.ec["clique"]["enabled"]:
-                signers = "".join(s for s in self.ec["clique"]["signers"])
-                extradata = f"0x{'0'*64}{signers}{'0'*130}"
-                self.genesis["extraData"] = extradata
-                self.genesis["config"]["clique"] = {
-                    "period": self.ec["seconds-per-eth1-block"],
-                    "epoch": self.ec["clique"]["epoch"],
-                }
+        if self.etb_config.get("clique-enabled"):
+            signers = "".join(s for s in self.etb_config.get("clique-signers"))
+            extradata = f"0x{'0'*64}{signers}{'0'*130}"
+            self.genesis["extraData"] = extradata
+            self.genesis["config"]["clique"] = {
+                "period": self.etb_config.get("seconds-per-eth1-block"),
+                "epoch": self.etb_config.get("clique-epoch"),
+            }
         return self.genesis
 
     def create_besu_genesis(self):
@@ -96,7 +89,7 @@ class ExecutionGenesisWriter(object):
             "timestamp": str(self.now),
         }
         config = {
-            "chainId": self.ec["chain-id"],
+            "chainId": self.etb_config.get("chain-id"),
             "homesteadBlock": 0,
             "eip150Block": 0,
             "eip155Block": 0,
@@ -107,30 +100,29 @@ class ExecutionGenesisWriter(object):
             "istanbulBlock": 0,
             "berlinBlock": 0,
             "londonBlock": 0,
-            "preMergeForkBlock": self.ec["merge-fork-block"],
-            "terminalTotalDifficulty": self.ec["terminal-total-difficulty"],
+            "preMergeForkBlock": self.etb_config.get("merge-fork-block"),
+            "terminalTotalDifficulty": self.etb_config.get("terminal-total-difficulty"),
         }
         self.genesis["config"] = config
 
-        if "clique" in self.ec:
-            if self.ec["clique"]["enabled"]:
-                clique = {
-                    "blockPeriodSeconds": self.ec["seconds-per-eth1-block"],
-                    "epochLength": self.ec["clique"]["epoch"],
-                }
-                signers = "".join(s for s in self.ec["clique"]["signers"])
-                extradata = f"0x{'0'*64}{signers}{'0'*130}"
+        if self.etb_config.get("clique-enabled"):
+            clique = {
+                "blockPeriodSeconds": self.etb_config.get("seconds-per-eth1-block"),
+                "epochLength": self.etb_config.get("clique-epoch"),
+            }
+            signers = "".join(s for s in self.etb_config.get("clique-signers"))
+            extradata = f"0x{'0'*64}{signers}{'0'*130}"
 
-                self.genesis["extraData"] = extradata
-                self.genesis["config"]["clique"] = clique
+            self.genesis["extraData"] = extradata
+            self.genesis["config"]["clique"] = clique
         else:
             self.genesis["config"]["ethash"] = {}
             raise Exception("not implemented in launchers")
 
         # besu doesn't use keystores like geth, however you can embed the accounts in the genesis.
-        mnemonic = self.gc["accounts"]["eth1-account-mnemonic"]
-        password = self.gc["accounts"]["eth1-passphrase"]
-        premines = self.gc["accounts"]["eth1-premine"]
+        mnemonic = self.etb_config.get("eth1-account-mnemonic")
+        password = self.etb_config.get("eth1-passphrase")
+        premines = self.etb_config.get("eth1-premine")
         for acc in premines:
             acct = w3.eth.account.from_mnemonic(
                 mnemonic, account_path=acc, passphrase=password
@@ -152,8 +144,10 @@ class ExecutionGenesisWriter(object):
                 "accountStartNonce": "0x0",
                 "maximumExtraDataSize": "0xffff",
                 "minGasLimit": "0x1388",
-                "networkID": hex(int(self.ec["chain-id"])),
-                "MergeForkIdTransition": hex(int(self.ec["merge-fork-block"])),
+                "networkID": hex(int(self.etb_config.get("chain-id"))),
+                "MergeForkIdTransition": hex(
+                    int(self.etb_config.get("merge-fork-block"))
+                ),
                 "eip150Transition": "0x0",
                 "eip158Transition": "0x0",
                 "eip160Transition": "0x0",
@@ -201,29 +195,28 @@ class ExecutionGenesisWriter(object):
             "nodes": [],
         }
 
-        if "clique" in self.ec:
-            if self.ec["clique"]["enabled"]:
-                self.genesis["engine"]["clique"] = {
-                    "params": {
-                        "period": hex(self.ec["seconds-per-eth1-block"]),
-                        "epoch": hex(self.ec["clique"]["epoch"]),
-                    }
+        if self.etb_config.get("clique-enabled"):
+            self.genesis["engine"]["clique"] = {
+                "params": {
+                    "period": hex(self.etb_config.get("seconds-per-eth1-block")),
+                    "epoch": hex(self.etb_config.get("clique-epoch")),
                 }
-                signers = "".join(s for s in self.ec["clique"]["signers"])
-                extradata = f"0x{'0'*64}{signers}{'0'*130}"
-                self.genesis["genesis"]["extraData"] = extradata
-            else:
-                self.genesis["engine"]["Ethash"] = {
-                    "params": {
-                        "minimumDifficulty": "0x20000",
-                        "difficultyBoundDivisor": "0x800",
-                        "durationLimit": "0xd",
-                        "blockReward": {"0x0": "0x1BC16D674EC80000"},
-                        "homesteadTransition": "0x0",
-                        "eip100bTransition": "0x0",
-                        "difficultyBombDelays": {},
-                    }
+            }
+            signers = "".join(s for s in self.etb_config.get("clique-signers"))
+            extradata = f"0x{'0'*64}{signers}{'0'*130}"
+            self.genesis["genesis"]["extraData"] = extradata
+        else:
+            self.genesis["engine"]["Ethash"] = {
+                "params": {
+                    "minimumDifficulty": "0x20000",
+                    "difficultyBoundDivisor": "0x800",
+                    "durationLimit": "0xd",
+                    "blockReward": {"0x0": "0x1BC16D674EC80000"},
+                    "homesteadTransition": "0x0",
+                    "eip100bTransition": "0x0",
+                    "difficultyBombDelays": {},
                 }
-                raise Exception("ethash network not implemented")
+            }
+            raise Exception("ethash network not implemented")
 
         return self.genesis
