@@ -1,6 +1,6 @@
 #!/bin/bash
 
-env_vars=( "BOOTNODE_ENR" "EXECUTION_DATA_DIR" "GETH_EXECUTION_GENESIS" "NETWORK_ID" "EXECUTION_P2P_PORT" "EXECUTION_HTTP_PORT" "EXECUTION_WS_PORT" "HTTP_APIS" "WS_APIS" "IP_ADDR" "NETRESTRICT_RANGE" "END_FORK")
+env_vars=( "BOOTNODE_ENR" "EXECUTION_DATA_DIR" "GETH_EXECUTION_GENESIS" "NETWORK_ID" "EXECUTION_P2P_PORT" "EXECUTION_HTTP_PORT" "EXECUTION_WS_PORT" "HTTP_APIS" "WS_APIS" "IP_ADDR" "NETRESTRICT_RANGE" "END_FORK_NAME" "GETH_GENESIS_FILE" )
 
 for var in "${env_vars[@]}" ; do
     if [[ -z "$var" ]]; then
@@ -11,15 +11,15 @@ done
 
 echo "geth got a valid env-var set"
 
-if [[ "$END_FORK" = "bellatrix" ]]; then
+if [[ "$END_FORK_NAME" = "bellatrix" ]]; then
     # since we are doing the merge in the consensus
     # we need to add the terminal total difficutly override
     echo "Geth client is taking part in a merge testnet, overriding the TTD"
-    if [[ -z "$TERMINALTOTALDIFFICULTY" ]]; then
+    if [[ -z "$TERMINAL_TOTAL_DIFFICULTY" ]]; then
         echo "We are doing a merge consensus test but no terminal total difficulty was applied"
         exit 1
     fi
-    MERGE_ARGS="--override.terminaltotaldifficulty=$TERMINALTOTALDIFFICULTY"
+    MERGE_ARGS="--override.terminaltotaldifficulty=$TERMINAL_TOTAL_DIFFICULTY"
     echo "using $MERGE_ARGS"
 else
     echo "Geth not overriding terminal total difficulty. Got an END_FORK:$END_FORK"
@@ -40,26 +40,26 @@ echo "Detected execution genesis"
 # ENODE="$EXECUTION_BOOTNODE_ENODE@$EXECUTION_BOOTNODE_START_IP_ADDR:$EXECUTION_BOOTNODE_DISC_PORT"
 ##"we no longer use this method for now"
 #echo "using bootnode: $ENODE"
-while [ ! -f "/data/local_testnet/execution-bootstrapper/enodes.txt" ]; do
-    sleep 1
-    echo "Waiting on the enodes /data/local_testnet/execution-bootstrapper/enodes.txt"
-done
-#
-echo "found enodes"
-ENODES=`cat /data/local_testnet/execution-bootstrapper/enodes.txt | tr -d "\n"`
-echo $ENODES
+# while [ ! -f "/data/local_testnet/execution-bootstrapper/enodes.txt" ]; do
+#     sleep 1
+#     echo "Waiting on the enodes /data/local_testnet/execution-bootstrapper/enodes.txt"
+# done
+# #
+# echo "found enodes"
+# ENODES=`cat /data/local_testnet/execution-bootstrapper/enodes.txt | tr -d "\n"`
+# echo $ENODES
 #get the bootnode we are going to use.
 
 
 echo "Initing the genesis"
 geth init \
     --datadir "$EXECUTION_DATA_DIR" \
-    "$GETH_EXECUTION_GENESIS"
+    "$GETH_GENESIS_FILE"
 
 echo "Starting geth"
 
+# --bootnodes "$ENODES" \
 geth \
-  --bootnodes "$ENODES" \
   --datadir="$EXECUTION_DATA_DIR" \
   --networkid="$NETWORK_ID" \
   --port "$EXECUTION_P2P_PORT" \
