@@ -489,6 +489,25 @@ class ETBConfig(GenericConfigurationEntry):
 
         return all_clients
 
+    def get_premine_keys(self):
+        from web3.auto import w3
+        w3.eth.account.enable_unaudited_hdwallet_features()
+
+        mnemonic = self.get("eth1-account-mnemonic")
+        passphrase = self.get("eth1-passphrase")
+        premines = self.get("eth1-premine")
+
+        keys = {}
+        for acc in premines:
+            acct = w3.eth.account.from_mnemonic(
+                mnemonic, account_path=acc, passphrase=passphrase
+            )
+            pub = acct.address
+            priv = acct.privateKey.hex()
+            keys[pub] = priv
+
+        return keys
+
 
 if __name__ == "__main__":
     c = ETBConfig("configs/mainnet/testing.yaml")

@@ -2,8 +2,12 @@
     HTTP/WS API interface for simple tasks.
 """
 import requests
-import json
 import time
+from concurrent.futures import ThreadPoolExecutor
+
+
+def _threadpool_executor_rpc_request_proxy(bucket, execution_json_rpc, rpc):
+    return bucket, execution_json_rpc.get_rpc_response(rpc)
 
 
 class RPCMethod(object):
@@ -22,9 +26,10 @@ class RPCMethod(object):
 
     def get_response(self, url):
         start = int(time.time())
-        while time.time() - start < self.timeout:
+        to = self.timeout
+        while time.time() - start < to:
             try:
-                return requests.post(url, json=self.payload, timeout=self.timeout)
+                return requests.post(url, json=self.payload, timeout=to)
 
             except requests.ConnectionError:
                 # odds are the bootstrapper is trying to connect to a client
@@ -60,7 +65,7 @@ class ExecutionJSONRPC(object):
     A client that represents a single execution endpoint to interact with.
     """
 
-    def __init__(self, endpoint_url, non_error=True, timeout=5):
+    def __init__(self, endpoint_url, non_error=True, timeout=5, retry_delay=1):
         self.endpoint_url = endpoint_url
         self.non_error = non_error
         self.timeout = timeout
@@ -73,14 +78,13 @@ class ExecutionJSONRPC(object):
         else:
             return False
 
-    def send_payload(self, rpc):
-
+    def get_rpc_response(self, rpc):
         start = int(time.time())
         while int(time.time()) <= start + self.timeout:
             response = rpc.get_response(self.endpoint_url)
             if self._is_valid_response(response):
                 return response.json()
-
+            time.sleep(self.retry_delay)
         return rpc.get_response(self.url)
 
 
@@ -90,14 +94,18 @@ class ETBExecutionRPC(object):
     requests to one specific client.
     """
 
-    def __init__(self, etb_config, non_error=True, timeout=5, protocol="http"):
+    def __init__(
+        self, etb_config, non_error=True, timeout=5, retry_delay=1, protocol="http"
+    ):
         self.etb_config = etb_config
         self.non_error = non_error
         self.timeout = timeout
+        self.retry_delay = retry_delay
         self.protocol = protocol
 
         if protocol not in ["http", "ws"]:
-            raise Exception("non-implemented protocol for ExecutionRPC connection")
+            err = "non-implemented protocol for ExecutionRPC connection"
+            raise Exception(err)
 
         self._get_all_execution_endpoints()
 
@@ -118,14 +126,17 @@ class ETBExecutionRPC(object):
                     ip = cc.get("ip-addr", node)
                     port = cc.get(f"execution-{self.protocol}-port")
                     url = f"{self.protocol}://{ip}:{port}"
-                    self.execution_endpoints[f"{name}-{node}"] = ExecutionJSONRPC(
+                    _name = f"{name}-{node}"
+                    self.execution_endpoints[_name] = ExecutionJSONRPC(
                         url, self.non_error, self.timeout
                     )
 
     def get_client_nodes(self):
         return self.execution_endpoints.keys()
 
-    def do_rpc_request(self, rpc_method, client_nodes=[None], all_clients=False):
+    def do_rpc_request(
+        self, execution_rpc_method, client_nodes=[None], all_clients=False
+    ):
         if all_clients:
             ep = self.get_client_nodes()
         else:
@@ -134,14 +145,27 @@ class ETBExecutionRPC(object):
             else:
                 ep = client_nodes
 
-        all_responses = {}
-        for name, ejr in self.execution_endpoints.items():
-            if name in ep:
-                all_responses[name] = ejr.send_payload(rpc_method)
+            for cn in ep:
+                if cn not in self.execution_endpoints.keys():
+                    err = f"Invalid execution endpoint supplied: {cn}"
+                    err += f" must be in {self.get_client_nodes()}"
+                    raise Exception(err)
 
-        if len(all_responses.keys()) == 0:
-            raise Exception(
-                "Bad client_nodes: {client_nodes} need one of {self.get_client_nodes()}"
+        all_responses = {}
+        threadpool_endpoints = [self.execution_endpoints[name] for name in ep]
+        threadpool_buckets = [name for name in ep]
+
+        with ThreadPoolExecutor(max_workers=len(ep)) as executor:
+            results = executor.map(
+                _threadpool_executor_rpc_request_proxy,
+                threadpool_buckets,
+                threadpool_endpoints,
+                [execution_rpc_method for x in range(len(ep))],
             )
+
+            for bucket_response_tuple in list(results):
+                client = bucket_response_tuple[0]
+                response = bucket_response_tuple[1]
+                all_responses[client] = response
 
         return all_responses

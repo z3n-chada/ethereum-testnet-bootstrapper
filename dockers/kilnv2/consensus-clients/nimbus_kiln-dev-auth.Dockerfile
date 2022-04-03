@@ -3,7 +3,7 @@ FROM debian:bullseye-slim as nimbus_builder
 
 WORKDIR /git
 # Included here to avoid build-time complaints
-ARG BRANCH="kiln-dev"
+ARG BRANCH="kiln-dev-auth"
 
 RUN apt-get update && apt-get install -y build-essential git libpcre3-dev ca-certificates wget lsb-release wget software-properties-common
 
@@ -13,7 +13,7 @@ ENV LLVM_CONFIG=llvm-config-13
 
 RUN git clone https://github.com/status-im/nimbus-eth2.git
 
-RUN cd nimbus-eth2 && git checkout kiln-dev
+RUN cd nimbus-eth2 && git checkout ${BRANCH}
 
 RUN cd nimbus-eth2 && make -j64 nimbus_beacon_node NIMFLAGS="--cc:clang --clang.exe:clang-13 --clang.linkerexe:clang-13" \
                    && make -j64 nimbus_validator_client NIMFLAGS="--cc:clang --clang.exe:clang-13 --clang.linkerexe:clang-13"

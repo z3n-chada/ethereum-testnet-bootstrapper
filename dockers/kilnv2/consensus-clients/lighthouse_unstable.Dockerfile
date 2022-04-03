@@ -1,7 +1,8 @@
 FROM rust:1.58.1-bullseye AS lighthouse_builder
 WORKDIR /git
 RUN apt-get update && apt-get -y upgrade && apt-get install -y cmake libclang-dev
-RUN git clone https://github.com/sigp/lighthouse.git && cd lighthouse && git checkout 381d0ece3cb0b55cc602550549026bf47952de46
+#RUN git clone https://github.com/sigp/lighthouse.git && cd lighthouse && git checkout 381d0ece3cb0b55cc602550549026bf47952de46
+RUN git clone https://github.com/sigp/lighthouse.git && cd lighthouse && git checkout unstable
 RUN cd lighthouse && make 
 
 from debian:bullseye-slim

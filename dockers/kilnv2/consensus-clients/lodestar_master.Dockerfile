@@ -1,16 +1,16 @@
-ARG DOCKER_TAG="next"
-
-FROM chainsafe/lodestar:${DOCKER_TAG} as lodestar_builder
+# ARG DOCKER_TAG="next"
+# 
+# FROM chainsafe/lodestar:${DOCKER_TAG} as lodestar_builder
 
 # Here only to avoid build-time errors
-ARG BUILD_TARGET
+# ARG BUILD_TARGET
 
-RUN apk update && apk add --no-cache ca-certificates tzdata bash su-exec && rm -rf /var/cache/apk/*
+# RUN apk update && apk add --no-cache ca-certificates tzdata bash su-exec && rm -rf /var/cache/apk/*
 
 FROM node:16-bullseye-slim
 
 # Scripts that handle permissions
-RUN apt update; apt install -y g++ build-essential nodejs ca-certificates bash tzdata \
+RUN apt update; apt install -y g++ build-essential nodejs ca-certificates bash tzdata make python3-dev \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
 
@@ -26,13 +26,18 @@ RUN adduser \
     --uid "${UID}" \
     "${USER}"
 
+WORKDIR /usr/app
+
+ARG VERSION=next
+ENV VERSION=$VERSION
+RUN npm install -g npm@8.5.5
+RUN npm install @chainsafe/lodestar-cli@$VERSION
+
 RUN mkdir -p /var/lib/lodestar/consensus && chown ${USER}:${USER} /var/lib/lodestar/consensus && chmod 700 /var/lib/lodestar/consensus
 
 RUN mkdir -p /var/lib/lodestar/validators && chown ${USER}:${USER} /var/lib/lodestar/validators && chmod 700 /var/lib/lodestar/validators
 
-WORKDIR /usr/app/
-
-COPY --from=lodestar_builder /usr/app/. .
+# COPY --from=lodestar_builder /usr/app/. .
 
 WORKDIR /home/lodestar
 

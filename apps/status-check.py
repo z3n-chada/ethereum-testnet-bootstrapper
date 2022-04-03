@@ -20,90 +20,109 @@
 #         here.
 # """
 from modules.ETBConfig import ETBConfig
-from modules.BeaconAPI import ETBConsensusBeaconAPI, APIRequest
-import json
+from modules.TestnetHealthMetrics import TestnetHealthAPI, GetUniqueHeads
 
 
-def check_heads(etb_beacon_api):
-    api_request = APIRequest("/eth/v2/beacon/blocks/head")
-    all_responses = {}
-    for name, response in etb_beacon_api.do_api_request(
-        api_request, all_clients=True
-    ).items():
-        slot = response.json()["data"]["message"]["slot"]
-        state_root = response.json()["data"]["message"]["state_root"]
-        all_responses[name] = (slot, state_root)
+class TestnetStatusChecker(object):
+    def __init__(self, args):
+        self.etb_config = ETBConfig(args.config)
 
-    unique_responses = {}
+        self.thapi = TestnetHealthAPI(self.etb_config)
+        self.thapi.add_metric(GetUniqueHeads(), name="consensus-check")
 
-    for name, response in all_responses.items():
-        if response in unique_responses:
-            unique_responses[response].append(name)
+        self.now = int(time.time())
+
+        if self.etb_config.get("preset-base") == "mainnet":
+            seconds_per_eth2_slot = 12
         else:
-            unique_responses[response] = [name]
+            raise Exception("No minimal support")
 
-    return unique_responses
+        self.genesis_time = self.now + self.etb_config.get("consensus-genesis-delay")
+        self.phase0_time = self.now + args.phase0_slot * seconds_per_eth2_slot
+        self.exp_time = self.now + args.experiment_slot * seconds_per_eth2_slot
+        self.phase1_time = self.now + args.phase1_slot * seconds_per_eth2_slot
+        self.phase2_time = self.now + args.phase2_slot * seconds_per_eth2_slot
 
+        self.check_delay = args.check_delay
+        self.number_of_checks = args.num_checks
 
-def wait_for_time(milestone, t, etb_beacon_api=None, do_check_heads=False):
-    while int(time.time()) < t:
-        time_left = t - int(time.time())
-        print(
-            f"status-check: waiting for {milestone}.. {time_left} seconds remain",
-            flush=True,
-        )
-        if time_left > 15:
-            if do_check_heads:
-                unique_heads = check_heads(etb_beacon_api)
-                print(f"{unique_heads}", flush=True)
-            time.sleep(15)
+        if (
+            args.phase0_slot > args.phase1_slot
+            or args.phase0_slot > args.experiment_slot
+        ):
+            print(
+                "WARN: phase0 and phase1/experiment slots are in wrong order",
+                flush=True,
+            )
+            print("WARN: continuing anyway...")
+
+        if (
+            args.phase1_slot > args.phase2_slot
+            or args.phase1_slot > args.experiment_slot
+        ):
+            print(
+                "WARN: phase1 and phase2/experiment slots are in wrong order",
+                flush=True,
+            )
+            print("WARN: continuing anyway...")
+
+    def wait_for_time(self, log_prefix, t):
+        while int(time.time()) < t:
+            time_left = t - int(time.time())
+            print(
+                f"status-check: {log_prefix}.. {time_left} seconds remain",
+                flush=True,
+            )
+            if time_left > 15:
+                time.sleep(15)
+            else:
+                time.sleep(1)
+
+    def perform_status_check(self, log_prefix):
+        query = "/eth/v2/beacon/headers/head"
+        client_heads = self.thapi.perform_metric("consensus-check")
+        unique_resps = {}
+
+        for name, response in client_heads.items():
+            if response in unique_resps:
+                unique_resps[response].append(name)
+            else:
+                unique_resps[response] = [name]
+
+        num_heads = len(unique_resps.keys())
+        if num_heads != 1:
+            print(f"{log_prefix}: Error, query={query}")
+            print(unique_resps, flush=True)
         else:
-            time.sleep(1)
+            print(f"{log_prefix}: Consensus, query={query}", flush=True)
 
+    def perform_experiment(self):
+        print("Launching Experiment!", flush=True)
+        # import experiment modules here
 
-def do_phase_analysis(log_prefix, etb_beacon_api):
-    for x in range(args.num_checks):
-        unique_heads = check_heads(etb_beacon_api)
-        if len(unique_heads) == 1:
-            print(f"{log_prefix}: Consensus")
-            print(f"{unique_heads}", flush=True)
-        else:
-            print(f"{log_prefix}: Fork Detected")
-            print(f"{unique_heads}", flush=True)
+    def start(self):
+        self.wait_for_time("genesis", self.genesis_time)
+        for x in range(self.number_of_checks):
+            self.perform_status_check("genesis")
+            time.sleep(self.check_delay)
 
-        time.sleep(args.check_delay)
+        self.wait_for_time("phase0", self.phase0_time)
+        for x in range(self.number_of_checks):
+            self.perform_status_check("phase0")
+            time.sleep(self.check_delay)
 
+        self.wait_for_time("experiment", self.exp_time)
+        self.perform_experiment()
 
-def watch_experiment_for_forks(args):
-    etb_config = ETBConfig(args.config)
-    etb_beacon_api = ETBConsensusBeaconAPI(etb_config, 3, retries=2)
+        self.wait_for_time("phase1", self.phase1_time)
+        for x in range(self.number_of_checks):
+            self.perform_status_check("phase1")
+            time.sleep(self.check_delay)
 
-    now = int(time.time())
-
-    if etb_config.get("preset-base") == "mainnet":
-        seconds_per_eth2_block = 12
-    else:
-        raise Exception("No minimal support")
-
-    genesis_time = now + etb_config.get("consensus-genesis-delay")
-    phase0_time = now + args.phase0_slot * seconds_per_eth2_block
-    phase1_time = now + args.phase1_slot * seconds_per_eth2_block
-    phase2_time = now + args.phase2_slot * seconds_per_eth2_block
-
-    # go ahead and get past genesis
-    wait_for_time("genesis", genesis_time)
-    wait_for_time(
-        "phase0", phase0_time, etb_beacon_api=etb_beacon_api, do_check_heads=True
-    )
-    do_phase_analysis("phase0", etb_beacon_api)
-    wait_for_time(
-        "phase1", phase1_time, etb_beacon_api=etb_beacon_api, do_check_heads=True
-    )
-    do_phase_analysis("phase1", etb_beacon_api)
-    wait_for_time(
-        "phase2", phase2_time, etb_beacon_api=etb_beacon_api, do_check_heads=True
-    )
-    do_phase_analysis("phase2", etb_beacon_api)
+        self.wait_for_time("phase2", self.phase0_time)
+        for x in range(self.number_of_checks):
+            self.perform_status_check("phase2")
+            time.sleep(self.check_delay)
 
 
 if __name__ == "__main__":
@@ -137,7 +156,7 @@ if __name__ == "__main__":
         dest="phase1_slot",
         default=96,
         type=int,
-        help="number of slots to wait to check for post-scenario network health",
+        help="number of slots to wait after experiment for network health",
     )
     parser.add_argument(
         "--phase2-slot",
@@ -163,14 +182,7 @@ if __name__ == "__main__":
         help="when doing multiple checks how long to pause between them",
     )
     args = parser.parse_args()
+    status_checker = TestnetStatusChecker(args)
+    status_checker.start()
 
-    if args.phase0_slot > args.phase1_slot or args.phase0_slot > args.experiment_slot:
-        print("WARN: phase0 and phase1/experiment slots are in wrong order", flush=True)
-        print("WARN: continuing anyway...")
-
-    if args.phase1_slot > args.phase2_slot or args.phase1_slot > args.experiment_slot:
-        print("WARN: phase1 and phase2/experiment slots are in wrong order", flush=True)
-        print("WARN: continuing anyway...")
-
-    watch_experiment_for_forks(args)
     print("workload_complete", flush=True)

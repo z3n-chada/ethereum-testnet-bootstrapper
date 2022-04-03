@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #check if we have the neccessary envs to start the script.
-env_vars=("PRESET_BASE" "START_FORK_NAME" "END_FORK_NAME" "TEKU_DEBUG_LEVEL" "TESTNET_DIR" "NODE_DIR" "HTTP_WEB3_IP_ADDR" "EXECUTION_HTTP_PORT" "IP_ADDR" "CONSENSUS_P2P_PORT" "BEACON_API_PORT" "BEACON_METRIC_PORT", "CONSENSUS_BOOTNODE_ENR_FILE", "CONSENSUS_CHECKPOINT_FILE")
+env_vars=("PRESET_BASE" "START_FORK_NAME" "END_FORK_NAME" "TEKU_DEBUG_LEVEL" "TESTNET_DIR" "NODE_DIR" "HTTP_WEB3_IP_ADDR" "EXECUTION_HTTP_PORT" "IP_ADDR" "CONSENSUS_P2P_PORT" "BEACON_API_PORT" "BEACON_METRIC_PORT", "CONSENSUS_BOOTNODE_ENR_FILE", "CONSENSUS_CHECKPOINT_FILE", "CONSENSUS_TARGET_PEERS")
 for var in "${env_vars[@]}" ; do
     if [[ -z "$var" ]]; then
         echo "$var not set"
@@ -47,7 +47,7 @@ teku \
     --p2p-discovery-enabled=true \
     --p2p-peer-lower-bound=1 \
     --p2p-port="$CONSENSUS_P2P_PORT" \
-    --p2p-peer-upper-bound=8 \
+    --p2p-peer-upper-bound="$CONSENSUS_TARGET_PEERS" \
     --eth1-endpoint="http://$HTTP_WEB3_IP_ADDR:$EXECUTION_HTTP_PORT" \
     --p2p-discovery-bootnodes="$bootnode_enr" \
     --p2p-subscribe-all-subnets-enabled=true \

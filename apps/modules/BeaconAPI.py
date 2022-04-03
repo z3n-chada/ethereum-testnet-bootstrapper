@@ -1,8 +1,6 @@
 import requests
 import time
-import sys
-from ruamel import yaml
-import concurrent.futures
+from concurrent.futures import ThreadPoolExecutor
 
 """
     General overview for rpc/api is of the following.
@@ -12,17 +10,13 @@ import concurrent.futures
 
     1 object represents a single endpoint connection for sending transactions.
         this should have the retries/non-error/global timeout to use.
-        it sends the requests does some checks and returns the value that conforms
-        or the last value retreived in the case of global/timeout or retry limit.
+        it sends the requests does some checks and returns the value that
+        conforms or the last value retreived in the case of global/timeout
+        or retry limit.
 
     1 object that wraps the etb_config to allow you to easily work with it.
         should allow you to choose which clients you wish to interact with.
 """
-
-
-def _threadpool_executor_api_request_proxy(bucket, api, request):
-    # threadpool executor to do things in parallel.
-    return bucket, api.get_api_response(request)
 
 
 class APIRequest(object):
@@ -33,8 +27,29 @@ class APIRequest(object):
         # self.retry_delay = retry_delay
 
     def get_response(self, base_url):
-        response = requests.get(f"{base_url}{self.path}", timeout=self.timeout)
-        return response
+        start = int(time.time())
+        to = self.timeout
+        while time.time() - start < to:
+            try:
+                return requests.get(f"{base_url}{self.path}", timeout=to)
+
+            except requests.ConnectionError:
+                # odds are the bootstrapper is trying to connect to a client
+                # that is not up already.
+                pass
+            except requests.Timeout as e:
+                # actually timed out.
+                raise e
+
+
+"""
+    Some useful APIs that get used regularly
+"""
+
+
+def _threadpool_executor_api_request_proxy(bucket, api, request):
+    # threadpool executor to do things in parallel.
+    return bucket, api.get_api_response(request)
 
 
 class BeaconAPI(object):
@@ -45,15 +60,15 @@ class BeaconAPI(object):
     timeout issues.
     """
 
-    def __init__(self, base_url, non_error=True, timeout=12, retries=2, retry_delay=4):
+    def __init__(self, base_url, non_error=True, timeout=5, retry_delay=1):
         self.base_url = base_url
         self.non_error = non_error
         self.timeout = timeout
-        self.retries = retries
         self.retry_delay = retry_delay
 
     def get_api_response(self, api_request):
-        for x in range(self.retries):
+        start = int(time.time())
+        while time.time() - start < self.timeout:
             response = api_request.get_response(self.base_url)
             if response.status_code == 200:
                 return response
@@ -67,12 +82,9 @@ class BeaconAPI(object):
 
 
 class ETBConsensusBeaconAPI(object):
-    def __init__(
-        self, etb_config, non_error=True, timeout=12, retries=2, retry_delay=4
-    ):
+    def __init__(self, etb_config, non_error=True, timeout=5, retry_delay=4):
         self.etb_config = etb_config
         self.timeout = timeout
-        self.retries = retries
         self.retry_delay = retry_delay
         self.non_error = non_error
         self.client_nodes = {}
@@ -85,10 +97,9 @@ class ETBConsensusBeaconAPI(object):
                 port = cc.get("beacon-api-port")
                 self.client_nodes[f"{name}-{node}"] = BeaconAPI(
                     f"http://{ip}:{port}",
-                    self.non_error,
-                    self.timeout,
-                    self.retries,
-                    self.retry_delay,
+                    non_error=self.non_error,
+                    timeout=self.timeout,
+                    retry_delay=self.retry_delay,
                 )
 
     def get_client_nodes(self):
@@ -114,7 +125,7 @@ class ETBConsensusBeaconAPI(object):
         threadpool_endpoints = [self.client_nodes[name] for name in ep]
         threadpool_buckets = [name for name in ep]
         # execute the tasks with a concurrent threadpool executor.
-        with concurrent.futures.ThreadPoolExecutor(max_workers=len(ep)) as executor:
+        with ThreadPoolExecutor(max_workers=len(ep)) as executor:
             results = executor.map(
                 _threadpool_executor_api_request_proxy,
                 threadpool_buckets,
