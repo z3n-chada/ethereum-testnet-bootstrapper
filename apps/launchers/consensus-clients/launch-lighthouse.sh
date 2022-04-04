@@ -24,8 +24,14 @@ done
 
 
 if [[ $END_FORK_NAME == "bellatrix" ]]; then
-    ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --execution-endpoints=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_ENGINE_PORT --merge --terminal-total-difficulty-override=$TERMINAL_TOTAL_DIFFICULTY" 
+    ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --merge --terminal-total-difficulty-override=$TERMINAL_TOTAL_DIFFICULTY" 
     ADDITIONAL_VALIDATOR_ARGS="$ADDITIONAL_VALIDATOR_ARGS --suggested-fee-recipient=0x00000000219ab540356cbb839cbe05303d7705fa"
+    if [ -n "$JWT_SECRET_FILE" ]; then
+        ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --jwt-secrets=$JWT_SECRET_FILE"
+        ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --execution-endpoints=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_ENGINE_AUTH_PORT"
+    else
+        ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --execution-endpoints=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_ENGINE_PORT" 
+    fi
 fi
 
 
@@ -39,6 +45,7 @@ if [[ -n "$EXECUTION_LAUNCHER" ]]; then
     echo "lightouse-$IP_ADDR lauching a local execution client"
     "$EXECUTION_LAUNCHER" &
 fi
+
 
 lighthouse \
 	--debug-level=$LIGHTHOUSE_DEBUG_LEVEL \

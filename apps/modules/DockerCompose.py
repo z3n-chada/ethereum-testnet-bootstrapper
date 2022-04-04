@@ -3,6 +3,9 @@ import re
 from .ETBConfig import GenericClient, ConsensusClient, ExecutionClient, ETBConfig
 
 from ruamel import yaml
+import logging
+
+logger = logging.getLogger("bootstrapper_log")
 
 
 class ClientWriter(object):
@@ -48,6 +51,9 @@ class ClientWriter(object):
             "ip-addr",
             "execution-data-dir",
             "execution-engine-port",
+            "execution-engine-auth-port",
+            "execution-engine-ws-port",
+            "execution-engine-ws-auth-port",
             "execution-p2p-port",
             "execution-http-port",
             "execution-ws-port",
@@ -62,6 +68,7 @@ class ClientWriter(object):
             "nethermind-genesis-file",
             "end-fork-name",
             "execution-checkpoint-file",
+            "execution-log-level",
         ]
 
         self.base_consensus_bootnode_env_vars = [
@@ -144,7 +151,6 @@ class ClientWriter(object):
         # it in the node dir.
         if self.execution_config is not None:
             for k in self.base_execution_env_vars:
-                print(f"trying to get {k}")
                 var = f'{k.upper().replace("-","_")}'
                 env_vars[var] = self._get_env_var(k)
 
@@ -163,6 +169,11 @@ class ClientWriter(object):
                 var = f'{k.upper().replace("-","_")}'
                 env_vars[var] = v
 
+        # once we are done lets check for jwt here since not all clients support it.
+        if self.client.has("jwt-secret-file"):
+            env_vars["JWT_SECRET_FILE"] = self.client.get(
+                "jwt-secret-file", self.curr_node
+            )
         return env_vars
 
 
@@ -199,7 +210,7 @@ class DockerComposeWriter(object):
 
         for name, cc in self.config.get_consensus_clients().items():
             for n in range(cc.get("num-nodes")):
-                print(f"Dockerizing-{name} consensus-client.")
+                logger.info(f"Dockerizing-{name} consensus-client.")
                 cw = ClientWriter(name, cc, n)
                 self.yaml["services"][cw.name] = cw._get_docker_service_entry()
         for (
@@ -207,19 +218,19 @@ class DockerComposeWriter(object):
             ec,
         ) in self.config.get_execution_clients().items():
             for n in range(ec.get("num-nodes")):
-                print(f"Dockerizing-{name} execution-client.")
+                logger.info(f"Dockerizing-{name} execution-client.")
                 cw = ClientWriter(name, ec, n)
                 self.yaml["services"][cw.name] = cw._get_docker_service_entry()
 
         for name, gc in self.config.get_generic_modules().items():
             for n in range(gc.get("num-nodes")):
-                print(f"Dockerizing-{name} generic-module-client.")
+                logger.info(f"Dockerizing-{name} generic-module-client.")
                 cw = ClientWriter(name, gc, n)
                 self.yaml["services"][cw.name] = cw._get_docker_service_entry()
 
         for name, cb in self.config.get_consensus_bootnodes().items():
             for n in range(cb.get("num-nodes")):
-                print(f"Dockerizing-{name} consensus-bootnode-client.")
+                logger.info(f"Dockerizing-{name} consensus-bootnode-client.")
                 cw = ClientWriter(name, cb, n)
                 self.yaml["services"][cw.name] = cw._get_docker_service_entry()
 

@@ -24,7 +24,12 @@ done
 bootnode_enr=`cat $CONSENSUS_BOOTNODE_ENR_FILE`
 
 if [[ $END_FORK_NAME == "bellatrix" ]]; then
-    ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --execution-provider=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_ENGINE_PORT"
+    if [ -n "$JWT_SECRET_FILE" ]; then
+        ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --jwt-secret=$JWT_SECRET_FILE"
+        ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --execution-provider=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_ENGINE_AUTH_PORT"
+    else
+        ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --execution-provider=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_ENGINE_PORT"
+    fi
 fi
 
 if [[ $PRESET_BASE == "minimal" ]]; then

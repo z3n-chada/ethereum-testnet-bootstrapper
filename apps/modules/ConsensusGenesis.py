@@ -1,6 +1,9 @@
 import subprocess
 
 from ruamel import yaml
+import logging
+
+logger = logging.getLogger("bootstrapper_log")
 
 
 def deploy_consensus_genesis(
@@ -45,4 +48,5 @@ def deploy_consensus_genesis(
         "--timestamp",
         str(eth1_timestamp),
     ]
+    logger.debug(f"ConsensusGenesis: running eth2-testnet-genesis:\n{cmd}")
     subprocess.run(cmd)

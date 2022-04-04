@@ -29,12 +29,18 @@ class RPCMethod(object):
         to = self.timeout
         while time.time() - start < to:
             try:
-                return requests.post(url, json=self.payload, timeout=to)
+                response = requests.post(url, json=self.payload, timeout=to)
+                return response
 
             except requests.ConnectionError:
                 # odds are the bootstrapper is trying to connect to a client
                 # that is not up already.
-                pass
+                print(
+                    f"{url}: {self.payload}: getting requests.ConnectionError",
+                    flush=True,
+                )
+                # time.sleep(1)  # should we just return None?
+                return None
             except requests.Timeout as e:
                 # actually timed out.
                 raise e
@@ -69,9 +75,12 @@ class ExecutionJSONRPC(object):
         self.endpoint_url = endpoint_url
         self.non_error = non_error
         self.timeout = timeout
+        self.retry_delay = retry_delay
 
     def _is_valid_response(self, response):
         if self.non_error:
+            if response is None:
+                return False
             if response.status_code == 200:
                 if "error" not in response.json():
                     return True
@@ -85,7 +94,7 @@ class ExecutionJSONRPC(object):
             if self._is_valid_response(response):
                 return response.json()
             time.sleep(self.retry_delay)
-        return rpc.get_response(self.url)
+        return response
 
 
 class ETBExecutionRPC(object):

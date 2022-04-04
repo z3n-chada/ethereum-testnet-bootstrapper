@@ -30,9 +30,16 @@ if [[ -n "$EXECUTION_LAUNCHER" ]]; then
 fi
 
 if [[ $END_FORK_NAME == "bellatrix" ]]; then
-    ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --execution.urls=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_ENGINE_PORT --terminal-total-difficulty-override=$TERMINAL_TOTAL_DIFFICULTY" 
+    ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --terminal-total-difficulty-override=$TERMINAL_TOTAL_DIFFICULTY" 
     ADDITIONAL_VALIDATOR_ARGS="--terminal-total-difficulty-override=$TERMINAL_TOTAL_DIFFICULTY"
+    if [ -n "$JWT_SECRET_FILE" ]; then
+        ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --execution.urls=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_ENGINE_AUTH_PORT --jwt-secret=$JWT_SECRET_FILE"
+        echo "Lodestar using JWT secret"
+    else
+    ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --execution.urls=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_ENGINE_PORT"
+    fi
 fi
+
 
 sleep 10
 

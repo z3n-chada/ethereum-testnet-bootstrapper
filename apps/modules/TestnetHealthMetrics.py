@@ -52,9 +52,10 @@ class GetUniqueHeads(TestnetHealthMetric):
         for name, response in etb_api.do_api_request(
             self.request_obj, all_clients=True
         ).items():
-            slot = response.json()["data"]["message"]["slot"]
-            state_root = response.json()["data"]["message"]["state_root"]
-            all_responses[name] = (slot, state_root)
+            if response is not None:
+                slot = response.json()["data"]["message"]["slot"]
+                state_root = response.json()["data"]["message"]["state_root"]
+                all_responses[name] = (slot, state_root)
 
         return all_responses
 
@@ -72,7 +73,7 @@ class GetUniqueHeads(TestnetHealthMetric):
             repr_string = f"WARN: found {num_heads} forks: {unique_resps}"
         else:
             slot, state_root = list(unique_resps.keys())[0]
-            repr_string = "Consensus {slot}:{state_root}"
+            repr_string = f"Consensus {slot}:{state_root}"
 
         return repr_string
 
@@ -84,6 +85,14 @@ class TestnetHealthAPI(object):
         self.execution_rpc = ETBExecutionRPC(etb_config)
 
         self.metrics = {}
+
+    def __repr__(self):
+        out = ""
+        for metric_name, metric in self.metrics.items():
+            out += metric_name + "\n"
+            out += "\t" + metric.__repr__()
+
+        return out
 
     def add_metric(self, thm, name=None):
         if name is None:
@@ -113,7 +122,7 @@ class TestnetHealthAPI(object):
     def perform_all_metrics(self):
         all_results = {}
         for metric_name, metric in self.metrics.items():
-            metric.perform_and_log(metric_name)
+            self.perform_metric(metric_name)
             all_results[metric_name] = metric.result
 
         return all_results

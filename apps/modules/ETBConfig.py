@@ -8,6 +8,8 @@
 from ruamel import yaml
 import logging
 
+logger = logging.getLogger("bootstrapper_log")
+
 
 class GenericConfigurationEntry(object):
     """
@@ -123,27 +125,31 @@ class GenericClient(GenericConfigurationEntry):
             self.additional_env = self.config["additional-env"]
 
     def has(self, value):
+        # currently this is broken if there is a getter, but it is not defined. workarounds here.
+        if value in ["jwt-secret-file"]:
+            return value in self.config
+
         if value in self.additional_env:
-            logging.debug(f"{self.__name__}:has {value} in additional-env")
+            logger.debug(f"{self.__name__}:has {value} in additional-env")
             return True
 
         if value in self.config:
-            logging.debug(f"{self.__name__}:has {value} in config")
+            logger.debug(f"{self.__name__}:has {value} in config")
             return True
 
         if hasattr(self, f'get_{value.replace("-","_")}'):
-            logging.debug(f"{self.__name__}:has custom getter for {value}")
+            logger.debug(f"{self.__name__}:has custom getter for {value}")
             return True
 
         for config_entry in self.config_entries:
             if config_entry.has(value):
-                logging.debug(
+                logger.debug(
                     f"{self.__name__}:has config entry {config_entry} with {value}"
                 )
                 return True
         # lastly check the main etb-config
         if self.etb_config.has(value):
-            logging.debug(f"{self.__name__}:has found {value} in etb_config")
+            logger.debug(f"{self.__name__}:has found {value} in etb_config")
             return True
 
     def custom_get(self, value, node=None):
@@ -242,6 +248,9 @@ class GenericClient(GenericConfigurationEntry):
             + "not have a local one, or a config entry for "
             + "http-web3-ip-addr"
         )
+
+    def get_jwt_secret_file(self, node):
+        return f"{self.config['jwt-secret-file']}-{node}"
 
 
 class ConsensusBootnodeClient(GenericClient):
@@ -395,6 +404,17 @@ class ETBConfig(GenericConfigurationEntry):
 
         raise Exception(f"{self.__name__} failed to get {value} that we have")
 
+    def get_all_clients(self):
+        all_clients = {}
+        # consensus clients
+        for name, client in self.get_consensus_clients():
+            all_clients[name] = client
+        # execution clients
+        for name, client in self.get_execution_clients():
+            all_clients[name] = client
+
+        return all_clients
+
     def get_consensus_clients(self):
         clients = {}
         # get the consensus clients.
@@ -491,6 +511,7 @@ class ETBConfig(GenericConfigurationEntry):
 
     def get_premine_keys(self):
         from web3.auto import w3
+
         w3.eth.account.enable_unaudited_hdwallet_features()
 
         mnemonic = self.get("eth1-account-mnemonic")

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-env_vars=( "BOOTNODE_ENR" "EXECUTION_DATA_DIR" "GETH_EXECUTION_GENESIS" "NETWORK_ID" "EXECUTION_P2P_PORT" "EXECUTION_HTTP_PORT" "EXECUTION_WS_PORT" "HTTP_APIS" "WS_APIS" "IP_ADDR" "NETRESTRICT_RANGE" "END_FORK_NAME" "GETH_GENESIS_FILE" )
+env_vars=( "BOOTNODE_ENR" "EXECUTION_DATA_DIR" "GETH_EXECUTION_GENESIS" "NETWORK_ID" "EXECUTION_P2P_PORT" "EXECUTION_HTTP_PORT" "EXECUTION_WS_PORT" "HTTP_APIS" "WS_APIS" "IP_ADDR" "NETRESTRICT_RANGE" "END_FORK_NAME" "GETH_GENESIS_FILE" "EXECUTION_LOG_LEVEL")
 
 for var in "${env_vars[@]}" ; do
     if [[ -z "$var" ]]; then
@@ -11,6 +11,8 @@ done
 
 echo "geth got a valid env-var set"
 
+ADDITIONAL_ARGS="--verbosity=$EXECUTION_LOG_LEVEL"
+
 if [[ "$END_FORK_NAME" = "bellatrix" ]]; then
     # since we are doing the merge in the consensus
     # we need to add the terminal total difficutly override
@@ -19,10 +21,10 @@ if [[ "$END_FORK_NAME" = "bellatrix" ]]; then
         echo "We are doing a merge consensus test but no terminal total difficulty was applied"
         exit 1
     fi
-    MERGE_ARGS="--override.terminaltotaldifficulty=$TERMINAL_TOTAL_DIFFICULTY"
-    echo "using $MERGE_ARGS"
+    ADDITIONAL_ARGS="$ADDITIONAL_ARGS --override.terminaltotaldifficulty=$TERMINAL_TOTAL_DIFFICULTY"
+    echo "Geth is overriding terminaltotaldifficulty"
 else
-    echo "Geth not overriding terminal total difficulty. Got an END_FORK:$END_FORK"
+    echo "Geth not overriding terminal total difficulty. Got an END_FORK:$END_FORK_NAME"
     echo "if you are trying to test a merge configuration check that the config file is sane"
 fi 
 
@@ -37,28 +39,18 @@ done
 
 echo "Detected execution genesis"
 
-# ENODE="$EXECUTION_BOOTNODE_ENODE@$EXECUTION_BOOTNODE_START_IP_ADDR:$EXECUTION_BOOTNODE_DISC_PORT"
-##"we no longer use this method for now"
-#echo "using bootnode: $ENODE"
-# while [ ! -f "/data/local_testnet/execution-bootstrapper/enodes.txt" ]; do
-#     sleep 1
-#     echo "Waiting on the enodes /data/local_testnet/execution-bootstrapper/enodes.txt"
-# done
-# #
-# echo "found enodes"
-# ENODES=`cat /data/local_testnet/execution-bootstrapper/enodes.txt | tr -d "\n"`
-# echo $ENODES
-#get the bootnode we are going to use.
-
-
 echo "Initing the genesis"
 geth init \
     --datadir "$EXECUTION_DATA_DIR" \
     "$GETH_GENESIS_FILE"
 
+if [ -n "$JWT_SECRET_FILE" ]; then
+    ADDITIONAL_ARGS="$ADDITIONAL_ARGS --authrpc.port=$EXECUTION_ENGINE_AUTH_PORT --authrpc.addr=0.0.0.0 --authrpc.vhosts=\"*\" --authrpc.jwtsecret=$JWT_SECRET_FILE"
+    echo "Geth is using JWT"
+fi
+
 echo "Starting geth"
 
-# --bootnodes "$ENODES" \
 geth \
   --datadir="$EXECUTION_DATA_DIR" \
   --networkid="$NETWORK_ID" \
@@ -73,7 +65,8 @@ geth \
   --ws.addr 0.0.0.0 \
   --netrestrict "$NETRESTRICT_RANGE" \
   --keystore '/source/apps/data/geth-keystores/' \
-  --rpc.allow-unprotected-txs "$MERGE_ARGS" \
+  --rpc.allow-unprotected-txs $ADDITIONAL_ARGS \
+  --allow-insecure-unlock \
   --maxpeers=200 \
   --syncmode=full \
   --vmodule=rpc=5 

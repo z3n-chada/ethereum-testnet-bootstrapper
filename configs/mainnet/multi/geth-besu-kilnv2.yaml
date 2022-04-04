@@ -225,21 +225,6 @@ execution-clients:
     execution-data-dir: '/data/local_testnet/execution-bootstrapper'
       #jwt-secret-file: "/data/execution-bootstrapper-jwt-secret"  # when the bootstrapper creates this, geth hasn't come up.
     debug: False
-  # besu-bootstrapper: 
-  #   client-name: "besu"
-  #   container-name: "besu-bootstrapper"
-  #   start-ip-addr: "10.0.20.2"
-  #   image: "besu"
-  #   tag: "main"
-  #   depends: "ethereum-testnet-bootstrapper"
-  #   entrypoint: "/source/apps/launchers/execution-clients/launch-bootstrapper-besu-clique.sh" #wrt to docker.
-  #   execution-config: "besu-execution-config"
-  #   num-nodes: 1
-  #   data-dir: '/data/local_testnet/execution-bootstrapper'
-  #   debug: False
-
-  #   additional-env:
-  #     besu-private-key: "0x1e48147d3eb2af708706c71188703913e3b2dead2716dbe0caa8ccf4ff1d5573"
 
 consensus-clients:
   # nimbus nodes whose deposits were done pre-genesis
@@ -515,9 +500,9 @@ testnet-bootstrapper:
     tag: "latest"
     container-name: "testnet-bootstrapper"
     start-ip-addr: "10.0.20.202"
-    config-file: '/source/configs/mainnet/testing.yaml'
+    config-file: '/source/configs/mainnet/multi/geth-besu-kilnv2.yaml'
     num-nodes: 1
-    entrypoint: "/source/entrypoint.sh --config /source/configs/mainnet/testing.yaml --no-docker-compose" 
+    entrypoint: "/source/entrypoint.sh --config /source/configs/mainnet/multi/geth-besu-kilnv2.yaml --no-docker-compose" 
 
 generic-modules:
   tx-fuzzer:
@@ -539,21 +524,13 @@ generic-modules:
       http-web3-ip-addr: "10.0.20.2"  # use the geth-bootstrapper
       execution-http-port: 8645       # geth boostrapper arg.
 
-  network-monitor:
-    client-name: "network-monitor"
+  status-check:
+    client-name: "status-check"
     image: "ethereum-testnet-bootstrapper"
     tag: "latest"
-    container-name: "network-monitor"
+    container-name: "status-check"
     start-ip-addr: "10.0.20.206"
     num-nodes: 1
-    entrypoint: "python3 /source/apps/network-monitor.py --config /source/configs/mainnet/testing.yaml"
-        # status-check:
-        #   client-name: "status-check"
-        #   image: "ethereum-testnet-bootstrapper"
-        #   tag: "latest"
-        #   container-name: "status-check"
-        #   start-ip-addr: "10.0.20.206"
-        #   num-nodes: 1
-        #   entrypoint: "python3 /source/apps/status-check.py --config /source/configs/mainnet/testing.yaml --phase0-slot 32 --experiment-slot 128 --phase1-slot 128 --phase2-slot 160 --number-of-checks 2"
+    entrypoint: "python3 /source/apps/status-check.py --config /source/configs/mainnet/multi/geth-besu-kilnv2.yaml --phase0-slot 32 --experiment-slot 128 --phase1-slot 128 --phase2-slot 160 --number-of-checks 5"
 
   

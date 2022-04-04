@@ -1,3 +1,7 @@
+import logging
+
+logger = logging.getLogger("bootstrapper_log")
+
 minimal_defaults = {
     "max-committees-per-slot": 4,
     "target-committee-size": 4,
@@ -41,7 +45,6 @@ def get_potential_overrides(etb_config):
     # fetch potential overrides for config-params
     cc = etb_config.config["config-params"]["consensus-layer"]
     overrides = {}
-    print(cc, flush=True)
     for po in potential_overrides:
         if po in cc:
             overrides[po] = cc[po]
@@ -62,9 +65,9 @@ def create_consensus_config(etb_config):
         )
 
     overrides = get_potential_overrides(etb_config)
+    logger.debug(f"ConsensusConfig: using overrides {overrides}")
     for k, v in overrides.items():
         pd[k] = v
-
     return f"""
 PRESET_BASE: \"{etb_config.get('preset-base')}\"
 

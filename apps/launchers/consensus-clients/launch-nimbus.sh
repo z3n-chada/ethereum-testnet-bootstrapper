@@ -22,8 +22,14 @@ bootnode_enr=`cat $CONSENSUS_BOOTNODE_ENR_FILE`
 
 ADDITIONAL_BEACON_ARGS="--log-level=$NIMBUS_DEBUG_LEVEL"
 
-if [[ $END_FORK == "bellatrix" ]]; then
+if [[ $END_FORK_NAME == "bellatrix" ]]; then
     ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --terminal-total-difficulty-override=$TERMINAL_TOTAL_DIFFICULTY"
+    if [ -n "$JWT_SECRET_FILE" ]; then
+        ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --jwt-secret=$JWT_SECRET_FILE --web3-url=ws://$WS_WEB3_IP_ADDR:$EXECUTION_ENGINE_AUTH_PORT"
+        echo "nimbus using JWT auth"
+    else
+        ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --web3-url=ws://$WS_WEB3_IP_ADDR:$EXECUTION_ENGINE_WS_PORT"
+    fi
 fi 
 
 if [[ -n "$EXECUTION_LAUNCHER" ]]; then
@@ -50,9 +56,9 @@ nimbus_beacon_node \
     --nat="extip:$IP_ADDR" \
     --discv5=true \
     --subscribe-all-subnets \
-    --web3-url="ws://$WS_WEB3_IP_ADDR:$EXECUTION_WS_PORT" \
     --insecure-netkey-password \
     --netkey-file="$NODE_DIR/netkey-file.txt" \
+    --graffiti="nimbus-kilnv2:$IP_ADDR" \
     --in-process-validators=true \
     --doppelganger-detection=true $ADDITIONAL_BEACON_ARGS \
     --bootstrap-node="$bootnode_enr" 

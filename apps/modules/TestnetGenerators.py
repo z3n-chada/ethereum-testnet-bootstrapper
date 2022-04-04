@@ -1,6 +1,9 @@
 import pathlib
 import shutil
 import subprocess
+import logging
+
+logger = logging.getLogger("bootstrapper_log")
 
 
 class TestnetDirectoryGenerator(object):
@@ -196,6 +199,6 @@ def generate_consensus_testnet_dirs(global_config):
         "lodestar": LodestarTestnetGenerator,
     }
     for name, client in global_config.get_consensus_clients().items():
-        print(f"Creating testnet directory for {name}")
+        logger.info(f"Creating testnet directory for {name}")
         ccg = generators[client.get("client-name")](client)
         ccg.finalize_testnet_dir()

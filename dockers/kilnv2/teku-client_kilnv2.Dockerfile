@@ -39,7 +39,7 @@ RUN mkdir -p /var/lib/besu && chown -R ${USER}:${USER} /var/lib/besu && chmod -R
 RUN ln -s /opt/besu/bin/besu /usr/local/bin/besu
 # add nethermind 
 RUN mkdir /nethermind
-COPY --from=nethermind_builder  /nethermind/. .
+COPY --from=nethermind_builder  /nethermind/. /nethermind/
 RUN chown -R ${USER}:${USER} /nethermind
 RUN mkdir -p /var/lib/nethermind && chown ${USER}:${USER} /var/lib/nethermind
 RUN ln -s  /nethermind/Nethermind.Runner /usr/local/bin/nethermind

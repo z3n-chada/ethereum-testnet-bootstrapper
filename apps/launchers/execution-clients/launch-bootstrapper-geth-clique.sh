@@ -19,7 +19,7 @@
 #TERMINAL_TOTAL_DIFFICULTY: 256,
 #WS_APIS: 'admin,net,eth,web3,personal,engine'
 
-env_vars=( "EXECUTION_DATA_DIR" "GETH_GENESIS_FILE" "NETWORK_ID" "EXECUTION_P2P_PORT" "EXECUTION_HTTP_PORT" "EXECUTION_WS_PORT" "HTTP_APIS" "WS_APIS" "IP_ADDR" "NETRESTRICT_RANGE" "END_FORK_NAME")
+env_vars=( "EXECUTION_DATA_DIR" "GETH_GENESIS_FILE" "NETWORK_ID" "EXECUTION_P2P_PORT" "EXECUTION_HTTP_PORT" "EXECUTION_WS_PORT" "HTTP_APIS" "WS_APIS" "IP_ADDR" "NETRESTRICT_RANGE" "END_FORK_NAME" "EXECUTION_LOG_LEVEL")
 
 for var in "${env_vars[@]}" ; do
     if [[ -z "$var" ]]; then
@@ -30,7 +30,7 @@ done
 
 echo "geth got a valid env-var set"
 
-MERGE_ARGS=""
+ADDITIONAL_ARGS="--verbosity=$EXECUTION_LOG_LEVEL"
 
 if [[ "$END_FORK_NAME" = "bellatrix" ]]; then
     # since we are doing the merge in the consensus
@@ -40,10 +40,9 @@ if [[ "$END_FORK_NAME" = "bellatrix" ]]; then
         echo "We are doing a merge consensus test but no terminal total difficulty was applied"
         exit 1
     fi
-    MERGE_ARGS="--override.terminaltotaldifficulty=$TERMINAL_TOTAL_DIFFICULTY"
-    echo "using $MERGE_ARGS"
+    ADDITIONAL_ARGS="$ADDITIONAL_ARGS --override.terminaltotaldifficulty=$TERMINAL_TOTAL_DIFFICULTY"
 else
-    echo "Geth not overriding terminal total difficulty. Got an END_FORK:$END_FORK"
+    echo "Geth not overriding terminal total difficulty. Got an END_FORK:$END_FORK_NAME"
     echo "if you are trying to test a merge configuration check that the config file is sane"
 fi 
 
@@ -64,10 +63,13 @@ geth init \
 #    echo "waiting for the execution bootnode to come up."
 #done
 
-
+if [ -n "$JWT_SECRET_FILE" ]; then
+    ADDITIONAL_ARGS="$ADDITIONAL_ARGS --authrpc.port=$EXECUTION_ENGINE_AUTH_PORT --authrpc.addr=0.0.0.0 --authrpc.vhosts=\"*\" --authrpc.jwtsecret=$JWT_SECRET_FILE"
+    echo "Geth is using JWT"
+fi
+#--nodekeyhex="522d5e0fd25b33b2d9a28c0376013c3704aa79c1dc5424d107531f22d54f9d58" \
 echo "Starting geth"
 geth \
-  --nodekeyhex="522d5e0fd25b33b2d9a28c0376013c3704aa79c1dc5424d107531f22d54f9d58" \
   --datadir="$EXECUTION_DATA_DIR" \
   --networkid="$NETWORK_ID" \
   --port="$EXECUTION_P2P_PORT" \
@@ -83,7 +85,8 @@ geth \
   --keystore="/source/apps/data/geth-keystores/" \
   --unlock="0x51Dd070D1f6f8dB48CA5b0E47D7e899aea6b1AF5" --password=/data/geth-account-passwords.txt --mine \
   --allow-insecure-unlock \
-  --rpc.allow-unprotected-txs "$MERGE_ARGS" \
-  --maxpeers=200 \
-  --v5disc \
+  --rpc.allow-unprotected-txs \
+  --maxpeers=200 $ADDITIONAL_ARGS \
   --vmodule=rpc=5 
+
+#--v5disc \

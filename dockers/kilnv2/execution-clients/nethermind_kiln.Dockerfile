@@ -43,6 +43,8 @@ COPY --from=nethermind_builder /git/nethermind/out .
 RUN chown -R ${USER}:${USER} /nethermind
 RUN mkdir -p /var/lib/nethermind && chown ${USER}:${USER} /var/lib/nethermind
 
+RUN chmod +x Nethermind.Runner
+
 USER ${USER}
 
 ENTRYPOINT ["./Nethermind.Runner"]

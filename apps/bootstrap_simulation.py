@@ -6,6 +6,7 @@ import shutil
 import time
 import logging
 import sys
+import random
 
 import ruamel.yaml as yaml
 
@@ -26,6 +27,7 @@ from modules.ExecutionRPC import (
 )
 
 global global_config
+global logger
 
 
 def rw_all_user(path, flag):
@@ -40,7 +42,7 @@ def get_execution_bootstrapper_block():
     rpc = eth_get_block_RPC()
     responses = etb_rpc.do_rpc_request(rpc, [bs_node])
     block = responses[bs_node]["result"]
-    print(block)
+    logger.info(f"execution_bootstrapper_block: {block}")
     return block
 
 
@@ -52,7 +54,7 @@ def get_execution_bootstrapper_enode():
     rpc = admin_node_info_RPC()
     responses = etb_rpc.do_rpc_request(rpc, [bs_node])
     node_info = responses[bs_node]["result"]
-    print(node_info["enode"])
+    logger.info(f"boostrapper enode: {node_info['enode']}")
     return node_info["enode"]
 
 
@@ -85,6 +87,7 @@ def setup_environment():
 
 def generate_execution_genesis():
     egw = ExecutionGenesisWriter(global_config)
+    logger.debug("Creating execution genesis files.")
     # geth first
     geth_genesis_path = global_config.get("geth-genesis-file")
     geth_genesis = egw.create_geth_genesis()
@@ -101,19 +104,29 @@ def generate_execution_genesis():
     with open(nethermind_genesis_path, "w", opener=rw_all_user) as f:
         json.dump(nethermind_genesis, f)
 
+    # before we are done add the execution client jwt.
+    for name, ec in global_config.get("execution-clients").items():
+        if ec.has("jwt-secret-file"):
+            for node in range(ec.get("num-nodes")):
+                jwt_secret = f"0x{random.randbytes(32).hex()}"
+                jwt_secret_file = ec.get("jwt-secret-file", node)
+                with open(jwt_secret_file, "w") as f:
+                    f.write(jwt_secret)
+
     e_checkpoint = global_config.get("execution-checkpoint-file")
 
     with open(e_checkpoint, "w", opener=rw_all_user) as f:
         f.write("1")
 
-    enode = get_execution_bootstrapper_enode()
-    print(f"bootstrapper writing enode: {enode}")
-    with open("/data/local_testnet/execution-bootstrapper/enodes.txt", "w") as f:
-        f.write(enode)
+    # no default enode for now.
+    # enode = get_execution_bootstrapper_enode()
+    # with open("/data/local_testnet/execution-bootstrapper/enodes.txt", "w") as f:
+    #     f.write(enode)
 
 
 def generate_consensus_config():
     config = create_consensus_config(global_config)
+    logger.debug("Creating consensus config file.")
     with open("/data/consensus-config.yaml", "w", opener=rw_all_user) as f:
         f.write(config)
 
@@ -124,10 +137,20 @@ def generate_consensus_genesis():
     latest_block = get_execution_bootstrapper_block()
     block_hash = latest_block["hash"][2:]
     block_time = latest_block["timestamp"]
-    print(f"{block_hash} : {block_time}")
+    logger.info(f"{block_hash} : {block_time}")
     preset_base = global_config.get("preset-base")
     deploy_consensus_genesis(global_config, block_hash, block_time, preset_base)
     generate_consensus_testnet_dirs(global_config)
+
+    # before we are done we need to write the jwt-secret files if they use them.
+    for name, cc in global_config.get("consensus-clients").items():
+        if cc.has("jwt-secret-file"):
+            for node in range(cc.get("num-nodes")):
+                jwt_secret = f"0x{random.randbytes(32).hex()}"
+                jwt_secret_file = cc.get("jwt-secret-file", node)
+                with open(jwt_secret_file, "w") as f:
+                    f.write(jwt_secret)
+
     c_checkpoint = global_config.get("consensus-checkpoint-file")
     with open(c_checkpoint, "w", opener=rw_all_user) as f:
         f.write("1")
@@ -163,14 +186,51 @@ def bootstrap_testnet(args):
 
     global_config.now = int(time.time())
 
+    create_logger(args)
+
     setup_environment()
     if not args.bootstrap_mode:
+        logging.info("bootstrapper creating testnet.")
         generate_execution_genesis()
         generate_consensus_config()
         generate_consensus_genesis()
         link_all_execution_clients()
     if not args.no_docker_compose:
         write_docker_compose()
+        logging.info("bootstrapper --bootstrap-mode: created docker-compose")
+
+
+def create_logger(args):
+    global logger
+    logging_levels = {
+        "debug": logging.DEBUG,
+        "info": logging.INFO,
+        "critical": logging.CRITICAL,
+        "error": logging.ERROR,
+        "warning": logging.WARNING,
+    }
+    if args.log_level.lower() not in logging_levels:
+        raise Exception(f"Got bad logging level: {args.log_level}")
+
+    log_level = logging_levels[args.log_level.lower()]
+    log_format = logging.Formatter("%(asctime)s: %(levelname)s: %(message)s")
+    logger = logging.getLogger("bootstrapper_log")
+    logger.setLevel(log_level)
+
+    # logging.basicConfig(format=log_format, level=log_level)
+
+    if args.log_to_stdout:
+        stdout_handler = logging.StreamHandler(sys.stdout)
+        stdout_handler.setLevel(log_level)
+        stdout_handler.setFormatter(log_format)
+        logger.addHandler(stdout_handler)
+    if args.log_to_file:
+        file_handler = logging.FileHandler(args.log_file)
+        file_handler.setLevel(log_level)
+        file_handler.setFormatter(log_format)
+        logger.addHandler(file_handler)
+
+    logger.info("started the bootstrapper")
 
 
 if __name__ == "__main__":
@@ -194,10 +254,35 @@ if __name__ == "__main__":
         help="Just create the docker-compose script which bootstraps and runs the network.",
     )
 
-    logging.basicConfig(
-        stream=sys.stdout,
-        level=logging.INFO,
+    parser.add_argument(
+        "--log-to-stdout",
+        dest="log_to_stdout",
+        action="store_true",
+        default=True,
+        help="add a log stream handler for stdout.",
     )
-    logging.info("started the bootstrapper")
+
+    parser.add_argument(
+        "--log-to-file",
+        dest="log_to_file",
+        action="store_true",
+        default=True,
+        help="add a log stream handler for a file.",
+    )
+
+    parser.add_argument(
+        "--log-file",
+        dest="log_file",
+        default="/source/data/bootstrapper.log",
+        help="Log file destination for the bootstrapper.",
+    )
+
+    parser.add_argument(
+        "--log-level",
+        dest="log_level",
+        default="debug",
+        help="logging level to use.",
+    )
+
     args = parser.parse_args()
     bootstrap_testnet(args)

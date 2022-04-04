@@ -27,7 +27,13 @@ bootnode_enr=`cat $CONSENSUS_BOOTNODE_ENR_FILE`
 
 
 if [[ $END_FORK_NAME == "bellatrix" ]]; then
-    ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --ee-endpoint=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_ENGINE_PORT --validators-proposer-default-fee-recipient=0xA18Fd83a55A9BEdB96d66C24b768259eED183be3"
+    ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --validators-proposer-default-fee-recipient=0xA18Fd83a55A9BEdB96d66C24b768259eED183be3"
+    if [ -n "$JWT_SECRET_FILE" ]; then
+        ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --ee-jwt-secret=$JWT_SECRET_FILE"
+        ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --ee-endpoint=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_ENGINE_AUTH_PORT"
+    else
+        ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --ee-endpoint=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_ENGINE_PORT" 
+    fi
 fi
 
 if [[ -n "$EXECUTION_LAUNCHER" ]]; then
@@ -48,7 +54,7 @@ teku \
     --p2p-peer-lower-bound=1 \
     --p2p-port="$CONSENSUS_P2P_PORT" \
     --p2p-peer-upper-bound="$CONSENSUS_TARGET_PEERS" \
-    --eth1-endpoint="http://$HTTP_WEB3_IP_ADDR:$EXECUTION_HTTP_PORT" \
+    --eth1-endpoints="http://$HTTP_WEB3_IP_ADDR:$EXECUTION_HTTP_PORT" \
     --p2p-discovery-bootnodes="$bootnode_enr" \
     --p2p-subscribe-all-subnets-enabled=true \
     --metrics-enabled=true \
