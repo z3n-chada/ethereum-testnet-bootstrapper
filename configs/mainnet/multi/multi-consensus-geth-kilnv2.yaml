@@ -349,9 +349,9 @@ testnet-bootstrapper:
     tag: "latest"
     container-name: "testnet-bootstrapper"
     start-ip-addr: "10.0.20.202"
-    config-file: '/source/configs/mainnet/testing.yaml'
+    config-file: '/source/configs/mainnet/multi/multi-consensus-geth-kilnv2.yaml'
     num-nodes: 1
-    entrypoint: "/source/entrypoint.sh --config /source/configs/mainnet/multi-consensus-geth-kilnv2.yaml --no-docker-compose" 
+    entrypoint: "/source/entrypoint.sh --config /source/configs/mainnet/multi/multi-consensus-geth-kilnv2.yaml --no-docker-compose" 
 
 generic-modules:
   tx-fuzzer:
@@ -382,4 +382,11 @@ generic-modules:
     num-nodes: 1
     entrypoint: "python3 /source/apps/status-check.py --config /source/configs/mainnet/multi/multi-consensus-geth-kilnv2.yaml --phase0-slot 32 --experiment-slot 128 --phase1-slot 128 --phase2-slot 160 --number-of-checks 2"
 
-
+  network-monitor:
+    client-name: "network-monitor"
+    image: "ethereum-testnet-bootstrapper"
+    tag: "latest"
+    container-name: "network-monitor"
+    start-ip-addr: "10.0.20.207"
+    num-nodes: 1
+    entrypoint: "python3 /source/apps/network-monitor.py --config /source/configs/mainnet/multi/multi-consensus-geth-kilnv2.yaml
