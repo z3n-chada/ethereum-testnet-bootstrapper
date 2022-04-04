@@ -119,7 +119,7 @@ class TestnetStatusChecker(object):
             self.perform_status_check("phase1")
             time.sleep(self.check_delay)
 
-        self.wait_for_time("phase2", self.phase0_time)
+        self.wait_for_time("phase2", self.phase2_time)
         for x in range(self.number_of_checks):
             self.perform_status_check("phase2")
             time.sleep(self.check_delay)
