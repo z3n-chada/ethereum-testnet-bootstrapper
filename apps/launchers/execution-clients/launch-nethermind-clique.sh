@@ -28,21 +28,46 @@ while [ ! -f "$EXECUTION_CHECKPOINT_FILE" ]; do
     echo "Waiting on exeuction genesis"
 done
 
-# --config=goerli_shadowfork
+# TODO: engine and jwt_secret_file
+  # --JsonRpc.JwtSecretFile="$JWT_SECRET_FILE" \
+  # --Sync.FastBlocks=true \
+  # --Sync.FastSync=true \
+  # --Sync.DownloadBodiesInFastSync=true \
+  # --Sync.DownloadReceiptsInFastSync=true \
+  # --Sync.UseGethLimitsInFastBlocks=true \
+  # --Sync.PivotNumber=0 \
+  # --Sync.PivotTotalDifficulty=1 \
+  # --JsonRpc.AdditionalRpcUrls="http://localhost:$EXECUTION_ENGINE_AUTH_PORT|http|net;eth;subscribe;engine;web3;client|no-auth,http://localhost:$EXECUTION_ENGINE_WS_PORT|ws|net;eth;subscribe;engine;web3;client,http://localhost:$EXECUTION_ENGINE_PORT|http;ws|net;eth;subscribe;engine;web3;client|no-auth"
+
+if [ -n "$JWT_SECRET_FILE" ]; then
+    echo "Nethermind is using JWT auth"
+    ADDITIONAL_ARGS="$ADDITIONAL_ARGS --JsonRpc.JwtSecretFile=$JWT_SECRET_FILE --JsonRpc.AdditionalRpcUrls=http://localhost:$ENGINE_AUTH_PORT|http|net;eth;subscribe;engine;web3;client;clique|auth,ws://localhost:$EXECUTION_AUTH_PORT|ws|net;eth;subscribe;engine;web3;client"
+
+else
+    echo "Nethermind is not using JWT auth"
+    ADDITIONAL_ARGS="$ADDITIONAL_ARGS --JsonRpc.UnsecureDevNoRpcAuthentication=True"
+fi
+
+echo "{}" > /tmp/nethermind.cfg
 nethermind \
+  $ADDITIONAL_ARGS \
+  --config="/tmp/nethermind.cfg" \
   --datadir="$EXECUTION_DATA_DIR" \
-  --Init.ChainSpecPath="$NETHERMIND_GENESIS_FILE" \
+  --Init.ChainSpecPath="$NETHER_MIND_GENESIS_FILE" \
+  --Init.IsMining=true \
+  --Init.StoreReceipts=true \
   --Init.WebSocketsEnabled=true \
+  --Init.EnableUnsecuredDevWallet=true \
+  --Init.DiagnosticMode="None" \
   --JsonRpc.Enabled=true \
-  --JsonRpc.EnabledModules="net,eth,consensus,subscribe,web3,admin" \
+  --JsonRpc.EnabledModules="$HTTP_APIS" \
   --JsonRpc.Port="$EXECUTION_HTTP_PORT" \
   --JsonRpc.WebSocketsPort="$EXECUTION_WS_PORT" \
   --JsonRpc.Host=0.0.0.0 \
+  --Network.ExternalIp="$IP_ADDR" \
+  --Network.LocalIp="$IP_ADDR" \
   --Network.DiscoveryPort="$EXECUTION_P2P_PORT" \
   --Network.P2PPort="$EXECUTION_P2P_PORT" \
   --Merge.Enabled=true \
   --Merge.FeeRecipient="0xf97e180c050e5Ab072211Ad2C213Eb5AEE4DF134" \
-  --Merge.TerminalTotalDifficulty=$"TOTAL_TERMINAL_DIFFICULTY" \
-  --Init.DiagnosticMode="None" \
-  --Init.IsMining=true \
-  --JsonRpc.AdditionalRpcUrls="http://0.0.0.0:$EXECUTION_ENGINE_PORT|http;ws|net;eth;subscribe;engine;web3;client|no-auth" 
+  --Merge.TerminalTotalDifficulty="$TERMINAL_TOTAL_DIFFICULTY"

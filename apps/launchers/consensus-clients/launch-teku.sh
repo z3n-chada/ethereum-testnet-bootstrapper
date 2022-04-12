@@ -9,6 +9,11 @@ for var in "${env_vars[@]}" ; do
     fi
 done
 
+if [[ -n "$EXECUTION_LAUNCHER" ]]; then
+    echo "Teku launching execution client: $EXECUTION_LAUNCHER"
+    "$EXECUTION_LAUNCHER" &
+fi
+
 
 ADDITIONAL_BEACON_ARGS="--logging=$TEKU_DEBUG_LEVEL"
 
@@ -26,20 +31,18 @@ done
 bootnode_enr=`cat $CONSENSUS_BOOTNODE_ENR_FILE`
 
 
+#TODO add logic for different ports. most clients are just going to singlar engine though.
 if [[ $END_FORK_NAME == "bellatrix" ]]; then
     ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --validators-proposer-default-fee-recipient=0xA18Fd83a55A9BEdB96d66C24b768259eED183be3"
-    if [ -n "$JWT_SECRET_FILE" ]; then
-        ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --ee-jwt-secret=$JWT_SECRET_FILE"
-        ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --ee-endpoint=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_ENGINE_AUTH_PORT"
-    else
-        ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --ee-endpoint=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_ENGINE_PORT" 
-    fi
 fi
 
-if [[ -n "$EXECUTION_LAUNCHER" ]]; then
-    echo "Teku launching execution client: $EXECUTION_LAUNCHER"
-    "$EXECUTION_LAUNCHER" &
+if [ -n "$JWT_SECRET_FILE" ]; then
+    ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --ee-endpoint=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_AUTH_PORT --ee-jwt-secret-file=$JWT_SECRET_FILE"
+else
+    ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --ee-endpoint=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_HTTP_PORT" 
 fi
+
+echo "Teku launching with additional-args: $ADDITIONAL_BEACON_ARGS"
 
 teku \
     --network="$TESTNET_DIR/config.yaml" \

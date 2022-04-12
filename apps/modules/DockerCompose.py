@@ -50,10 +50,6 @@ class ClientWriter(object):
         self.base_execution_env_vars = [
             "ip-addr",
             "execution-data-dir",
-            "execution-engine-port",
-            "execution-engine-auth-port",
-            "execution-engine-ws-port",
-            "execution-engine-ws-auth-port",
             "execution-p2p-port",
             "execution-http-port",
             "execution-ws-port",
@@ -65,18 +61,29 @@ class ClientWriter(object):
             "netrestrict-range",
             "geth-genesis-file",
             "besu-genesis-file",
-            "nethermind-genesis-file",
+            "nether-mind-genesis-file",
             "end-fork-name",
             "execution-checkpoint-file",
             "execution-log-level",
         ]
 
         self.base_consensus_bootnode_env_vars = [
+            "consensus-bootnode-checkpoint-file",
             "ip-addr",
             "consensus-bootnode-private-key",
             "consensus-bootnode-enr-port",
             "consensus-bootnode-api-port",
             "consensus-bootnode-enr-file",
+        ]
+
+        self.optional_consensus_vars = ["jwt-secret-file"]
+
+        self.optional_execution_vars = [
+            "jwt-secret-file",
+            "execution-engine-port",
+            "execution-auth-port",
+            "execution-engine-ws-port",
+            "execution-engine-ws-auth-port",
         ]
 
     def _get_docker_entrypoint(self):
@@ -154,10 +161,20 @@ class ClientWriter(object):
                 var = f'{k.upper().replace("-","_")}'
                 env_vars[var] = self._get_env_var(k)
 
+            for k in self.optional_execution_vars:
+                if self.client.has(k):
+                    var = f'{k.upper().replace("-","_")}'
+                    env_vars[var] = self._get_env_var(k)
+
         if self.consensus_config is not None:
             for k in self.base_consensus_env_vars:
                 var = f'{k.upper().replace("-","_")}'
                 env_vars[var] = self._get_env_var(k)
+
+            for k in self.optional_consensus_vars:
+                if self.client.has(k):
+                    var = f'{k.upper().replace("-","_")}'
+                    env_vars[var] = self._get_env_var(k)
 
         if self.consensus_bootnode_config is not None:
             for k in self.base_consensus_bootnode_env_vars:
@@ -169,11 +186,6 @@ class ClientWriter(object):
                 var = f'{k.upper().replace("-","_")}'
                 env_vars[var] = v
 
-        # once we are done lets check for jwt here since not all clients support it.
-        if self.client.has("jwt-secret-file"):
-            env_vars["JWT_SECRET_FILE"] = self.client.get(
-                "jwt-secret-file", self.curr_node
-            )
         return env_vars
 
 
@@ -181,19 +193,6 @@ class DockerComposeWriter(object):
     def __init__(self, etb_config):
         self.config = etb_config
         self.yaml = self._base()
-        # self.client_writers = {
-        #    "teku": ClientWriter,
-        #    "prysm": ClientWriter,
-        #    "lighthouse": ClientWriter,
-        #    "lodestar": ClientWriter,
-        #    "nimbus": ClientWriter,
-        #    "besu": ClientWriter,
-        #    "geth-bootstrapper": ClientWriter,
-        #    "ethereum-testnet-bootstrapper": TestnetBootstrapper,
-        #    "generic-module": GenericModule,
-        #    "eth2-bootnode": ClientWriter,
-        #    "geth-bootnode": ClientWriter,
-        # }
 
     def _base(self):
         return {
@@ -238,56 +237,6 @@ class DockerComposeWriter(object):
         for name, tb in self.config.get_testnet_bootstrapper().items():
             cw = ClientWriter(name, tb, 0)
             self.yaml["services"][cw.name] = cw._get_docker_service_entry()
-
-        # keep testnet-bootstrapper seperate
-        # client_modules = [
-        #    "execution-clients",
-        #    "generic-modules",
-        #    "consensus-bootnodes",
-        #    "execution-bootnodes",
-        # ]
-
-        # for module in client_modules:
-        #    if module in self.gc:
-        #        if self.client.gc[module] is not None:
-        #            for client_module in self.client.gc[module]:
-        #                config = self.client.gc[module][client_module]
-        #                if not "client-name" in config:
-        #                    exception = f"module {module}, {client_module} expects client-name attribute\n"
-        #                    exception += f"\tfound: {config.keys()}\n"
-        #                    raise Exception(exception)
-        #                client = config["client-name"]
-        #                print(f"Generating docker-compose entry for {client}")
-        #                for n in range(config["num-nodes"]):
-        #                    if module == "generic-modules":
-        #                        writer = self.client_writers["generic-module"](
-        #                            self.gc, config, n
-        #                        )
-        #                    else:
-        #                        writer = self.client_writers[client](self.gc, config, n)
-        #                    self.yaml["services"][writer.name] = writer.get_config()
-
-        # for consensus_client in self.client.gc["consensus-clients"]:
-        #    config = self.client.gc["consensus-clients"][consensus_client]
-        #    consensus_config = self.client.gc["consensus-configs"][config["consensus-config"]]
-        #    client = config["client-name"]
-        #    print(f"Generating docker-compose entry for {client}")
-        #    for n in range(consensus_config["num-nodes"]):
-        #        if client == "teku":
-        #            use_root = True
-        #        else:
-        #            use_root = False
-        #        writer = self.client_writers[client](self.gc, config, n, use_root)
-        #        self.yaml["services"][writer.name] = writer.get_config()
-        ## last we check for bootstrapper, if present all dockers must
-        ## depend on this.
-        # if "testnet-bootstrapper" in self.gc:
-        #    for client in self.client.gc["testnet-bootstrapper"]:
-        #        tbc = self.client.gc["testnet-bootstrapper"][client]
-        #        tbw = self.client_writers[client](self.gc, tbc)
-        #        for service in self.yaml["services"]:
-        #            self.yaml["services"][service]["depends_on"] = [tbw.name]
-        #        self.yaml["services"][tbw.name] = tbw.get_config()
 
 
 def generate_docker_compose(global_config):

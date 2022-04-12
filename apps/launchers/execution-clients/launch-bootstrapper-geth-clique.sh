@@ -28,6 +28,11 @@ for var in "${env_vars[@]}" ; do
     fi
 done
 
+while [ ! -f "$EXECUTION_CHECKPOINT_FILE" ]; do
+    sleep 1
+    echo "Waiting on exeuction genesis"
+done
+
 echo "geth got a valid env-var set"
 
 ADDITIONAL_ARGS="--verbosity=$EXECUTION_LOG_LEVEL"
@@ -48,10 +53,6 @@ fi
 
 echo "testnet-password" > /data/geth-account-passwords.txt
 
-while [ ! -f "/data/execution-clients-ready" ]; do
-    sleep 1
-    echo "Waiting on exeuction genesis"
-done
 
 echo "Initing the genesis"
 geth init \

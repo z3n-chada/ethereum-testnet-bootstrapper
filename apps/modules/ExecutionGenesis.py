@@ -8,7 +8,9 @@ class ExecutionGenesisWriter(object):
     def __init__(self, global_config):
         self.etb_config = global_config
         self.genesis = {}
-        self.now = self.etb_config.now + self.etb_config.get("execution-genesis-delay")
+        self.execution_genesis = self.etb_config.get(
+            "bootstrap-genesis"
+        ) + self.etb_config.get("execution-genesis-delay")
 
     def get_allocs(self):
         allocs = {}
@@ -45,7 +47,7 @@ class ExecutionGenesisWriter(object):
             "nonce": "0x1234",
             "mixhash": "0x" + ("0" * 64),
             "parentHash": "0x" + ("0" * 64),
-            "timestamp": str(self.now),
+            "timestamp": str(self.execution_genesis),
         }
 
         config = {
@@ -86,7 +88,7 @@ class ExecutionGenesisWriter(object):
             "nonce": "0x1234",
             "mixhash": "0x0000000000000000000000000000000000000000000000000000000000000000",
             "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
-            "timestamp": str(self.now),
+            "timestamp": str(self.execution_genesis),
         }
         config = {
             "chainId": self.etb_config.get("chain-id"),
@@ -186,7 +188,7 @@ class ExecutionGenesisWriter(object):
                 },
                 "difficulty": "0x01",
                 "author": "0x0000000000000000000000000000000000000000",
-                "timestamp": hex(self.now),
+                "timestamp": hex(self.execution_genesis),
                 "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
                 "extraData": "",
                 "gasLimit": "0x400000",
@@ -196,10 +198,16 @@ class ExecutionGenesisWriter(object):
         }
 
         if self.etb_config.get("clique-enabled"):
+            # self.genesis["engine"]["clique"] = {
+            #    "params": {
+            #        "period": hex(self.etb_config.get("seconds-per-eth1-block")),
+            #        "epoch": hex(self.etb_config.get("clique-epoch")),
+            #    }
+            # }
             self.genesis["engine"]["clique"] = {
                 "params": {
-                    "period": hex(self.etb_config.get("seconds-per-eth1-block")),
-                    "epoch": hex(self.etb_config.get("clique-epoch")),
+                    "period": self.etb_config.get("seconds-per-eth1-block"),
+                    "epoch": self.etb_config.get("clique-epoch"),
                 }
             }
             signers = "".join(s for s in self.etb_config.get("clique-signers"))

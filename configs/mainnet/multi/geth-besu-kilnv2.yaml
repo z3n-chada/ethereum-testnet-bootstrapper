@@ -258,6 +258,11 @@ consensus-clients:
       prysm-debug-level: "debug"
       wallet-path: '/data/local_testnet/prysm-geth/wallet-password.txt'
       validator-password: "testnet-password"
+      tx-fuzz-enabled: True
+      tx-fuzz-launcher: "/source/apps/launchers/fuzzers/launch-tx-fuzzer.sh"
+      tx-fuzz-private-keys: "0x1e48147d3eb2af708706c71188703913e3b2dead2716dbe0caa8ccf4ff1d5573,0x6cf9f64e4bdf9b5547882e276da15a590f0873d313a2a833f07f3ec9d45fdc7e,0x045b49f8c41b5562fbfc54c3d5c76df1cd7b2c340494383b2e3783de81c39184,0xa7c0262c56b2f5b9dd43c7cb544aff29e77e2b2a4ced2a34964016ff4cbf7675"
+      tx-fuzz-public-keys: "0x51Dd070D1f6f8dB48CA5b0E47D7e899aea6b1AF5,0x6B477789219c9D5b80159652AA913A5eee39d07e,0xa03f25d5839029323Be765Fbc02E262628923338,0x60337eFAD102533d73E7c7D03736B8c4b87cdB2e"
+      tx-fuzz-mode: "spam"
 
   prysm-besu:
     client-name: 'prysm'
@@ -314,6 +319,11 @@ consensus-clients:
     # args specific to teku nodes.
     additional-env:
       teku-debug-level: "DEBUG"
+      tx-fuzz-enabled: True
+      tx-fuzz-launcher: "/source/apps/launchers/fuzzers/launch-tx-fuzzer.sh"
+      tx-fuzz-private-keys: "0x1e48147d3eb2af708706c71188703913e3b2dead2716dbe0caa8ccf4ff1d5573,0x6cf9f64e4bdf9b5547882e276da15a590f0873d313a2a833f07f3ec9d45fdc7e,0x045b49f8c41b5562fbfc54c3d5c76df1cd7b2c340494383b2e3783de81c39184,0xa7c0262c56b2f5b9dd43c7cb544aff29e77e2b2a4ced2a34964016ff4cbf7675"
+      tx-fuzz-public-keys: "0x51Dd070D1f6f8dB48CA5b0E47D7e899aea6b1AF5,0x6B477789219c9D5b80159652AA913A5eee39d07e,0xa03f25d5839029323Be765Fbc02E262628923338,0x60337eFAD102533d73E7c7D03736B8c4b87cdB2e"
+      tx-fuzz-mode: "spam"
 
   teku-besu:
     client-name: 'teku'
@@ -366,6 +376,11 @@ consensus-clients:
 
     additional-env:
       nimbus-debug-level: "trace"
+      tx-fuzz-enabled: True
+      tx-fuzz-launcher: "/source/apps/launchers/fuzzers/launch-tx-fuzzer.sh"
+      tx-fuzz-private-keys: "0x1e48147d3eb2af708706c71188703913e3b2dead2716dbe0caa8ccf4ff1d5573,0x6cf9f64e4bdf9b5547882e276da15a590f0873d313a2a833f07f3ec9d45fdc7e,0x045b49f8c41b5562fbfc54c3d5c76df1cd7b2c340494383b2e3783de81c39184,0xa7c0262c56b2f5b9dd43c7cb544aff29e77e2b2a4ced2a34964016ff4cbf7675"
+      tx-fuzz-public-keys: "0x51Dd070D1f6f8dB48CA5b0E47D7e899aea6b1AF5,0x6B477789219c9D5b80159652AA913A5eee39d07e,0xa03f25d5839029323Be765Fbc02E262628923338,0x60337eFAD102533d73E7c7D03736B8c4b87cdB2e"
+      tx-fuzz-mode: "spam"
 
 
   nimbus-besu:
@@ -417,6 +432,10 @@ consensus-clients:
     
     additional-env:
       lighthouse-debug-level: "debug"
+      tx-fuzz-enabled: True
+      tx-fuzz-private-keys: "0x1e48147d3eb2af708706c71188703913e3b2dead2716dbe0caa8ccf4ff1d5573,0x6cf9f64e4bdf9b5547882e276da15a590f0873d313a2a833f07f3ec9d45fdc7e,0x045b49f8c41b5562fbfc54c3d5c76df1cd7b2c340494383b2e3783de81c39184,0xa7c0262c56b2f5b9dd43c7cb544aff29e77e2b2a4ced2a34964016ff4cbf7675"
+      tx-fuzz-public-keys: "0x51Dd070D1f6f8dB48CA5b0E47D7e899aea6b1AF5,0x6B477789219c9D5b80159652AA913A5eee39d07e,0xa03f25d5839029323Be765Fbc02E262628923338,0x60337eFAD102533d73E7c7D03736B8c4b87cdB2e"
+      tx-fuzz-mode: "spam"
 
   lighthouse-besu:
     client-name: 'lighthouse'
@@ -466,6 +485,11 @@ consensus-clients:
     
     additional-env:
       lstar-debug-level: "debug"
+      tx-fuzz-enabled: True
+      tx-fuzz-launcher: "/source/apps/launchers/fuzzers/launch-tx-fuzzer.sh"
+      tx-fuzz-private-keys: "0x1e48147d3eb2af708706c71188703913e3b2dead2716dbe0caa8ccf4ff1d5573,0x6cf9f64e4bdf9b5547882e276da15a590f0873d313a2a833f07f3ec9d45fdc7e,0x045b49f8c41b5562fbfc54c3d5c76df1cd7b2c340494383b2e3783de81c39184,0xa7c0262c56b2f5b9dd43c7cb544aff29e77e2b2a4ced2a34964016ff4cbf7675"
+      tx-fuzz-public-keys: "0x51Dd070D1f6f8dB48CA5b0E47D7e899aea6b1AF5,0x6B477789219c9D5b80159652AA913A5eee39d07e,0xa03f25d5839029323Be765Fbc02E262628923338,0x60337eFAD102533d73E7c7D03736B8c4b87cdB2e"
+      tx-fuzz-mode: "spam"
 
   lodestar-besu:
     client-name: 'lodestar'
@@ -497,7 +521,7 @@ testnet-bootstrapper:
   ethereum-testnet-bootstrapper:
     #docker-compose
     image: "ethereum-testnet-bootstrapper"
-    tag: "latest"
+    tag: "testing"
     container-name: "testnet-bootstrapper"
     start-ip-addr: "10.0.20.202"
     config-file: '/source/configs/mainnet/multi/geth-besu-kilnv2.yaml'
@@ -527,10 +551,18 @@ generic-modules:
   status-check:
     client-name: "status-check"
     image: "ethereum-testnet-bootstrapper"
-    tag: "latest"
+    tag: "testing"
     container-name: "status-check"
     start-ip-addr: "10.0.20.206"
     num-nodes: 1
-    entrypoint: "python3 /source/apps/status-check.py --config /source/configs/mainnet/multi/geth-besu-kilnv2.yaml --phase0-slot 32 --experiment-slot 128 --phase1-slot 128 --phase2-slot 160 --number-of-checks 5"
+    entrypoint: "python3 /source/apps/status-check.py --config /source/configs/mainnet/multi/geth-besu-kilnv2.yaml --phase0-slot 64 --experiment-slot 128 --phase1-slot 128 --phase2-slot 160 --number-of-checks 5"
 
   
+  network-monitor:
+    client-name: "network-monitor"
+    image: "ethereum-testnet-bootstrapper"
+    tag: "testing"
+    container-name: "network-monitor"
+    start-ip-addr: "10.0.20.207"
+    num-nodes: 1
+    entrypoint: "python3 /source/apps/network-monitor.py --config /source/configs/mainnet/testing.yaml"

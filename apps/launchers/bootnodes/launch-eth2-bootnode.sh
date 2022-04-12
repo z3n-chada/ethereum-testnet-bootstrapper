@@ -1,25 +1,19 @@
 #!/bin/bash
 
-env_vars=("IP_ADDR" "CONSENSUS_BOOTNODE_API_PORT" "CONSENSUS_BOOTNODE_PRIVATE_KEY" "CONSENSUS_BOOTNODE_ENR_FILE" "CONSENSUS_BOOTNODE_ENR_PORT")
+env_vars=("IP_ADDR" "CONSENSUS_BOOTNODE_API_PORT" "CONSENSUS_BOOTNODE_PRIVATE_KEY" "CONSENSUS_BOOTNODE_ENR_FILE" "CONSENSUS_BOOTNODE_ENR_PORT" "CONSENSUS_BOOTNODE_CHECKPOINT_FILE")
 
 for var in "${env_vars[@]}" ; do
     if [[ -z "$var" ]]; then
         echo "$var not set"
         exit 1
-    else
-        echo "$var"
     fi
 done
 
 # some more exotic setups don't run with the /data/local_testnet/ already mounted in.
 # we support this by waiting for it to be done.
-while [ ! -d "/data/local_testnet" ]; do
-    ls /data/
-    echo "waiting for local_testnet data to be mapped in."
+while [ ! -f "$CONSENSUS_BOOTNODE_CHECKPOINT_FILE" ]; do
     sleep 1
 done
-
-mkdir -p /data/local_testnet/bootnode/
 
 echo "launching eth2-bootnode-delay-fetch-and-write"
 

@@ -78,14 +78,11 @@ class ExecutionJSONRPC(object):
         self.retry_delay = retry_delay
 
     def _is_valid_response(self, response):
-        if self.non_error:
-            if response is None:
-                return False
-            if response.status_code == 200:
-                if "error" not in response.json():
-                    return True
-        else:
+        if response is None:
             return False
+        if response.status_code == 200:
+            if "error" not in response.json():
+                return True
 
     def get_rpc_response(self, rpc):
         start = int(time.time())
@@ -94,7 +91,7 @@ class ExecutionJSONRPC(object):
             if self._is_valid_response(response):
                 return response.json()
             time.sleep(self.retry_delay)
-        return response
+        return None
 
 
 class ETBExecutionRPC(object):
@@ -175,6 +172,26 @@ class ETBExecutionRPC(object):
             for bucket_response_tuple in list(results):
                 client = bucket_response_tuple[0]
                 response = bucket_response_tuple[1]
-                all_responses[client] = response
+                if response is not None:
+                    all_responses[client] = response
 
         return all_responses
+
+
+if __name__ == "__main__":
+    from ETBConfig import ETBConfig
+
+    etb_rpc = ETBExecutionRPC(ETBConfig("configs/mainnet/testing.yaml"), timeout=2)
+
+    # node_info = etb_rpc.do_rpc_request(admin_node_info_RPC(_id=2), all_clients=True)
+    # print(node_info)
+    blocks = etb_rpc.do_rpc_request(
+        eth_get_block_RPC(), ["prysm-nethermind-0", "geth-bootstrapper-0"]
+    )
+    for name, blocks in blocks.items():
+        print(f"{name}: {blocks}")
+    peers = etb_rpc.do_rpc_request(
+        admin_peers_RPC(), ["prysm-nethermind-0", "geth-bootstrapper-0"]
+    )
+    for name, peer in peers.items():
+        print(f"{name}: {peer}")

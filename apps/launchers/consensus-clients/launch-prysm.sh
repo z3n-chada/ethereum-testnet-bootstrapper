@@ -8,6 +8,10 @@ for var in "${env_vars[@]}" ; do
     fi
 done
 
+if [[ -n "$EXECUTION_LAUNCHER" ]]; then
+    "$EXECUTION_LAUNCHER" &
+fi
+
 ADDITIONAL_BEACON_ARGS="--log-file=$NODE_DIR/beacon.log" 
 ADDITIONAL_VALIDATOR_ARGS="--log-file=$NODE_DIR/validator.log"
 
@@ -23,13 +27,12 @@ done
 
 bootnode_enr=`cat $CONSENSUS_BOOTNODE_ENR_FILE`
 
-if [[ $END_FORK_NAME == "bellatrix" ]]; then
-    if [ -n "$JWT_SECRET_FILE" ]; then
-        ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --jwt-secret=$JWT_SECRET_FILE"
-        ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --execution-provider=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_ENGINE_AUTH_PORT"
-    else
-        ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --execution-provider=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_ENGINE_PORT"
-    fi
+
+# TODO allow for more port descriptions easily across clients.
+if [ -n "$JWT_SECRET_FILE" ]; then
+    ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --execution-provider=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_AUTH_PORT --jwt-secret=$JWT_SECRET_FILE"
+else
+    ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --execution-provider=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_HTTP_PORT"
 fi
 
 if [[ $PRESET_BASE == "minimal" ]]; then
@@ -37,9 +40,8 @@ if [[ $PRESET_BASE == "minimal" ]]; then
     ADDITIONAL_VALIDATOR_ARGS="$ADDITIONAL_VALIDATOR_ARGS --minimal-config"
 fi
 
-if [[ -n "$EXECUTION_LAUNCHER" ]]; then
-    "$EXECUTION_LAUNCHER" &
-fi
+echo "prysm launching with additional-beacon-args: $ADDITIONAL_BEACON_ARGS"
+echo "prysm launching with additional-validator-args: $ADDITIONAL_VALIDATOR_ARGS"
 
 beacon-chain \
   --accept-terms-of-use=true \
@@ -59,6 +61,7 @@ beacon-chain \
   --enable-debug-rpc-endpoints $ADDITIONAL_BEACON_ARGS \
   --p2p-allowlist="$NETRESTRICT_RANGE" \
   --subscribe-all-subnets \
+  --force-clear-db \
   --min-sync-peers 1 &
 
 sleep 10

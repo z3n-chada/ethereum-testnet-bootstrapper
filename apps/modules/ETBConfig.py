@@ -141,6 +141,10 @@ class GenericClient(GenericConfigurationEntry):
             logger.debug(f"{self.__name__}:has custom getter for {value}")
             return True
 
+        if hasattr(self, f'{value.replace("-","_")}'):
+            logger.debug(f"{self.__name__}:hasattr for {value}")
+            return True
+
         for config_entry in self.config_entries:
             if config_entry.has(value):
                 logger.debug(
@@ -187,6 +191,9 @@ class GenericClient(GenericConfigurationEntry):
 
         if hasattr(self, f"get_{value.replace('-','_')}"):
             return getattr(self, f"get_{value.replace('-','_')}")(node)
+
+        if hasattr(self, f"{value.replace('-','_')}"):
+            return getattr(self, f"{value.replace('-','_')}")
 
         if value in self.config:
             return self.config[value]
@@ -315,11 +322,12 @@ class ETBConfig(GenericConfigurationEntry):
                 "testnet-root",
                 "geth-genesis-file",
                 "besu-genesis-file",
-                "nethermind-genesis-file",
+                "nether-mind-genesis-file",
                 "consensus-config-file",
                 "consensus-genesis-file",
                 "testnet-dir",
                 "execution-bootstrap-dir",
+                "etb-config-file",
                 "docker-compose-file",
                 "consensus-checkpoint-file",
                 "execution-checkpoint-file",
@@ -386,6 +394,11 @@ class ETBConfig(GenericConfigurationEntry):
             if value in destination:
                 return True
 
+        # lastly check the local config for non-listed updates
+        if value in self.config:
+            logger.debug(f"ETBConfig has from local overloaded value: {value}")
+            return True
+
     def get(self, value, node=None):
 
         if not self.has(value, node):
@@ -402,7 +415,17 @@ class ETBConfig(GenericConfigurationEntry):
             if value in destination:
                 return destination[value]
 
+        # lastly check the local config for non-listed updates
+        if value in self.config:
+            return self.config[value]
+
         raise Exception(f"{self.__name__} failed to get {value} that we have")
+
+    # def get_bootstrap_genesis(self):
+    #    return self.config["bootstrap-genesis"]
+
+    def set_bootstrap_genesis(self, t):
+        self.config["bootstrap-genesis"] = t
 
     def get_all_clients(self):
         all_clients = {}
@@ -483,15 +506,15 @@ class ETBConfig(GenericConfigurationEntry):
             raise Exception(f"no consensus client: {name}")
         return ConsensusClient(name, self, self.config["execution-clients"][name])
 
-    def get_execution_client(self, name):
+    def get_execution_client(self, *args):
         if name not in self.config["execution-clients"]:
             raise Exception(f"no execution client: {name}")
         return ExecutionClient(name, self, self.config["execution-clients"][name])
 
-    def get_execution_bootstrapper_client(self):
-        bootstrapper_name = self.get("execution-bootstrapper")
-        print("returning execution client")
-        return self.get_execution_client(bootstrapper_name)
+    # def get_execution_bootstrapper_client(self):
+    #     bootstrapper_name = self.get("execution-bootstrapper")
+    #     print("returning execution client")
+    #     return self.get_execution_client(bootstrapper_name)
 
     def get_netrestrict_range(self):
         return self.config["docker"]["ip-subnet"]

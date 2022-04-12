@@ -3,6 +3,17 @@ import time
 import sys
 from ruamel import yaml
 
+available_api_requests = {
+    "beacon": [
+        "/eth/v1/beacon/genesis",
+        "/eth/v1/beacon/blocks",
+        "/eth/v1/beacon/pool/attestations",
+        "/eth/v1/beacon/pool/attester_slashings",
+        "/eth/v1/beacon/pool/proposer_slashings",
+        "/eth/v1/beacon/pool/voluntary_exits",
+    ],
+}
+
 
 class APIResponse(object):
     def __init__(self, response):

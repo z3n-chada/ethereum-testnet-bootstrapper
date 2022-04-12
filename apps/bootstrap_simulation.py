@@ -168,7 +168,7 @@ def link_all_execution_clients():
 
     # Includes the bootstrapper, and all consensus client execution endpoints
 
-    etb_rpc = ETBExecutionRPC(global_config, timeout=60)
+    etb_rpc = ETBExecutionRPC(global_config, timeout=5)
     node_info = etb_rpc.do_rpc_request(admin_node_info_RPC(), all_clients=True)
 
     enodes = {}

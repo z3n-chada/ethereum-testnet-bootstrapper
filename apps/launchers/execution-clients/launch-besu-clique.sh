@@ -1,4 +1,35 @@
-env_vars=( "EXECUTION_DATA_DIR" "BESU_GENESIS_FILE" "NETWORK_ID" "EXECUTION_P2P_PORT" "EXECUTION_HTTP_PORT" "EXECUTION_WS_PORT" "HTTP_APIS" "WS_APIS" "IP_ADDR" "NETRESTRICT_RANGE" "END_FORK_NAME" "EXECUTION_ENGINE_PORT" "BESU_PRIVATE_KEY" "CONSENSUS_TARGET_PEERS" "EXECUTION_CHECKPOINT_FILE" "EXECUTION_LOG_LEVEL")
+env_vars=( 
+    "EXECUTION_CHECKPOINT_FILE" 
+    "IP_ADDR" 
+    "EXECUTION_DATA_DIR" 
+    "EXECUTION_HTTP_PORT" 
+    "EXECUTION_WS_PORT" 
+    "EXECUTION_P2P_PORT" 
+    "NETWORK_ID" 
+    "HTTP_APIS" 
+    "WS_APIS" 
+    "END_FORK_NAME" 
+    "BESU_PRIVATE_KEY" 
+    "EXECUTION_LOG_LEVEL"
+    "BESU_GENESIS_FILE" 
+)
+
+# OPTIONAL: 
+    # TERMINAL_TOTAL_DIFFICULTY
+    # EXECUTION_HTTP_ENGINE_PORT
+    # EXECUTION_WS_ENGINE_PORT
+    # EXECUTION_HTTP_AUTH_ENGINE_PORT
+    # EXECUTION_WS_AUTH_ENGINE_PORT
+    # EXECUTION_HTTP_AUTH_PORT
+    # EXECUTION_WS_AUTH__PORT
+    # JWT_SECRET_FILE
+    # TX_FUZZ_ENABLED
+    # NETRESTRICT_RANGE
+    # MAX_PEERS
+    ###For the bootstrapper###TODO
+    # CLIQUE_UNLOCK_KEY
+    # IS_MINING
+    # ETH1_PASSPHRASE
 
 for var in "${env_vars[@]}" ; do
     if [[ -z "$var" ]]; then
@@ -29,23 +60,27 @@ while [ ! -f "$EXECUTION_CHECKPOINT_FILE" ]; do
 done
 
 if [ -n "$JWT_SECRET_FILE" ]; then
-    ADDITIONAL_ARGS="$ADDITIONAL_ARGS --rpc-http-authentication-enabled=true --rpc-ws-authentication-enabled=true --engine-jwt-enabled=true"
     echo "Besu is using JWT auth"
+    ADDITIONAL_ARGS="$ADDITIONAL_ARGS --engine-jwt-enabled=true"
+    # add the auth port for engine.
+    ADDITIONAL_ARGS="$ADDITIONAL_ARGS --engine-rpc-http-port=$EXECUTION_AUTH_PORT --engine-rpc-ws-port=$EXECUTION_AUTH_PORT"
 else
-    ADDITIONAL_ARGS="$ADDITIONAL_ARGS --rpc-http-authentication-enabled=false --rpc-ws-authentication-enabled=false --engine-jwt-enabled=false"
     echo "Besu is not using JWT auth"
+    ADDITIONAL_ARGS="$ADDITIONAL_ARGS --rpc-http-authentication-enabled=false --rpc-ws-authentication-enabled=false --engine-jwt-enabled=false"
+    # ADDITIONAL_ARGS="$ADDITIONAL_ARGS --engine-rpc-http-port=$EXECUTION_HTTP_PORT --engine-rpc-ws-port=$EXECUTION_WS_PORT"
 fi
 
+
+echo "besu launching with additional args: $ADDITIONAL_ARGS"
+
 besu \
+  $ADDITIONAL_ARGS \
   --data-path="$EXECUTION_DATA_DIR" \
   --genesis-file="$BESU_GENESIS_FILE" \
   --network-id="$NETWORK_ID" \
   --rpc-http-enabled=true --rpc-http-api="$HTTP_APIS" \
   --rpc-http-host=0.0.0.0 \
   --rpc-http-port="$EXECUTION_HTTP_PORT" \
-  --engine-rpc-http-port="$EXECUTION_ENGINE_PORT" \
-  --engine-rpc-ws-port="$EXECUTION_ENGINE_WS_PORT" \
-  --engine-host-allowlist="*" \
   --rpc-http-cors-origins="*" \
   --rpc-ws-enabled=true --rpc-ws-api="$WS_APIS" \
   --rpc-ws-host=0.0.0.0 \
@@ -55,6 +90,7 @@ besu \
   --p2p-host="$IP_ADDR" \
   --nat-method=DOCKER \
   --sync-mode=FULL \
-  --fast-sync-min-peers=2 $ADDITIONAL_ARGS \
+  --engine-host-allowlist="*" \
+  --fast-sync-min-peers=1 \
+  --discovery-enabled=false \
   --p2p-port="$EXECUTION_P2P_PORT"
- 

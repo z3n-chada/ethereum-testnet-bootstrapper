@@ -9,6 +9,12 @@ for var in "${env_vars[@]}" ; do
     fi
 done
 
+# launch the local exectuion client
+if [[ -n "$EXECUTION_LAUNCHER" ]]; then
+    echo "lodestar-$IP_ADDR lauching a local execution client"
+    "$EXECUTION_LAUNCHER" &
+fi
+
 ADDITIONAL_BEACON_ARGS="--logFile=$NODE_DIR/beacon.log"
 
 while [ ! -f "$CONSENSUS_CHECKPOINT_FILE" ]; do
@@ -23,52 +29,63 @@ done
 bootnode_enr=`cat $CONSENSUS_BOOTNODE_ENR_FILE`
 echo $bootnode_enr
 
-# launch the local exectuion client
-if [[ -n "$EXECUTION_LAUNCHER" ]]; then
-    echo "lodestar-$IP_ADDR lauching a local execution client"
-    "$EXECUTION_LAUNCHER" &
+if [ -n "$JWT_SECRET_FILE" ]; then
+    echo "Lodestar using JWT secret"
+    lodestar beacon \
+        --rootDir="$NODE_DIR" \
+        --configFile="$TESTNET_DIR/config.yaml" \
+        --paramsFile="$TESTNET_DIR/config.yaml" \
+        --genesisStateFile="$TESTNET_DIR/genesis.ssz" \
+        --network.discv5.bootEnrs="$bootnode_enr" \
+        --network.connectToDiscv5Bootnodes \
+        --network.discv5.enabled=true \
+        --network.subscribeAllSubnets \
+        --eth1.enabled=true \
+        --api.rest.port="$BEACON_API_PORT" \
+        --eth1.providerUrls="http://$HTTP_WEB3_IP_ADDR:$EXECUTION_HTTP_PORT" \
+        --api.rest.enabled=true \
+        --api.rest.host=0.0.0.0 \
+        --api.rest.api="*" \
+        --logLevel="$LSTAR_DEBUG_LEVEL" \
+        --logLevelFile=debug \
+        --logFile="$NODE_DIR/beacon.log" \
+        --logRotate \
+        --logMaxFiles=5 \
+        --enr.ip="$IP_ADDR" \
+        --metrics.enabled \
+        --metrics.serverPort="$BEACON_METRIC_PORT" \
+        --terminal-total-difficulty-override="$TERMINAL_TOTAL_DIFFICULTY" \
+        --execution.urls="http://$HTTP_WEB3_IP_ADDR:$EXECUTION_AUTH_PORT" \
+        --jwt-secret="$JWT_SECRET_FILE" \
+        --eth1.depositContractDeployBlock=0 &
+else
+    lodestar beacon \
+        --rootDir="$NODE_DIR" \
+        --configFile="$TESTNET_DIR/config.yaml" \
+        --paramsFile="$TESTNET_DIR/config.yaml" \
+        --genesisStateFile="$TESTNET_DIR/genesis.ssz" \
+        --network.discv5.bootEnrs="$bootnode_enr" \
+        --network.connectToDiscv5Bootnodes \
+        --network.discv5.enabled=true \
+        --network.subscribeAllSubnets \
+        --eth1.enabled=true \
+        --api.rest.port="$BEACON_API_PORT" \
+        --eth1.providerUrls="http://$HTTP_WEB3_IP_ADDR:$EXECUTION_HTTP_PORT" \
+        --api.rest.enabled=true \
+        --api.rest.host=0.0.0.0 \
+        --api.rest.api="*" \
+        --logLevel="$LSTAR_DEBUG_LEVEL" \
+        --logLevelFile=debug \
+        --logFile="$NODE_DIR/beacon.log" \
+        --logRotate \
+        --logMaxFiles=5 \
+        --enr.ip="$IP_ADDR" \
+        --metrics.enabled \
+        --metrics.serverPort="$BEACON_METRIC_PORT" \
+        --terminal-total-difficulty-override="$TERMINAL_TOTAL_DIFFICULTY" \
+        --execution.urls="http://$HTTP_WEB3_IP_ADDR:$EXECUTION_HTTP_PORT" \
+        --eth1.depositContractDeployBlock=0 &
 fi
-
-if [[ $END_FORK_NAME == "bellatrix" ]]; then
-    ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --terminal-total-difficulty-override=$TERMINAL_TOTAL_DIFFICULTY" 
-    ADDITIONAL_VALIDATOR_ARGS="--terminal-total-difficulty-override=$TERMINAL_TOTAL_DIFFICULTY"
-    if [ -n "$JWT_SECRET_FILE" ]; then
-        ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --execution.urls=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_ENGINE_AUTH_PORT --jwt-secret=$JWT_SECRET_FILE"
-        echo "Lodestar using JWT secret"
-    else
-    ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --execution.urls=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_ENGINE_PORT"
-    fi
-fi
-
-
-sleep 10
-
-lodestar beacon \
-    --rootDir="$NODE_DIR" \
-    --configFile="$TESTNET_DIR/config.yaml" \
-    --paramsFile="$TESTNET_DIR/config.yaml" \
-    --genesisStateFile="$TESTNET_DIR/genesis.ssz" \
-    --network.discv5.bootEnrs="$bootnode_enr" \
-    --network.connectToDiscv5Bootnodes \
-    --network.discv5.enabled=true \
-    --network.subscribeAllSubnets \
-    --eth1.enabled=true \
-    --api.rest.port="$BEACON_API_PORT" \
-    --eth1.providerUrls="http://$HTTP_WEB3_IP_ADDR:$EXECUTION_HTTP_PORT" \
-    --execution.urls="http://$HTTP_WEB3_IP_ADDR:$EXECUTION_ENGINE_PORT" \
-    --api.rest.enabled=true \
-    --api.rest.host=0.0.0.0 \
-    --api.rest.api="*" \
-    --logLevel="$LSTAR_DEBUG_LEVEL" \
-    --logLevelFile=debug \
-    --logFile="$NODE_DIR/beacon.log" \
-    --logRotate \
-    --logMaxFiles=5 \
-    --enr.ip="$IP_ADDR" \
-    --metrics.enabled \
-    --metrics.serverPort="$BEACON_METRIC_PORT" \
-    --terminal-total-difficulty-override="$TERMINAL_TOTAL_DIFFICULTY" \
-    --eth1.depositContractDeployBlock=0 &
 
 sleep 10
 

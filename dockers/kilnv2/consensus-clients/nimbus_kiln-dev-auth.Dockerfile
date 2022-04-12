@@ -49,8 +49,10 @@ RUN adduser \
 RUN mkdir -p /var/lib/nimbus && chown ${USER}:${USER} /var/lib/nimbus && chmod 700 /var/lib/nimbus
 
 # Copy executable
+RUN mkdir -p /git/nimbus-eth2/
 COPY --from=nimbus_builder /git/nimbus-eth2/build/nimbus_beacon_node /usr/local/bin/nimbus_beacon_node
 COPY --from=nimbus_builder /git/nimbus-eth2/build/nimbus_validator_client /usr/local/bin/nimbus_validator_client
+COPY --from=nimbus_builder /git/nimbus-eth2/ /git/nimbus-eth2/
 
 USER ${USER}
 

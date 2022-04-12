@@ -9,6 +9,12 @@ for var in "${env_vars[@]}" ; do
     fi
 done
 
+# launch the local exectuion client
+if [[ -n "$EXECUTION_LAUNCHER" ]]; then
+    echo "lightouse-$IP_ADDR lauching a local execution client"
+    "$EXECUTION_LAUNCHER" &
+fi
+
 ADDITIONAL_BEACON_ARGS="--logfile=$NODE_DIR/beacon.log --logfile-debug-level=$LIGHTHOUSE_DEBUG_LEVEL"
 ADDITIONAL_VALIDATOR_ARGS="--logfile=$NODE_DIR/validator.log --logfile-debug-level=$LIGHTHOUSE_DEBUG_LEVEL"
 
@@ -23,16 +29,27 @@ while [ ! -f "$CONSENSUS_BOOTNODE_ENR_FILE" ]; do
 done
 
 
-if [[ $END_FORK_NAME == "bellatrix" ]]; then
-    ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --merge --terminal-total-difficulty-override=$TERMINAL_TOTAL_DIFFICULTY" 
-    ADDITIONAL_VALIDATOR_ARGS="$ADDITIONAL_VALIDATOR_ARGS --suggested-fee-recipient=0x00000000219ab540356cbb839cbe05303d7705fa"
-    if [ -n "$JWT_SECRET_FILE" ]; then
-        ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --jwt-secrets=$JWT_SECRET_FILE"
-        ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --execution-endpoints=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_ENGINE_AUTH_PORT"
-    else
-        ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --execution-endpoints=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_ENGINE_PORT" 
-    fi
+#if [[ $END_FORK_NAME == "bellatrix" ]]; then
+#    ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --merge --terminal-total-difficulty-override=$TERMINAL_TOTAL_DIFFICULTY" 
+#    ADDITIONAL_VALIDATOR_ARGS="$ADDITIONAL_VALIDATOR_ARGS --suggested-fee-recipient=0x00000000219ab540356cbb839cbe05303d7705fa"
+#    if [ -n "$JWT_SECRET_FILE" ]; then
+#        ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --jwt-secrets=$JWT_SECRET_FILE"
+#        ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --execution-endpoints=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_ENGINE_AUTH_PORT"
+#    else
+#        ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --execution-endpoints=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_ENGINE_PORT" 
+#    fi
+#fi
+ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --merge --terminal-total-difficulty-override=$TERMINAL_TOTAL_DIFFICULTY" 
+
+if [ -n "$JWT_SECRET_FILE" ]; then
+    echo "Lighthouse is using JWT auth"
+    ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --execution-endpoints=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_AUTH_PORT --jwt-secrets=$JWT_SECRET_FILE" 
+else
+    echo "Lighthouse is not using JWT auth"
+    ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --execution-endpoints=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_HTTP_PORT" 
 fi
+
+ADDITIONAL_VALIDATOR_ARGS="$ADDITIONAL_VALIDATOR_ARGS --suggested-fee-recipient=0x00000000219ab540356cbb839cbe05303d7705fa"
 
 
 if [ ! -f "$TESTNET_DIR/boot_enr.yaml" ]; then
@@ -40,12 +57,8 @@ if [ ! -f "$TESTNET_DIR/boot_enr.yaml" ]; then
     echo "- $bootnode_enr" > $TESTNET_DIR/boot_enr.yaml
 fi
 
-# launch the local exectuion client
-if [[ -n "$EXECUTION_LAUNCHER" ]]; then
-    echo "lightouse-$IP_ADDR lauching a local execution client"
-    "$EXECUTION_LAUNCHER" &
-fi
 
+# lastly see if we are running a tx-fuzz instance.
 
 lighthouse \
 	--debug-level=$LIGHTHOUSE_DEBUG_LEVEL \
