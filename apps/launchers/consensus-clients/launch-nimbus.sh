@@ -1,6 +1,6 @@
 #!/bin/bash
 
-env_vars=( "PRESET_BASE", "START_FORK", "END_FORK", "DEBUG_LEVEL", "TESTNET_DIR", "NODE_DIR", "HTTP_WEB3_IP_ADDR", "IP_ADDR", "CONSENSUS_P2P_PORT", "BEACON_METRIC_PORT", "BEACON_RPC_PORT", "BEACON_API_PORT", "VALIDATOR_METRIC_PORT", "GRAFFITI", "NETRESTRICT_RANGE" , "EXECUTION_HTTP_PORT", "TERMINALTOTALDIFFICULTY")
+env_vars=( "PRESET_BASE", "START_FORK_NAME", "END_FORK_NAME", "DEBUG_LEVEL", "TESTNET_DIR", "NODE_DIR", "HTTP_WEB3_IP_ADDR", "IP_ADDR", "CONSENSUS_P2P_PORT", "BEACON_METRIC_PORT", "BEACON_RPC_PORT", "BEACON_API_PORT", "VALIDATOR_METRIC_PORT", "GRAFFITI", "NETRESTRICT_RANGE" , "EXECUTION_HTTP_PORT", "TERMINAL_TOTAL_DIFFICULTY", "CONSENSUS_BOOTNODE_ENR_FILE" "CONSENSUS_CHECKPOINT_FILE", "BESU_GENESIS_FILE", "GETH_GENESIS_FILE", "NETHERMIND_GENESIS_FILE" )
 
 for var in "${env_vars[@]}" ; do
     if [[ -z "$var" ]]; then
@@ -9,26 +9,38 @@ for var in "${env_vars[@]}" ; do
     fi
 done
 
-while [ ! -f "/data/consensus-clients-ready" ]; do
-    sleep 1
-done
-
-while [ ! -f "/data/local_testnet/bootnode/enr.dat" ]; do
-    echo "waiting on bootnode"
-    sleep 1
-done
-
-bootnode_enr=`cat /data/local_testnet/bootnode/enr.dat `
-
-if [[ $END_FORK == "bellatrix" ]]; then
-    ADDITIONAL_ARGS="--terminal-total-difficulty-override=$TERMINALTOTALDIFFICULTY"
-fi 
-
 if [[ -n "$EXECUTION_LAUNCHER" ]]; then
     "$EXECUTION_LAUNCHER" &
 fi
 
-sleep 30
+while [ ! -f "$CONSENSUS_CHECKPOINT_FILE" ]; do
+    sleep 1
+done
+
+while [ ! -f "$CONSENSUS_BOOTNODE_ENR_FILE" ]; do
+    echo "waiting on bootnode"
+    sleep 1
+done
+
+bootnode_enr=`cat $CONSENSUS_BOOTNODE_ENR_FILE`
+
+ADDITIONAL_BEACON_ARGS="--log-level=$NIMBUS_DEBUG_LEVEL"
+
+if [[ $END_FORK_NAME == "bellatrix" ]]; then
+    ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --terminal-total-difficulty-override=$TERMINAL_TOTAL_DIFFICULTY"
+fi
+
+if [ -n "$JWT_SECRET_FILE" ]; then
+    echo "Nimbus using jwt-secret"
+    ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --jwt-secret=$JWT_SECRET_FILE --web3-url=ws://$WS_WEB3_IP_ADDR:$EXECUTION_AUTH_PORT"
+else
+    echo "Nimbus is not using jwt-secret"
+    ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --web3-url=ws://$WS_WEB3_IP_ADDR:$EXECUTION_WS_PORT"
+fi
+
+echo "nimbus launching with additional beacon args: $ADDITIONAL_BEACON_ARGS"
+
+sleep 20
 
 nimbus_beacon_node \
     --non-interactive \
@@ -41,16 +53,15 @@ nimbus_beacon_node \
     --rpc-address="0.0.0.0" --rpc-port="$BEACON_RPC_PORT" \
     --rest \
     --rest-address="0.0.0.0" --rest-port="$BEACON_API_PORT" \
-    --log-level="$DEBUG_LEVEL" \
     --listen-address="$IP_ADDR" \
     --tcp-port="$CONSENSUS_P2P_PORT" \
     --udp-port="$CONSENSUS_P2P_PORT" \
     --nat="extip:$IP_ADDR" \
     --discv5=true \
     --subscribe-all-subnets \
-    --web3-url="ws://$WS_WEB3_IP_ADDR:$EXECUTION_WS_PORT" \
     --insecure-netkey-password \
     --netkey-file="$NODE_DIR/netkey-file.txt" \
+    --graffiti="nimbus-kilnv2:$IP_ADDR" \
     --in-process-validators=true \
-    --doppelganger-detection=false $ADDITIONAL_ARGS\
+    --doppelganger-detection=true $ADDITIONAL_BEACON_ARGS \
     --bootstrap-node="$bootnode_enr" 

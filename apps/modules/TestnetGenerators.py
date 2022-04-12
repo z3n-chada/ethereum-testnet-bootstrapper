@@ -1,68 +1,81 @@
 import pathlib
 import shutil
 import subprocess
+import logging
+
+logger = logging.getLogger("bootstrapper_log")
 
 
 class TestnetDirectoryGenerator(object):
-    def __init__(self, global_config, client_config, password=None):
-        self.gc = global_config
-        self.cc = client_config
-        self.ccc = global_config["consensus-configs"][client_config["consensus-config"]]
-        self.password = password
-        self.mnemonic = self.gc["accounts"]["validator-mnemonic"]
+    """
+    Generic TestnetDirectoryGenerator. Given a ConsensusClient it generates the required
+    directory structure for the client to start up.
+    """
 
-        genesis_ssz = self.gc["files"]["consensus-genesis"]
-        consensus_config = self.gc["files"]["consensus-config"]
-        self.testnet_dir = pathlib.Path(self.cc["testnet-dir"])
-        validator_dir = pathlib.Path(self.cc["testnet-dir"] + "/validators/")
+    def __init__(self, consensus_client, password=None):
+        self.client = consensus_client
+        self.password = password
+
+        # self.etb_config = consensus_client.etb_config
+        self.mnemonic = self.client.get("validator-mnemonic")
+
+        genesis_ssz = self.client.get("consensus-genesis-file")
+        consensus_config = self.client.get("consensus-config-file")
+        self.testnet_dir = pathlib.Path(self.client.get("testnet-dir"))
+        self.validator_dir = pathlib.Path(
+            self.client.get("testnet-dir") + "/validators/"
+        )
 
         if self.testnet_dir.exists():
             print(f"WARNING: {self.testnet_dir} already exists", flush=True)
             # shutil.rmtree(str(self.testnet_dir))  # clean old run
 
         self.testnet_dir.mkdir(exist_ok=True)
-        validator_dir.mkdir(exist_ok=True)
-        # self.testnet_dir.mkdir()
-        # validator_dir.mkdir()
+        self.validator_dir.mkdir(exist_ok=True)
 
         shutil.copy(genesis_ssz, str(self.testnet_dir) + "/genesis.ssz")
         shutil.copy(consensus_config, str(self.testnet_dir) + "/config.yaml")
 
-        self._generate_validator_stores(
-            self.cc["validator-offset-start"],
-            self.ccc["num-nodes"],
-            self.ccc["num-validators"],
-            str(validator_dir),
-            password=self.password,
-        )
+        self._generate_validator_stores()
 
-    def _generate_validator_stores(
-        self, start, num_nodes, num_validators, out_dir, password=None
-    ):
-        divisor = int(num_validators / num_nodes)
-        if num_validators % num_nodes != 0:
-            raise Exception("Validators must evenly divide nodes")
+    def _generate_validator_stores(self):
+        """
+        Clients have a validator offset start (which specifies the offset
+        from which we generate their keys.
 
-        curr_offset = start
-        for x in range(num_nodes):
-            val_dir = f"node_{x}"
+        The Clients Consensus-Config specifies the number of validators per
+        node, and the client specifies the number of nodes. Thus to have
+        mulitple clients you must ensure that the validator offsets between
+        each client is atleast num_nodes*num_validators above the previous
+        client.
+
+        You can check this using the ETBConfig.check_configuration_sanity()
+        """
+
+        validator_offset_start = self.client.get("validator-offset-start")
+        num_validators = self.client.get("num-validators")
+        for x in range(self.client.get("num-nodes")):
+
+            source_min = validator_offset_start + (x * num_validators)
+            source_max = source_min + num_validators
             cmd = (
-                f"eth2-val-tools keystores --out-loc {out_dir}/{val_dir} "
-                + f"--source-min {curr_offset} --source-max {curr_offset + divisor} "
+                "eth2-val-tools keystores "
+                + f"--out-loc {self.validator_dir}/node_{x} "
+                + f"--source-min {source_min} "
+                + f"--source-max {source_max} "
                 + f'--source-mnemonic "{self.mnemonic}"'
             )
-            if password is not None:
-                cmd += f' --prysm-pass "{password}"'
+            if self.password is not None:
+                cmd += f' --prysm-pass "{self.password}"'
             subprocess.run(cmd, shell=True)
-            curr_offset += divisor
 
 
 class TekuTestnetDirectoryGenerator(TestnetDirectoryGenerator):
-    def __init__(self, global_config, client_config):
-        super().__init__(global_config, client_config)
+    def __init__(self, consensus_client):
+        super().__init__(consensus_client)
 
     def finalize_testnet_dir(self):
-        for ndx in range(self.ccc["num-nodes"]):
+        for ndx in range(self.client.get("num-nodes")):
             node_dir = pathlib.Path(str(self.testnet_dir) + f"/node_{ndx}")
             node_dir.mkdir()
             keystore_dir = pathlib.Path(str(self.testnet_dir) + "/validators")
@@ -74,15 +87,13 @@ class TekuTestnetDirectoryGenerator(TestnetDirectoryGenerator):
 
 
 class PrysmTestnetGenerator(TestnetDirectoryGenerator):
-    def __init__(self, global_config, client_config):
-
+    def __init__(self, consensus_client):
         super().__init__(
-            global_config,
-            client_config,
-            client_config["additional-env"]["validator-password"],
+            consensus_client,
+            consensus_client.get("validator-password"),
         )
         # prysm only stuff.
-        self.password_file = self.cc["additional-env"]["wallet-path"]
+        self.password_file = self.client.get("wallet-path")
 
         with open(self.password_file, "w") as f:
             f.write(self.password)
@@ -92,7 +103,7 @@ class PrysmTestnetGenerator(TestnetDirectoryGenerator):
         Copy validator info into local client.
         """
         print(f"Finalizing prysm client {self.testnet_dir} testnet directory.")
-        for ndx in range(self.ccc["num-nodes"]):
+        for ndx in range(self.client.get("num-nodes")):
             node_dir = pathlib.Path(str(self.testnet_dir) + f"/node_{ndx}")
             node_dir.mkdir()
             keystore_dir = pathlib.Path(
@@ -108,8 +119,9 @@ class PrysmTestnetGenerator(TestnetDirectoryGenerator):
 
 
 class LighthouseTestnetGenerator(TestnetDirectoryGenerator):
-    def __init__(self, global_config, client_config):
-        super().__init__(global_config, client_config)
+    def __init__(self, consensus_client):
+        super().__init__(consensus_client)
+
         with open(str(self.testnet_dir) + "/deploy_block.txt", "w") as f:
             f.write("0")
 
@@ -118,7 +130,7 @@ class LighthouseTestnetGenerator(TestnetDirectoryGenerator):
         Copy validator info into local client.
         """
         print(f"Finalizing lighthouse client dir={self.testnet_dir}")
-        for ndx in range(self.ccc["num-nodes"]):
+        for ndx in range(self.client.get("num-nodes")):
             node_dir = pathlib.Path(str(self.testnet_dir) + f"/node_{ndx}")
             node_dir.mkdir()
             keystore_dir = pathlib.Path(str(self.testnet_dir) + "/validators")
@@ -130,15 +142,15 @@ class LighthouseTestnetGenerator(TestnetDirectoryGenerator):
 
 
 class NimbusTestnetGenerator(TestnetDirectoryGenerator):
-    def __init__(self, global_config, client_config):
-        super().__init__(global_config, client_config)
+    def __init__(self, consensus_client):
+        super().__init__(consensus_client)
 
     def finalize_testnet_dir(self):
         """
         Copy validator info into local client.
         """
         print(f"Finalizing nimbus client dir={self.testnet_dir}")
-        for ndx in range(self.ccc["num-nodes"]):
+        for ndx in range(self.client.get("num-nodes")):
             node_dir = pathlib.Path(str(self.testnet_dir) + f"/node_{ndx}")
             node_dir.mkdir()
             keystore_dir = pathlib.Path(str(self.testnet_dir) + "/validators")
@@ -156,14 +168,14 @@ class NimbusTestnetGenerator(TestnetDirectoryGenerator):
 
 
 class LodestarTestnetGenerator(TestnetDirectoryGenerator):
-    def __init__(self, global_config, client_config):
-        super().__init__(global_config, client_config)
+    def __init__(self, consensus_client):
+        super().__init__(consensus_client)
 
     def finalize_testnet_dir(self):
         """
         Copy validator info into local client.
         """
-        for ndx in range(self.ccc["num-nodes"]):
+        for ndx in range(self.client.get("num-nodes")):
             node_dir = pathlib.Path(str(self.testnet_dir) + f"/node_{ndx}")
             node_dir.mkdir()
             keystore_dir = pathlib.Path(str(self.testnet_dir) + "/validators")
@@ -186,9 +198,7 @@ def generate_consensus_testnet_dirs(global_config):
         "nimbus": NimbusTestnetGenerator,
         "lodestar": LodestarTestnetGenerator,
     }
-    for cc in global_config["consensus-clients"]:
-        print(f"Creating testnet directory for {cc}")
-        c_config = global_config["consensus-clients"][cc]
-        c_client = c_config["client-name"]
-        ccg = generators[c_client](global_config, c_config)
+    for name, client in global_config.get_consensus_clients().items():
+        logger.info(f"Creating testnet directory for {name}")
+        ccg = generators[client.get("client-name")](client)
         ccg.finalize_testnet_dir()
