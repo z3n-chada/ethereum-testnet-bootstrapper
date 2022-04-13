@@ -55,7 +55,18 @@ class GetUniqueHeads(TestnetHealthMetric):
             if response is not None:
                 slot = response.json()["data"]["message"]["slot"]
                 state_root = response.json()["data"]["message"]["state_root"]
-                all_responses[name] = (slot, state_root)
+                try:
+                    graffiti_hex = response.json()["data"]["message"]["body"][
+                        "graffiti"
+                    ]
+                    graffiti = (
+                        bytes.fromhex(graffiti_hex[2:])
+                        .decode("utf-8")
+                        .replace("\x00", "")
+                    )
+                except:
+                    graffiti = "Error Parsing Graffiti"
+                all_responses[name] = (slot, state_root, graffiti)
 
         return all_responses
 
@@ -72,8 +83,8 @@ class GetUniqueHeads(TestnetHealthMetric):
         if num_heads != 1:
             repr_string = f"WARN: found {num_heads} forks: {unique_resps}"
         else:
-            slot, state_root = list(unique_resps.keys())[0]
-            repr_string = f"Consensus {slot}:{state_root}"
+            slot, state_root, graffiti = list(unique_resps.keys())[0]
+            repr_string = f"Consensus {slot}:{state_root}:{graffiti}"
 
         return repr_string
 

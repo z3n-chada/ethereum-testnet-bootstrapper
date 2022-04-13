@@ -8,7 +8,6 @@ import argparse
 import time
 
 if __name__ == "__main__":
-    now = int(time.time())
 
     parser = argparse.ArgumentParser()
 
@@ -36,8 +35,9 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-
+    time.sleep(30) #TODO: use a checkpoint file.
     etb_config = ETBConfig(args.config)
+    now = etb_config.get("bootstrap-genesis")
     monitor = TestnetHealthAPI(etb_config)
 
     if args.consensus_heads:

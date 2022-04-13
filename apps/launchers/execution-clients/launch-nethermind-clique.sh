@@ -41,11 +41,11 @@ done
 
 if [ -n "$JWT_SECRET_FILE" ]; then
     echo "Nethermind is using JWT auth"
-    ADDITIONAL_ARGS="$ADDITIONAL_ARGS --JsonRpc.JwtSecretFile=$JWT_SECRET_FILE --JsonRpc.AdditionalRpcUrls=http://localhost:$ENGINE_AUTH_PORT|http|net;eth;subscribe;engine;web3;client;clique|auth,ws://localhost:$EXECUTION_AUTH_PORT|ws|net;eth;subscribe;engine;web3;client"
+    ADDITIONAL_ARGS="$ADDITIONAL_ARGS --JsonRpc.JwtSecretFile=$JWT_SECRET_FILE --JsonRpc.AdditionalRpcUrls=http://localhost:$EXECUTION_AUTH_HTTP_PORT|http;ws|net;eth;subscribe;engine;web3;client;clique,http://localhost:$EXECUTION_AUTH_WS_PORT|http;ws|net;eth;subscribe;engine;web3;client"
 
 else
     echo "Nethermind is not using JWT auth"
-    ADDITIONAL_ARGS="$ADDITIONAL_ARGS --JsonRpc.UnsecureDevNoRpcAuthentication=True"
+    ADDITIONAL_ARGS="$ADDITIONAL_ARGS --JsonRpc.AdditionalRpcUrls=http://localhost:$EXECUTION_ENGINE_HTTP_PORT|http|net;eth;subscribe;engine;web3;client;clique|no-auth,http://localhost:$EXECUTION_ENGINE_WS_PORT|ws|net;eth;subscribe;engine;web3;client|no-auth --JsonRpc.UnsecureDevNoRpcAuthentication=True"
 fi
 
 echo "{}" > /tmp/nethermind.cfg

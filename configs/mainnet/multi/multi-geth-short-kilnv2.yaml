@@ -150,9 +150,10 @@ execution-configs:
     ws-apis: "clique,admin,net,eth,web3,personal,engine"
     execution-http-port: 8645
     execution-ws-port: 8646
-    execution-p2p-port: 666
-    execution-auth-port: 8551  
+    execution-auth-http-port: 8551   # http/ws same port.
+    execution-auth-ws-port: 8551   # include for nimbus
     # execution-engine-port: N/A
+    execution-p2p-port: 666
 
 consensus-configs:
 
@@ -178,8 +179,8 @@ execution-clients:
     client-name: "geth-bootstrapper"
     container-name: "geth-bootstrapper"
     start-ip-addr: "10.0.20.2"
-    image: "geth-client"
-    tag: "merge-kiln-v2"
+    image: "geth"
+    tag: "master"
     depends: "ethereum-testnet-bootstrapper"
     entrypoint: "/source/apps/launchers/execution-clients/launch-geth-clique.sh" #wrt to docker.
 

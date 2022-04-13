@@ -1,4 +1,4 @@
-FROM geth:merge-kiln-v2 as geth_builder
+FROM geth:master as geth_builder
 FROM besu:main as besu_builder
 FROM nethermind:kiln as nethermind_builder
 FROM prysm:kiln as prysm_builder

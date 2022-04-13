@@ -28,16 +28,16 @@ RUN cd /git/src/github.com/prysmaticlabs/ && \
 # Get dependencies
 RUN cd /git/src/github.com/prysmaticlabs/prysm && go get -t -d ./... && go build -o /build ./...
 
-# FROM prysm_builder as prysm_beacon_builder
-# # Install prysm
-# ARG GIT_BRANCH="kiln"
-# 
-# RUN mkdir -p /git/src/github.com/prysmaticlabs/
-# RUN cd /git/src/github.com/prysmaticlabs/ && \
-#     git clone https://github.com/prysmaticlabs/prysm && cd prysm && git checkout b9ffd66bf4d3c24bc97fb6a0a78617b94e068579
-# 
-# # Get dependencies
-# RUN cd /git/src/github.com/prysmaticlabs/prysm && go get -t -d ./... && go build -o /build ./...
+FROM prysm_builder as prysm_beacon_builder
+# Install prysm
+ARG GIT_BRANCH="kiln"
+
+RUN mkdir -p /git/src/github.com/prysmaticlabs/
+RUN cd /git/src/github.com/prysmaticlabs/ && \
+    git clone https://github.com/prysmaticlabs/prysm && cd prysm && git checkout b9ffd66bf4d3c24bc97fb6a0a78617b94e068579
+
+# Get dependencies
+RUN cd /git/src/github.com/prysmaticlabs/prysm && go get -t -d ./... && go build -o /build ./...
 
 
 
@@ -71,6 +71,6 @@ RUN adduser \
 RUN mkdir -p /var/lib/prysm && chown ${USER}:${USER} /var/lib/prysm && chmod 700 /var/lib/prysm
 
 # Copy executable
-COPY --from=prysm_validator_builder /build/beacon-chain /usr/local/bin/
+COPY --from=prysm_beacon_builder /build/beacon-chain /usr/local/bin/
 COPY --from=prysm_validator_builder /build/validator /usr/local/bin/
 COPY --from=prysm_validator_builder /build/client-stats /usr/local/bin/

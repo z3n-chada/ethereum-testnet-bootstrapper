@@ -39,15 +39,40 @@ done
 #        ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --execution-endpoints=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_ENGINE_PORT" 
 #    fi
 #fi
-ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --merge --terminal-total-difficulty-override=$TERMINAL_TOTAL_DIFFICULTY" 
-
 if [ -n "$JWT_SECRET_FILE" ]; then
-    echo "Lighthouse is using JWT auth"
-    ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --execution-endpoints=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_AUTH_PORT --jwt-secrets=$JWT_SECRET_FILE" 
+    echo "Lightouse using jwt-secret"
+        ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --jwt-secrets=$JWT_SECRET_FILE"
+
+    # two cases, either seperate auth ports or one.
+    if [ -n "$EXECUTION_AUTH_PORT" ]; then
+        # we have same http/ws auth port.
+        ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --execution-endpoints=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_AUTH_PORT"
+    else
+        # lets prefer http for now/ ws doesn't work for at least besu
+        if [ -n "$EXECUTION_AUTH_HTTP_PORT" ]; then
+            ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --execution-endpoints=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_AUTH_HTTP_PORT"
+        else
+            ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --execution-endpoints=ws://$WS_WEB3_IP_ADDR:$EXECUTION_AUTH_WS_PORT"
+        fi
+    fi
+
 else
-    echo "Lighthouse is not using JWT auth"
-    ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --execution-endpoints=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_HTTP_PORT" 
+    echo "Lightouse is not using jwt-secret"
+    # no auth.
+    if [ -n "$EXECUTION_ENGINE_PORT" ]; then
+        # we have same http/ws auth port.
+        ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --execution-endpoints=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_ENGINE_PORT"
+    else
+        # lets prefer ws for now.
+        if [ -n "$EXECUTION_ENGINE_HTTP_PORT" ]; then
+            ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --execution-endpoints=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_ENGINE_HTTP_PORT"
+        else
+            ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --execution-endpoints=ws://$WS_WEB3_IP_ADDR:$EXECUTION_ENGINE_WS_PORT"
+        fi
+    fi
+
 fi
+ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --merge --terminal-total-difficulty-override=$TERMINAL_TOTAL_DIFFICULTY" 
 
 ADDITIONAL_VALIDATOR_ARGS="$ADDITIONAL_VALIDATOR_ARGS --suggested-fee-recipient=0x00000000219ab540356cbb839cbe05303d7705fa"
 
@@ -79,7 +104,7 @@ lighthouse \
     --metrics-port="$BEACON_METRIC_PORT" \
     --metrics-allow-origin="*" \
     --listen-address=0.0.0.0 \
-    --graffiti="lighthouse-$IP_ADDR" \
+    --graffiti="$GRAFFITI" \
     --target-peers="$CONSENSUS_TARGET_PEERS" \
     --http-allow-sync-stalled \
     --disable-packet-filter \
@@ -96,6 +121,6 @@ lighthouse \
     --secrets-dir "$NODE_DIR/secrets" \
 	--init-slashing-protection \
     --server="http://127.0.0.1:$BEACON_API_PORT" \
-    --graffiti="lighthouse-minimal-$IP_ADDR" \
+    --graffiti="$GRAFFITI" \
     --http --http-port="$VALIDATOR_RPC_PORT" $ADDITIONAL_VALIDATOR_ARGS \
     --metrics --metrics-address=0.0.0.0 --metrics-port="$VALIDATOR_METRIC_PORT" \

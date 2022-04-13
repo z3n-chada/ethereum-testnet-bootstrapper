@@ -21,6 +21,7 @@
 # """
 from modules.ETBConfig import ETBConfig
 from modules.TestnetHealthMetrics import TestnetHealthAPI, GetUniqueHeads
+import time
 
 
 class TestnetStatusChecker(object):
@@ -30,7 +31,7 @@ class TestnetStatusChecker(object):
         self.thapi = TestnetHealthAPI(self.etb_config)
         self.thapi.add_metric(GetUniqueHeads(), name="consensus-check")
 
-        self.now = int(time.time())
+        self.now = self.etb_config.get("bootstrap-genesis")
 
         if self.etb_config.get("preset-base") == "mainnet":
             seconds_per_eth2_slot = 12
@@ -38,10 +39,26 @@ class TestnetStatusChecker(object):
             raise Exception("No minimal support")
 
         self.genesis_time = self.now + self.etb_config.get("consensus-genesis-delay")
-        self.phase0_time = self.now + args.phase0_slot * seconds_per_eth2_slot
-        self.exp_time = self.now + args.experiment_slot * seconds_per_eth2_slot
-        self.phase1_time = self.now + args.phase1_slot * seconds_per_eth2_slot
-        self.phase2_time = self.now + args.phase2_slot * seconds_per_eth2_slot
+        self.phase0_time = (
+            self.now
+            + self.etb_config.get("consensus-genesis-delay")
+            + args.phase0_slot * seconds_per_eth2_slot
+        )
+        self.exp_time = (
+            self.now
+            + self.etb_config.get("consensus-genesis-delay")
+            + args.experiment_slot * seconds_per_eth2_slot
+        )
+        self.phase1_time = (
+            self.now
+            + self.etb_config.get("consensus-genesis-delay")
+            + args.phase1_slot * seconds_per_eth2_slot
+        )
+        self.phase2_time = (
+            self.now
+            + self.etb_config.get("consensus-genesis-delay")
+            + args.phase2_slot * seconds_per_eth2_slot
+        )
 
         self.check_delay = args.check_delay
         self.number_of_checks = args.num_checks
@@ -182,6 +199,7 @@ if __name__ == "__main__":
         help="when doing multiple checks how long to pause between them",
     )
     args = parser.parse_args()
+    time.sleep(30)  # TODO: use a checkpoint file.
     status_checker = TestnetStatusChecker(args)
     status_checker.start()
 

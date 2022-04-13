@@ -148,8 +148,8 @@ execution-configs:
     ws-apis: "clique,admin,net,eth,web3,personal,engine"
     execution-http-port: 8645
     execution-ws-port: 8646
-    execution-auth-port: 8551  
-    # execution-engine-port: N/A
+    execution-auth-http-port: 8551 # doesn't do http/ws the same.
+    execution-auth-ws-port: 8552
     execution-p2p-port: 666
   
   besu-execution-config:
@@ -159,19 +159,20 @@ execution-configs:
     ws-apis: "ADMIN,MINER,CLIQUE,ETH,NET,DEBUG,TXPOOL,ENGINE"
     execution-http-port: 8645
     execution-ws-port: 8646
-    execution-auth-port: 8551
+    execution-auth-http-port: 8551 # doesn't do http/ws the same.
+    execution-auth-ws-port: 8552
     execution-p2p-port: 666
 
   nethermind-execution-config:
     client: "nethermind"
     execution-log-level: "debug"
-    http-apis: "net,eth,consensus,subscribe,web3,admin,engine"
-    ws-apis: "net,eth,consensus,subscribe,web3,admin,engine"
+    http-apis: "net,eth,consensus,subscribe,web3,admin"
+    ws-apis: "net,eth,consensus,subscribe,web3,admin"
     execution-http-port: 8645
     execution-ws-port: 8646
-    execution-auth-port: 8551
+    execution-auth-http-port: 8551 # doesn't do http/ws the same.
+    execution-auth-ws-port: 8552
     execution-p2p-port: 666
-
 
 consensus-configs:
 
@@ -237,7 +238,7 @@ consensus-clients:
 
 
     testnet-dir: '/data/local_testnet/prysm-nethermind'
-      #jwt-secret-file: "/data/local_testnet/prysm-nethermind/jwt-secret"
+    jwt-secret-file: "/data/local_testnet/prysm-nethermind/jwt-secret"
 
     validator-offset-start: 0 # so validators of different clients don't overlap
     # args specific to prysm nodes, these are loaded into the dockers env at runtime.
@@ -266,7 +267,7 @@ consensus-clients:
     execution-launcher: "/source/apps/launchers/execution-clients/launch-nethermind-clique.sh"
 
     testnet-dir: '/data/local_testnet/teku-nethermind'
-      #jwt-secret-file: "/data/local_testnet/teku-nethermind/jwt-secret"
+    jwt-secret-file: "/data/local_testnet/teku-nethermind/jwt-secret"
 
     validator-offset-start: 4 # so validators of different clients don't overlap
 
@@ -287,7 +288,7 @@ consensus-clients:
 
     num-nodes: 1 # how many beacon nodes
     testnet-dir: '/data/local_testnet/nimbus-nethermind'
-      #jwt-secret-file: "/data/local_testnet/nimbus-nethermind/jwt-secret"
+    jwt-secret-file: "/data/local_testnet/nimbus-nethermind/jwt-secret"
 
     consensus-config: "base-consensus-client"
     consensus-bootnode-config: "eth2-bootnode-config"
@@ -321,7 +322,7 @@ consensus-clients:
 
     num-nodes: 1 # how many beacon nodes
     testnet-dir: '/data/local_testnet/lighthouse-nethermind'
-      #jwt-secret-file: "/data/local_testnet/lighthouse-nethermind/jwt-secret"
+    jwt-secret-file: "/data/local_testnet/lighthouse-nethermind/jwt-secret"
     validator-offset-start: 12 # so validators of different clients don't overlap
     
     additional-env:
@@ -347,7 +348,7 @@ consensus-clients:
     execution-launcher: "/source/apps/launchers/execution-clients/launch-nethermind-clique.sh"
   
     testnet-dir: '/data/local_testnet/lodestar-nethermind'
-      #jwt-secret-file: "/data/local_testnet/lodestar-nethermind/jwt-secret"
+    jwt-secret-file: "/data/local_testnet/lodestar-nethermind/jwt-secret"
     validator-offset-start: 16 # so validators of different clients don't overlap
     
     additional-env:

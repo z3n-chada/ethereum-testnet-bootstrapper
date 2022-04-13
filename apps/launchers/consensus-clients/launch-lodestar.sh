@@ -55,7 +55,7 @@ if [ -n "$JWT_SECRET_FILE" ]; then
         --metrics.enabled \
         --metrics.serverPort="$BEACON_METRIC_PORT" \
         --terminal-total-difficulty-override="$TERMINAL_TOTAL_DIFFICULTY" \
-        --execution.urls="http://$HTTP_WEB3_IP_ADDR:$EXECUTION_AUTH_PORT" \
+        --execution.urls="http://$HTTP_WEB3_IP_ADDR:$EXECUTION_AUTH_HTTP_PORT" \
         --jwt-secret="$JWT_SECRET_FILE" \
         --eth1.depositContractDeployBlock=0 &
 else
@@ -70,7 +70,7 @@ else
         --network.subscribeAllSubnets \
         --eth1.enabled=true \
         --api.rest.port="$BEACON_API_PORT" \
-        --eth1.providerUrls="http://$HTTP_WEB3_IP_ADDR:$EXECUTION_HTTP_PORT" \
+        --eth1.providerUrls="http://$HTTP_WEB3_IP_ADDR:$EXECUTION_ENGINE_HTTP_PORT" \
         --api.rest.enabled=true \
         --api.rest.host=0.0.0.0 \
         --api.rest.api="*" \

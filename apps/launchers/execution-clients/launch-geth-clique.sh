@@ -79,7 +79,7 @@ geth init \
 
 # not implemented.
 if [ -n "$JWT_SECRET_FILE" ]; then
-    ADDITIONAL_ARGS="$ADDITIONAL_ARGS --authrpc.port=$EXECUTION_AUTH_PORT --authrpc.addr=0.0.0.0 --authrpc.jwtsecret=$JWT_SECRET_FILE"
+    ADDITIONAL_ARGS="$ADDITIONAL_ARGS --authrpc.port=$EXECUTION_AUTH_HTTP_PORT --authrpc.addr=0.0.0.0 --authrpc.jwtsecret=$JWT_SECRET_FILE"
     echo "Geth is using JWT"
 fi
 

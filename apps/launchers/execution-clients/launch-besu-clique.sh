@@ -63,11 +63,11 @@ if [ -n "$JWT_SECRET_FILE" ]; then
     echo "Besu is using JWT auth"
     ADDITIONAL_ARGS="$ADDITIONAL_ARGS --engine-jwt-enabled=true"
     # add the auth port for engine.
-    ADDITIONAL_ARGS="$ADDITIONAL_ARGS --engine-rpc-http-port=$EXECUTION_AUTH_PORT --engine-rpc-ws-port=$EXECUTION_AUTH_PORT"
+    ADDITIONAL_ARGS="$ADDITIONAL_ARGS --engine-rpc-http-port=$EXECUTION_AUTH_HTTP_PORT --engine-rpc-ws-port=$EXECUTION_AUTH_WS_PORT"
 else
     echo "Besu is not using JWT auth"
     ADDITIONAL_ARGS="$ADDITIONAL_ARGS --rpc-http-authentication-enabled=false --rpc-ws-authentication-enabled=false --engine-jwt-enabled=false"
-    # ADDITIONAL_ARGS="$ADDITIONAL_ARGS --engine-rpc-http-port=$EXECUTION_HTTP_PORT --engine-rpc-ws-port=$EXECUTION_WS_PORT"
+    ADDITIONAL_ARGS="$ADDITIONAL_ARGS --engine-rpc-http-port=$EXECUTION_ENGINE_HTTP_PORT --engine-rpc-ws-port=$EXECUTION_ENGINE_WS_PORT"
 fi
 
 

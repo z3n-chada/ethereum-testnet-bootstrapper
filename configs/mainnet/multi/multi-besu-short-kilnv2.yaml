@@ -70,7 +70,7 @@ config-params:
   consensus-layer:
     consensus-genesis-delay: 225 # eth1-follow-distance*seconds-per-eth1-block + 1
     preset-base: 'mainnet'
-    min-genesis-active-validator-count: 20 # custom preseeded into genesis state.
+    min-genesis-active-validator-count: 16 # custom preseeded into genesis state.
     eth1-follow-distance: 16 # allow past eth1 blocks to be processed.
 
     forks:
@@ -150,7 +150,7 @@ execution-configs:
     ws-apis: "clique,admin,net,eth,web3,personal,engine"
     execution-http-port: 8645
     execution-ws-port: 8646
-    execution-auth-port: 8551  
+    execution-auth-http-port: 8551   # http/ws same port.
     # execution-engine-port: N/A
     execution-p2p-port: 666
   
@@ -161,7 +161,8 @@ execution-configs:
     ws-apis: "ADMIN,ETH,NET,TXPOOL,WEB3,ENGINE"
     execution-http-port: 8645
     execution-ws-port: 8646
-    execution-auth-port: 8551
+    execution-auth-http-port: 8551 # doesn't do http/ws the same.
+    execution-auth-ws-port: 8552
     execution-p2p-port: 666
 
 consensus-configs:
@@ -188,8 +189,8 @@ execution-clients:
     client-name: "geth-bootstrapper"
     container-name: "geth-bootstrapper"
     start-ip-addr: "10.0.20.2"
-    image: "geth-client"
-    tag: "merge-kiln-v2"
+    image: "geth"
+    tag: "master"
     depends: "ethereum-testnet-bootstrapper"
     entrypoint: "/source/apps/launchers/execution-clients/launch-geth-clique.sh" #wrt to docker.
 
@@ -229,7 +230,7 @@ consensus-clients:
 
 
     testnet-dir: '/data/local_testnet/prysm-besu'
-      # jwt-secret-file: "/data/local_testnet/prysm-besu/jwt-secret"
+    jwt-secret-file: "/data/local_testnet/prysm-besu/jwt-secret"
 
     validator-offset-start: 0 # so validators of different clients don't overlap
     # args specific to prysm nodes, these are loaded into the dockers env at runtime.
@@ -258,7 +259,7 @@ consensus-clients:
     execution-launcher: "/source/apps/launchers/execution-clients/launch-besu-clique.sh"
 
     testnet-dir: '/data/local_testnet/teku-besu'
-      #jwt-secret-file: "/data/local_testnet/teku-besu/jwt-secret"
+    jwt-secret-file: "/data/local_testnet/teku-besu/jwt-secret"
 
     validator-offset-start: 4 # so validators of different clients don't overlap
 
@@ -279,7 +280,7 @@ consensus-clients:
 
     num-nodes: 1 # how many beacon nodes
     testnet-dir: '/data/local_testnet/nimbus-besu'
-      #jwt-secret-file: "/data/local_testnet/nimbus-besu/jwt-secret"
+    jwt-secret-file: "/data/local_testnet/nimbus-besu/jwt-secret"
 
     consensus-config: "base-consensus-client"
     consensus-bootnode-config: "eth2-bootnode-config"
@@ -313,7 +314,7 @@ consensus-clients:
 
     num-nodes: 1 # how many beacon nodes
     testnet-dir: '/data/local_testnet/lighthouse-besu'
-      #jwt-secret-file: "/data/local_testnet/lighthouse-besu/jwt-secret"
+    jwt-secret-file: "/data/local_testnet/lighthouse-besu/jwt-secret"
     validator-offset-start: 12 # so validators of different clients don't overlap
     
     additional-env:
@@ -339,7 +340,7 @@ consensus-clients:
     execution-launcher: "/source/apps/launchers/execution-clients/launch-besu-clique.sh"
   
     testnet-dir: '/data/local_testnet/lodestar-besu'
-      #jwt-secret-file: "/data/local_testnet/lodestar-besu/jwt-secret"
+    jwt-secret-file: "/data/local_testnet/lodestar-besu/jwt-secret"
     validator-offset-start: 16 # so validators of different clients don't overlap
     
     additional-env:
