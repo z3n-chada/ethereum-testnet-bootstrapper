@@ -89,4 +89,3 @@ if __name__ == "__main__":
 
     if args.init_bootstrapper:
         etb.init_bootstrapper()
-

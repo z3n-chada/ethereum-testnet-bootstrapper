@@ -40,36 +40,38 @@ class APIRequest(object):
                 pass
             except requests.Timeout as e:
                 # actually timed out.
-                raise e
+                # return None but print the issue until we log.
+                print("Request timed out {base_url}{self.path}")
+                pass
 
 
 class BeaconGetBlock(APIRequest):
     def __init__(self, block, timeout=5):
         super().__init__(f"/eth/v2/beacon/blocks/{block}", timeout=timeout)
 
-    def get_response(self, base_url):
-        start = int(time.time())
-        to = self.timeout
-        while time.time() - start < to:
-            try:
-                response = requests.get(f"{base_url}{self.path}", timeout=to)
-                if response.status_code == 200:
-                    self.error = None
-                elif response.status_code == 400:
-                    self.error = "Invalid block ID"
-                elif response.status_code == 404:
-                    self.error = "Block not found"
-                elif response.status_code == 500:
-                    self.error = "Internal server error"
-                return response
+    # def get_response(self, base_url):
+    #     start = int(time.time())
+    #     to = self.timeout
+    #     while time.time() - start < to:
+    #         try:
+    #             response = requests.get(f"{base_url}{self.path}", timeout=to)
+    #             if response.status_code == 200:
+    #                 self.error = None
+    #             elif response.status_code == 400:
+    #                 self.error = "Invalid block ID"
+    #             elif response.status_code == 404:
+    #                 self.error = "Block not found"
+    #             elif response.status_code == 500:
+    #                 self.error = "Internal server error"
+    #             return response
 
-            except requests.ConnectionError:
-                # odds are the bootstrapper is trying to connect to a client
-                # that is not up already.
-                pass
-            except requests.Timeout as e:
-                # actually timed out.
-                raise e
+    #         except requests.ConnectionError:
+    #             # odds are the bootstrapper is trying to connect to a client
+    #             # that is not up already.
+    #             pass
+    #         except requests.Timeout as e:
+    #             # actually timed out.
+    #             pass
 
 
 """
