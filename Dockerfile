@@ -13,8 +13,10 @@ RUN git clone https://github.com/skylenet/eth2-testnet-genesis.git \
 #    && cd go-ethereum && git checkout master \
 #    && make geth && make all
 
-FROM debian:latest
-WORKDIR /work
+FROM debian:bullseye-slim
+
+WORKDIR /
+
 VOLUME ["/data"]
 EXPOSE 8000/tcp
 RUN apt-get update && \
@@ -33,5 +35,9 @@ COPY --from=builder /go/bin/eth2-bootnode /usr/local/bin/eth2-bootnode
 COPY --from=builder /go/bin/ethereal /usr/local/bin/ethereal
 #COPY --from=builder /git/go-ethereum/build/bin/geth /usr/local/bin/geth
 #COPY --from=builder /git/go-ethereum/build/bin/bootnode /usr/local/bin/geth-bootnode
+RUN mkdir /configs
+
 COPY ./ /source
+COPY configs/ /configs
+
 ENTRYPOINT [ "/source/entrypoint.sh" ]
