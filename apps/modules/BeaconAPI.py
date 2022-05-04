@@ -1,6 +1,7 @@
-import requests
 import time
 from concurrent.futures import ThreadPoolExecutor
+
+import requests
 
 """
     General overview for rpc/api is of the following.
@@ -41,37 +42,13 @@ class APIRequest(object):
             except requests.Timeout as e:
                 # actually timed out.
                 # return None but print the issue until we log.
-                print("Request timed out {base_url}{self.path}")
+                print(f"Request timed out {base_url}{self.path}")
                 pass
 
 
 class BeaconGetBlock(APIRequest):
     def __init__(self, block, timeout=5):
         super().__init__(f"/eth/v2/beacon/blocks/{block}", timeout=timeout)
-
-    # def get_response(self, base_url):
-    #     start = int(time.time())
-    #     to = self.timeout
-    #     while time.time() - start < to:
-    #         try:
-    #             response = requests.get(f"{base_url}{self.path}", timeout=to)
-    #             if response.status_code == 200:
-    #                 self.error = None
-    #             elif response.status_code == 400:
-    #                 self.error = "Invalid block ID"
-    #             elif response.status_code == 404:
-    #                 self.error = "Block not found"
-    #             elif response.status_code == 500:
-    #                 self.error = "Internal server error"
-    #             return response
-
-    #         except requests.ConnectionError:
-    #             # odds are the bootstrapper is trying to connect to a client
-    #             # that is not up already.
-    #             pass
-    #         except requests.Timeout as e:
-    #             # actually timed out.
-    #             pass
 
 
 """
@@ -82,35 +59,6 @@ class BeaconGetBlock(APIRequest):
 def _threadpool_executor_api_request_proxy(bucket, api, request):
     # threadpool executor to do things in parallel.
     return bucket, api.get_api_response(request)
-
-
-class BeaconClientAPI(object):
-    """
-    Facilitates the comm chanel between one consensus client and ourselves.
-
-    Sends the desired request and allows us to filter for error codes and
-    timeout issues.
-    """
-
-    def __init__(self, base_url, non_error=True, timeout=5, retry_delay=1):
-        self.base_url = base_url
-        self.non_error = non_error
-        self.timeout = timeout
-        self.retry_delay = retry_delay
-
-    def get_api_response(self, api_request):
-        start = int(time.time())
-        while time.time() - start < self.timeout:
-            response = api_request.get_response(self.base_url)
-            if response is not None and response.status_code == 200:
-                return response
-            else:
-                print(
-                    f"{self.base_url}{api_request.path} got error status code {response.status_code}"
-                )
-                print("retrying...")
-                time.sleep(self.retry_delay)
-        return response
 
 
 class BeaconAPI(object):

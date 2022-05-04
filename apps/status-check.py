@@ -1,145 +1,213 @@
-# """
-#     Provides a method of gettting a high level overview of the running
-#     experiment to check on the health of the network.
-#
-#     Status checking is done in 3 phases.
-#
-#     Phase0:
-#         allow the network to come up, confirm that things are behaving properly.
-#
-#     Phase1:
-#     	experiment time -- chaos happens and disrupts to network, expect failing
-#     	test cases.
-#
-#     Phase2:
-#         runs post-experiment and is a recovery period -- there may be some failing
-#         test cases here.
-#
-#     Phase3:
-#         post-recovery verification -- there should not be any failing test cases
-#         here.
-# """
-from modules.ETBConfig import ETBConfig
-from modules.TestnetHealthMetrics import TestnetHealthAPI, GetUniqueHeads
+"""
+    Provides a method of gettting a high level overview of the running
+    experiment to check on the health of the network.
+
+    Status checking is done in 3 phases.
+
+    Phase0:
+        allow the network to come up, confirm that things are behaving properly.
+        if there has been an issue print termination message.
+
+    Phase1:
+    	  Phase 1 starts is the starting point for experimentation/chaos.
+
+    Phase2:
+        This is the endpoint for chaos. There may be some issues but we wait
+        until phase3 for to test for failures.
+
+    Phase3:
+        Phase3 marks the point where the network should of healed. All issues
+        at this point should be considered errors.
+"""
 import time
+
+from modules.BeaconAPI import BeaconAPI, ETBConsensusBeaconAPI
+from modules.ETBConfig import ETBConfig
+from modules.TestnetHealthMetrics import UniqueConsensusHeads
 
 
 class TestnetStatusChecker(object):
+    """
+    Status Checker checks the network at important intervals and outputs
+    the current heads of the clients approx. every slot
+
+    0. consensus genesis time. This is when we start monitoring.
+    1. phase0, we make sure that all the clients in the experiment came up
+        if not then we signal to terminate.
+    2. phase1, we start the experiment
+    3. phase2, we end the experiment
+    4. phase3, we check to see if the network healed.
+    """
+
     def __init__(self, args):
+        # self.thapi = TestnetHealthAPI(self.etb_config)
+        # self.thapi.add_metric(GetUniqueHeads(), name="consensus-check")
         self.etb_config = ETBConfig(args.config)
-
-        self.thapi = TestnetHealthAPI(self.etb_config)
-        self.thapi.add_metric(GetUniqueHeads(), name="consensus-check")
-
         self.now = self.etb_config.get("bootstrap-genesis")
 
+        self.etb_beacon_api = ETBConsensusBeaconAPI(
+            self.etb_config, non_error=True, timeout=args.beaconapi_timeout, retry_delay=1
+        )
+        self.health_metric = UniqueConsensusHeads()
+
         if self.etb_config.get("preset-base") == "mainnet":
-            seconds_per_eth2_slot = 12
+            self.secs_per_eth2_slot = 12
         else:
             raise Exception("No minimal support")
 
-        self.genesis_time = self.now + self.etb_config.get("consensus-genesis-delay")
+        consensus_delay = self.etb_config.get("consensus-genesis-delay")
+        self.genesis_time = self.now + consensus_delay
+
         self.phase0_time = (
-            self.now
-            + self.etb_config.get("consensus-genesis-delay")
-            + args.phase0_slot * seconds_per_eth2_slot
-        )
-        self.exp_time = (
-            self.now
-            + self.etb_config.get("consensus-genesis-delay")
-            + args.experiment_slot * seconds_per_eth2_slot
+            self.now + consensus_delay + args.phase0_slot * self.secs_per_eth2_slot
         )
         self.phase1_time = (
-            self.now
-            + self.etb_config.get("consensus-genesis-delay")
-            + args.phase1_slot * seconds_per_eth2_slot
+            self.now + consensus_delay + args.phase1_slot * self.secs_per_eth2_slot
         )
         self.phase2_time = (
-            self.now
-            + self.etb_config.get("consensus-genesis-delay")
-            + args.phase2_slot * seconds_per_eth2_slot
+            self.now + consensus_delay + args.phase2_slot * self.secs_per_eth2_slot
         )
-
-        self.check_delay = args.check_delay
+        self.phase3_time = (
+            self.now + consensus_delay + args.phase3_slot * self.secs_per_eth2_slot
+        )
+        # number of checks just in case we fall on a boundry.
         self.number_of_checks = args.num_checks
+        self.check_delay = args.check_delay
 
-        if (
-            args.phase0_slot > args.phase1_slot
-            or args.phase0_slot > args.experiment_slot
-        ):
-            print(
-                "WARN: phase0 and phase1/experiment slots are in wrong order",
-                flush=True,
-            )
-            print("WARN: continuing anyway...")
+        # formatting for output
+        self.log_prefix = args.log_prefix
+        # if a status check passes
+        self.pass_prefix = args.pass_prefix
+        # if a status check fails
+        self.fail_prefix = args.fail_prefix
+        # signal an early termination.
+        self.terminate_experiment_string = args.terminate_experiment_string
 
-        if (
-            args.phase1_slot > args.phase2_slot
-            or args.phase1_slot > args.experiment_slot
-        ):
-            print(
-                "WARN: phase1 and phase2/experiment slots are in wrong order",
-                flush=True,
-            )
-            print("WARN: continuing anyway...")
+    def update_health_metric(self):
+        curr_check = 0
+        while curr_check < self.number_of_checks:
+            unique_heads = self.health_metric.perform_metric(
+                self.etb_beacon_api)
+            if len(unique_heads.keys()) == 1:
+                return unique_heads
+            curr_check += 1
+            time.sleep(self.check_delay)
+        return unique_heads
 
-    def wait_for_time(self, log_prefix, t):
+    def testnet_healthy(self):
+        curr_check = 0
+
+        unique_heads = self.update_health_metric()
+        if len(unique_heads.keys()) == 1:
+            print(f"{self.pass_prefix} : {self.health_metric}", flush=True)
+            return True
+        print(f"{self.fail_prefix} : {self.health_metric}", flush=True)
+        return False
+
+    # def perform_status_check(self, log_prefix):
+
+    # query = "/eth/v2/beacon/headers/head"
+    # client_heads = self.thapi.perform_metric("consensus-check")
+    # unique_resps = {}
+
+    # for name, response in client_heads.items():
+    #     if response in unique_resps:
+    #         unique_resps[response].append(name)
+    #     else:
+    #         unique_resps[response] = [name]
+
+    # num_heads = len(unique_resps.keys())
+    # if num_heads != 1:
+    #     print(f"{log_prefix}: Error, query={query}")
+    #     print(unique_resps, flush=True)
+    # else:
+    #     print(f"{log_prefix}: Consensus, query={query}", flush=True)
+
+    def start_experiment(self):
+        print(f"{self.log_prefix}: start_faults", flush=True)
+        # import experiment modules here
+
+    def stop_experiment(self):
+        print(f"{self.log_prefix}: stop_faults", flush=True)
+
+    def wait_until(self, log_prefix, t, do_check_heads=False):
+        """
+        Wait in units of secs_per_slot, unless the time left is less than
+        that.
+
+        Optionally print out the health metric inbetween waits.
+        """
         while int(time.time()) < t:
-            time_left = t - int(time.time())
+            now = int(time.time())
+            time_left = t - now
             print(
                 f"status-check: {log_prefix}.. {time_left} seconds remain",
                 flush=True,
             )
-            if time_left > 15:
-                time.sleep(15)
+            if time_left > self.secs_per_eth2_slot:
+                wait_time = self.secs_per_eth2_slot
+                if do_check_heads:
+                    self.update_health_metric()
+                    print(self.health_metric.__repr__(), flush=True)
+                    # accomodate the time it took to run metric.
+                    skew = int(time.time()) - now
+                    skew_wait = self.secs_per_eth2_slot - skew
+                    if skew_wait > 0:
+                        time.sleep(skew_wait)
+                else:
+                    time.sleep(wait_time)
+
             else:
                 time.sleep(1)
 
-    def perform_status_check(self, log_prefix):
-        query = "/eth/v2/beacon/headers/head"
-        client_heads = self.thapi.perform_metric("consensus-check")
-        unique_resps = {}
+    def start_status_checker(self):
 
-        for name, response in client_heads.items():
-            if response in unique_resps:
-                unique_resps[response].append(name)
-            else:
-                unique_resps[response] = [name]
+        self.wait_until("genesis", int(self.genesis_time))
+        print(f"{self.log_prefix}: Consensus Genesis Occured", flush=True)
 
-        num_heads = len(unique_resps.keys())
-        if num_heads != 1:
-            print(f"{log_prefix}: Error, query={query}")
-            print(unique_resps, flush=True)
+        # wait until phase0 to ensure all is working.
+        self.wait_until("phase0", self.phase0_time, do_check_heads=True)
+        if self.testnet_healthy():
+            print(f"{self.log_prefix}: Phase0 passed.", flush=True)
+            print(f"{self.health_metric.__repr__()}", flush=True)
         else:
-            print(f"{log_prefix}: Consensus, query={query}", flush=True)
+            print(f"{self.log_prefix}: Phase0 failed.", flush=True)
+            print(f"{self.health_metric.__repr__()}", flush=True)
+            print(f"{self.log_prefix}: terminate")
 
-    def perform_experiment(self):
-        print("Launching Experiment!", flush=True)
-        # import experiment modules here
+        self.wait_until("phase1", self.phase1_time, do_check_heads=True)
+        self.start_experiment()
 
-    def start(self):
-        self.wait_for_time("genesis", self.genesis_time)
-        for x in range(self.number_of_checks):
-            self.perform_status_check("genesis")
-            time.sleep(self.check_delay)
+        self.wait_until("phase2", self.phase2_time, do_check_heads=True)
+        self.stop_experiment()
+        print(f"{self.log_prefix}: Phase2 elapsed", flush=True)
 
-        self.wait_for_time("phase0", self.phase0_time)
-        for x in range(self.number_of_checks):
-            self.perform_status_check("phase0")
-            time.sleep(self.check_delay)
+        self.wait_until("phase3", self.phase3_time, do_check_heads=True)
+        if self.testnet_healthy():
+            print(f"{self.log_prefix}: Phase3 passed.", flush=True)
+        else:
+            print(f"{self.log_prefix}: Phase3 failed.", flush=True)
+        # for x in range(self.number_of_checks):
+        #     self.perform_status_check("genesis")
+        #     time.sleep(self.check_delay)
 
-        self.wait_for_time("experiment", self.exp_time)
-        self.perform_experiment()
+        # self.wait_for_time("phase0", self.phase0_time)
+        # for x in range(self.number_of_checks):
+        #    self.perform_status_check("phase0")
+        #    time.sleep(self.check_delay)
 
-        self.wait_for_time("phase1", self.phase1_time)
-        for x in range(self.number_of_checks):
-            self.perform_status_check("phase1")
-            time.sleep(self.check_delay)
+        # self.wait_for_time("experiment", self.exp_time)
+        # self.perform_experiment()
 
-        self.wait_for_time("phase2", self.phase2_time)
-        for x in range(self.number_of_checks):
-            self.perform_status_check("phase2")
-            time.sleep(self.check_delay)
+        # self.wait_for_time("phase1", self.phase1_time)
+        # for x in range(self.number_of_checks):
+        #     self.perform_status_check("phase1")
+        #     time.sleep(self.check_delay)
+
+        # self.wait_for_time("phase2", self.phase2_time)
+        # for x in range(self.number_of_checks):
+        #     self.perform_status_check("phase2")
+        #     time.sleep(self.check_delay)
 
 
 if __name__ == "__main__":
@@ -155,32 +223,33 @@ if __name__ == "__main__":
         help="path to config file to consume for experiment",
     )
     parser.add_argument(
-        "--experiment-slot",
-        dest="experiment_slot",
-        default=64,
-        type=int,
-        help="number of slots to wait before checking initial network health",
-    )
-    parser.add_argument(
         "--phase0-slot",
         dest="phase0_slot",
-        default=64,
+        default=32,
         type=int,
-        help="number of slots to wait before checking initial network health",
+        help="number of slots to wait before checking initial network health.",
     )
     parser.add_argument(
         "--phase1-slot",
         dest="phase1_slot",
-        default=96,
+        default=128,
         type=int,
-        help="number of slots to wait after experiment for network health",
+        help="number of slots to wait until we introduce experiment.",
     )
     parser.add_argument(
         "--phase2-slot",
         dest="phase2_slot",
         type=int,
         default=160,
-        help="slot to wait to check for network recovery",
+        help="number of slots to wait until we end experiment.",
+    )
+
+    parser.add_argument(
+        "--phase3-slot",
+        dest="phase3_slot",
+        type=int,
+        default=164,
+        help="number of slots to wait for the network to heal itself.",
     )
 
     parser.add_argument(
@@ -188,19 +257,57 @@ if __name__ == "__main__":
         dest="num_checks",
         default=3,
         type=int,
-        help="how many loops to run the health check per run",
+        help="how many loops to run the health check per run.",
     )
 
     parser.add_argument(
         "--check-delay",
         dest="check_delay",
-        type=int,
         default=2,
-        help="when doing multiple checks how long to pause between them",
+        type=int,
+        help="how long to wait between loops for health check re-check.",
     )
-    args = parser.parse_args()
-    time.sleep(30)  # TODO: use a checkpoint file.
-    status_checker = TestnetStatusChecker(args)
-    status_checker.start()
 
-    print("workload_complete", flush=True)
+    parser.add_argument(
+        "--beaconapi-timeout",
+        dest="beaconapi_timeout",
+        default=2,
+        type=int,
+        help="How long for the BeaconAPI obj to consider a query timeout",
+    )
+
+    parser.add_argument(
+        "--log-prefix",
+        dest="log_prefix",
+        default="etb-testnet",
+        help="prefix for logging.",
+    )
+
+    parser.add_argument(
+        "--pass-prefix",
+        dest="pass_prefix",
+        default="SUCCESS",
+        help="log string for when we pass a health check/phase check.",
+    )
+
+    parser.add_argument(
+        "--fail-prefix",
+        dest="fail_prefix",
+        default="FAIL",
+        help="log string for when we fail a health check/phase check.",
+    )
+
+    parser.add_argument(
+        "--terminate-experiment-prefix",
+        dest="terminate_experiment_string",
+        default="terminate",
+        help="string to print if we fail phase0.",
+    )
+
+
+    args=parser.parse_args()
+    time.sleep(30)  # TODO: use a checkpoint file.
+    status_checker=TestnetStatusChecker(args)
+    status_checker.start_status_checker()
+
+    print(f"{status_checker.log_prefix}: workload_complete", flush=True)
