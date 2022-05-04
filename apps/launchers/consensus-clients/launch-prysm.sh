@@ -25,37 +25,49 @@ bootnode_enr=`cat $CONSENSUS_BOOTNODE_ENR_FILE`
 
 
 # TODO allow for more port descriptions easily across clients.
-if [ -n "$JWT_SECRET_FILE" ]; then
-        ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --jwt-secret=$JWT_SECRET_FILE"
 
-    # two cases, either seperate auth ports or one.
-    if [ -n "$EXECUTION_AUTH_PORT" ]; then
-        # we have same http/ws auth port.
-        ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --execution-provider=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_AUTH_PORT"
-    else
-        # prysm currently supports http only for now.
-        if [ -n "$EXECUTION_AUTH_HTTP_PORT" ]; then
-            ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --execution-provider=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_AUTH_HTTP_PORT"
-        else
-            ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --execution-provider=ws://$WS_WEB3_IP_ADDR:$EXECUTION_AUTH_WS_PORT"
-        fi
-    fi
+# Test Besu
 
+ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --jwt-secret=$JWT_SECRET_FILE"
+# override
+if [ -n "$EXECUTION_ENGINE_PORT" ]; then
+    # we have same http/ws auth port.
+    ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --http-web3provider=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_ENGINE_PORT"
 else
-    # no auth.
-    if [ -n "$EXECUTION_ENGINE_PORT" ]; then
-        # we have same http/ws auth port.
-        ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --execution-provider=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_ENGINE_PORT"
-    else
-        # prysm only does http
-        if [ -n "$EXECUTION_ENGINE_HTTP_PORT" ]; then
-            ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --execution-provider=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_ENGINE_HTTP_PORT"
-        else
-            ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --execution-provider=ws://$WS_WEB3_IP_ADDR:$EXECUTION_ENGINE_WS_PORT"
-        fi
-    fi
-
+    ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --http-web3provider=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_AUTH_HTTP_PORT"
 fi
+
+# if [ -n "$JWT_SECRET_FILE" ]; then
+#         ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --jwt-secret=$JWT_SECRET_FILE"
+# 
+#     # two cases, either seperate auth ports or one.
+#     if [ -n "$EXECUTION_AUTH_PORT" ]; then
+#         # we have same http/ws auth port.
+#         ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --execution-provider=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_AUTH_PORT"
+#     else
+#         # prysm currently supports http only for now.
+#         if [ -n "$EXECUTION_AUTH_HTTP_PORT" ]; then
+#             ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --execution-provider=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_AUTH_HTTP_PORT"
+#         else
+#             ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --execution-provider=ws://$WS_WEB3_IP_ADDR:$EXECUTION_AUTH_WS_PORT"
+#         fi
+#     fi
+# 
+# else
+#     # no auth.
+#     if [ -n "$EXECUTION_ENGINE_PORT" ]; then
+#         # we have same http/ws auth port.
+#         ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --execution-provider=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_ENGINE_PORT"
+#     else
+#         # prysm only does http
+#         if [ -n "$EXECUTION_ENGINE_HTTP_PORT" ]; then
+#             ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --execution-provider=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_ENGINE_HTTP_PORT"
+#         else
+#             ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --execution-provider=ws://$WS_WEB3_IP_ADDR:$EXECUTION_ENGINE_WS_PORT"
+#         fi
+#     fi
+# 
+# fi
 
 if [[ $PRESET_BASE == "minimal" ]]; then
     ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --minimal-config"
@@ -76,7 +88,6 @@ beacon-chain \
   --datadir="$NODE_DIR" \
   --chain-config-file="$TESTNET_DIR/config.yaml" \
   --genesis-state="$TESTNET_DIR/genesis.ssz" \
-  --http-web3provider="http://$HTTP_WEB3_IP_ADDR:$EXECUTION_HTTP_PORT" \
   --bootstrap-node="$(< "$CONSENSUS_BOOTNODE_ENR_FILE")" \
   --verbosity="$PRYSM_DEBUG_LEVEL" \
   --p2p-host-ip="$IP_ADDR" \
