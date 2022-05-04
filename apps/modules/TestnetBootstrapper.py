@@ -1,15 +1,18 @@
-from .ETBConfig import ETBConfig
 import logging
 import os
+import random
 import shutil
 import time
-import random
-from .DockerCompose import generate_docker_compose
-from .ExecutionBootstrapper import ETBExecutionBootstrapper
-from .ConsensusBootstrapper import ETBConsensusBootstrapper
-from .ExecutionRPC import ETBExecutionRPC, admin_node_info_RPC, admin_add_peer_RPC
 from pathlib import Path
+
 from ruamel import yaml
+
+from .ConsensusBootstrapper import ETBConsensusBootstrapper
+from .DockerCompose import generate_docker_compose
+from .ETBConfig import ETBConfig
+from .ExecutionBootstrapper import ETBExecutionBootstrapper
+from .ExecutionRPC import (ETBExecutionRPC, admin_add_peer_RPC,
+                           admin_node_info_RPC)
 
 logger = logging.getLogger("bootstrapper_log")
 
@@ -113,7 +116,7 @@ class EthereumTestnetBootstrapper(object):
         #     f.write("1")
 
         # go ahead and link all of the execution clients.
-        etb_rpc = ETBExecutionRPC(self.etb_config, timeout=60)
+        etb_rpc = ETBExecutionRPC(self.etb_config, timeout=5)
 
         logger.info("TestnetBootstrapper: Gathering enode info for clients")
         node_info = etb_rpc.do_rpc_request(admin_node_info_RPC(), all_clients=True)
@@ -122,15 +125,14 @@ class EthereumTestnetBootstrapper(object):
         for name, info in node_info.items():
             enodes[name] = info["result"]["enode"]
 
-        time.sleep(10)
+        with open(self.etb_config.get("consensus-checkpoint-file"), "w") as f:
+            f.write("1")
+
         logger.info("TestnetBootstrapper: Peering the execution clients")
         logger.debug(f"enodes: {enodes}")
         for enode in enodes.values():
             etb_rpc.do_rpc_request(admin_add_peer_RPC(enode), all_clients=True)
             time.sleep(1)
-
-        with open(self.etb_config.get("consensus-checkpoint-file"), "w") as f:
-            f.write("1")
 
     def clear_last_run(self):
         testnet_root = self.etb_config.get("testnet-root")

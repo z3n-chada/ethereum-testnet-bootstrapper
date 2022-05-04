@@ -31,15 +31,12 @@ done
 bootnode_enr=`cat $CONSENSUS_BOOTNODE_ENR_FILE`
 
 
-#TODO add logic for different ports. most clients are just going to singlar engine though.
-if [[ $END_FORK_NAME == "bellatrix" ]]; then
-    ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --validators-proposer-default-fee-recipient=0xA18Fd83a55A9BEdB96d66C24b768259eED183be3"
-fi
+ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --validators-proposer-default-fee-recipient=0xA18Fd83a55A9BEdB96d66C24b768259eED183be3 --ee-jwt-secret-file=$JWT_SECRET_FILE"
 
-if [ -n "$JWT_SECRET_FILE" ]; then
-    ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --ee-endpoint=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_AUTH_HTTP_PORT --ee-jwt-secret-file=$JWT_SECRET_FILE"
+if [ -n "$EXECUTION_ENGINE_PORT" ]; then
+    ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --ee-endpoint=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_ENGINE_PORT" 
 else
-    ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --ee-endpoint=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_ENGINE_HTTP_PORT" 
+    ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --ee-endpoint=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_AUTH_HTTP_PORT"
 fi
 
 echo "Teku launching with additional-args: $ADDITIONAL_BEACON_ARGS"

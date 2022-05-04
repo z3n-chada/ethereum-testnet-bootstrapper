@@ -30,13 +30,19 @@ if [[ $END_FORK_NAME == "bellatrix" ]]; then
     ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --terminal-total-difficulty-override=$TERMINAL_TOTAL_DIFFICULTY"
 fi
 
-if [ -n "$JWT_SECRET_FILE" ]; then
-    echo "Nimbus using jwt-secret"
-    ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --jwt-secret=$JWT_SECRET_FILE --web3-url=ws://$WS_WEB3_IP_ADDR:$EXECUTION_AUTH_WS_PORT"
+if [ -n "$EXECUTION_ENGINE_PORT" ]; then
+     ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --jwt-secret=$JWT_SECRET_FILE --web3-url=ws://$WS_WEB3_IP_ADDR:$EXECUTION_ENGINE_PORT"
 else
-    echo "Nimbus is not using jwt-secret"
-    ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --web3-url=ws://$WS_WEB3_IP_ADDR:$EXECUTION_ENGINE_WS_PORT"
+    ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --jwt-secret=$JWT_SECRET_FILE --web3-url=ws://$WS_WEB3_IP_ADDR:$EXECUTION_AUTH_WS_PORT"
 fi
+
+# if [ -n "$JWT_SECRET_FILE" ]; then
+#     echo "Nimbus using jwt-secret"
+#     ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --jwt-secret=$JWT_SECRET_FILE --web3-url=ws://$WS_WEB3_IP_ADDR:$EXECUTION_AUTH_WS_PORT"
+# else
+#     echo "Nimbus is not using jwt-secret"
+#     ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --web3-url=ws://$WS_WEB3_IP_ADDR:$EXECUTION_ENGINE_WS_PORT"
+# fi
 
 echo "nimbus launching with additional beacon args: $ADDITIONAL_BEACON_ARGS"
 
