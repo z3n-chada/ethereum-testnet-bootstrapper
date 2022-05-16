@@ -24,28 +24,6 @@ done
 
 bootnode_enr=`cat $CONSENSUS_BOOTNODE_ENR_FILE`
 
-ADDITIONAL_BEACON_ARGS="--log-level=$NIMBUS_DEBUG_LEVEL"
-
-if [[ $END_FORK_NAME == "bellatrix" ]]; then
-    ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --terminal-total-difficulty-override=$TERMINAL_TOTAL_DIFFICULTY"
-fi
-
-if [ -n "$EXECUTION_ENGINE_PORT" ]; then
-     ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --jwt-secret=$JWT_SECRET_FILE --web3-url=ws://$WS_WEB3_IP_ADDR:$EXECUTION_ENGINE_PORT"
-else
-    ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --jwt-secret=$JWT_SECRET_FILE --web3-url=ws://$WS_WEB3_IP_ADDR:$EXECUTION_AUTH_WS_PORT"
-fi
-
-# if [ -n "$JWT_SECRET_FILE" ]; then
-#     echo "Nimbus using jwt-secret"
-#     ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --jwt-secret=$JWT_SECRET_FILE --web3-url=ws://$WS_WEB3_IP_ADDR:$EXECUTION_AUTH_WS_PORT"
-# else
-#     echo "Nimbus is not using jwt-secret"
-#     ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --web3-url=ws://$WS_WEB3_IP_ADDR:$EXECUTION_ENGINE_WS_PORT"
-# fi
-
-echo "nimbus launching with additional beacon args: $ADDITIONAL_BEACON_ARGS"
-
 sleep 20
 
 nimbus_beacon_node \
@@ -69,5 +47,9 @@ nimbus_beacon_node \
     --netkey-file="$NODE_DIR/netkey-file.txt" \
     --graffiti="nimbus-kilnv2:$IP_ADDR" \
     --in-process-validators=true \
-    --doppelganger-detection=true $ADDITIONAL_BEACON_ARGS \
-    --bootstrap-node="$bootnode_enr" 
+    --doppelganger-detection=true \
+    --bootstrap-node="$bootnode_enr" \
+    --jwt-secret="$JWT_SECRET_FILE" \
+    --web3-url=ws://"$WS_WEB3_IP_ADDR:$EXECUTION_ENGINE_WS_PORT" \
+    --terminal-total-difficulty-override="$TERMINAL_TOTAL_DIFFICULTY" \
+    --log-level="$NIMBUS_DEBUG_LEVEL"

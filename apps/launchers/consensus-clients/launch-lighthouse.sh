@@ -15,8 +15,8 @@ if [[ -n "$EXECUTION_LAUNCHER" ]]; then
     "$EXECUTION_LAUNCHER" &
 fi
 
-ADDITIONAL_BEACON_ARGS="--logfile=$NODE_DIR/beacon.log --logfile-debug-level=$LIGHTHOUSE_DEBUG_LEVEL"
-ADDITIONAL_VALIDATOR_ARGS="--logfile=$NODE_DIR/validator.log --logfile-debug-level=$LIGHTHOUSE_DEBUG_LEVEL"
+#ADDITIONAL_BEACON_ARGS="--logfile=$NODE_DIR/beacon.log --logfile-debug-level=$LIGHTHOUSE_DEBUG_LEVEL"
+#ADDITIONAL_VALIDATOR_ARGS="--logfile=$NODE_DIR/validator.log --logfile-debug-level=$LIGHTHOUSE_DEBUG_LEVEL"
 
 
 while [ ! -f "$CONSENSUS_CHECKPOINT_FILE" ]; do
@@ -29,52 +29,12 @@ while [ ! -f "$CONSENSUS_BOOTNODE_ENR_FILE" ]; do
 done
 
 
-#if [[ $END_FORK_NAME == "bellatrix" ]]; then
-#    ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --merge --terminal-total-difficulty-override=$TERMINAL_TOTAL_DIFFICULTY" 
-#    ADDITIONAL_VALIDATOR_ARGS="$ADDITIONAL_VALIDATOR_ARGS --suggested-fee-recipient=0x00000000219ab540356cbb839cbe05303d7705fa"
-#    if [ -n "$JWT_SECRET_FILE" ]; then
-#        ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --jwt-secrets=$JWT_SECRET_FILE"
-#        ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --execution-endpoints=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_ENGINE_AUTH_PORT"
-#    else
-#        ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --execution-endpoints=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_ENGINE_PORT" 
-#    fi
-#fi
-if [ -n "$JWT_SECRET_FILE" ]; then
-    echo "Lightouse using jwt-secret"
-        ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --jwt-secrets=$JWT_SECRET_FILE"
-
-    # two cases, either seperate auth ports or one.
-    if [ -n "$EXECUTION_AUTH_PORT" ]; then
-        # we have same http/ws auth port.
-        ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --execution-endpoints=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_AUTH_PORT"
-    else
-        # lets prefer http for now/ ws doesn't work for at least besu
-        if [ -n "$EXECUTION_AUTH_HTTP_PORT" ]; then
-            ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --execution-endpoints=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_AUTH_HTTP_PORT"
-        else
-            ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --execution-endpoints=ws://$WS_WEB3_IP_ADDR:$EXECUTION_AUTH_WS_PORT"
-        fi
-    fi
-
-else
-    echo "Lightouse is not using jwt-secret"
-    # no auth.
-    if [ -n "$EXECUTION_ENGINE_PORT" ]; then
-        # we have same http/ws auth port.
-        ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --execution-endpoints=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_ENGINE_PORT"
-    else
-        # lets prefer ws for now.
-        if [ -n "$EXECUTION_ENGINE_HTTP_PORT" ]; then
-            ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --execution-endpoints=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_ENGINE_HTTP_PORT"
-        else
-            ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --execution-endpoints=ws://$WS_WEB3_IP_ADDR:$EXECUTION_ENGINE_WS_PORT"
-        fi
-    fi
-
-fi
-ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --merge --terminal-total-difficulty-override=$TERMINAL_TOTAL_DIFFICULTY" 
-
-ADDITIONAL_VALIDATOR_ARGS="$ADDITIONAL_VALIDATOR_ARGS --suggested-fee-recipient=0x00000000219ab540356cbb839cbe05303d7705fa"
+#ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --execution-endpoints=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_ENGINE_HTTP_PORT"
+#
+#
+#ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --merge --terminal-total-difficulty-override=$TERMINAL_TOTAL_DIFFICULTY --jwt-secrets=$JWT_SECRET_FILE" 
+#
+#ADDITIONAL_VALIDATOR_ARGS="$ADDITIONAL_VALIDATOR_ARGS --suggested-fee-recipient=0x00000000219ab540356cbb839cbe05303d7705fa"
 
 
 if [ ! -f "$TESTNET_DIR/boot_enr.yaml" ]; then
@@ -86,6 +46,8 @@ fi
 # lastly see if we are running a tx-fuzz instance.
 
 lighthouse \
+    --logfile="$NODE_DIR/beacon.log" \
+    --logfile-debug-level="$LIGHTHOUSE_DEBUG_LEVEL" \
 	--debug-level=$LIGHTHOUSE_DEBUG_LEVEL \
 	--datadir=$NODE_DIR \
 	--testnet-dir $TESTNET_DIR \
@@ -111,6 +73,10 @@ lighthouse \
     --eth1-endpoints="http://$HTTP_WEB3_IP_ADDR:$EXECUTION_HTTP_PORT" \
     --validator-monitor-auto \
     --enable-private-discovery $ADDITIONAL_BEACON_ARGS \
+    --execution-endpoints="http://$HTTP_WEB3_IP_ADDR:$EXECUTION_ENGINE_HTTP_PORT" \
+    --merge \
+    --terminal-total-difficulty-override="$TERMINAL_TOTAL_DIFFICULTY" \
+    --jwt-secrets="$JWT_SECRET_FILE" \
     --subscribe-all-subnets &
 
 sleep 10
@@ -124,3 +90,5 @@ lighthouse \
     --graffiti="$GRAFFITI" \
     --http --http-port="$VALIDATOR_RPC_PORT" $ADDITIONAL_VALIDATOR_ARGS \
     --metrics --metrics-address=0.0.0.0 --metrics-port="$VALIDATOR_METRIC_PORT" \
+    --suggested-fee-recipient=0x00000000219ab540356cbb839cbe05303d7705fa \
+    --logfile="$NODE_DIR/validator.log" --logfile-debug-level="$LIGHTHOUSE_DEBUG_LEVEL"

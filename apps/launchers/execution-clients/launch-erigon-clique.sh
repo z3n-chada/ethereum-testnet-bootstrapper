@@ -50,30 +50,18 @@ ADDITIONAL_ARGS="--verbosity=$EXECUTION_LOG_LEVEL"
 
 echo "Lauching geth-execution client"
 
-while [ ! -f "/data/execution-clients-ready" ]; do
+while [ ! -f "/data/erigon-execution-clients-ready" ]; do
     sleep 1
-    echo "Waiting on exeuction genesis"
+    echo "Waiting on erigon execution genesis."
 done
 
 echo "Detected execution genesis"
-
+static_nodes=`cat /data/execution-enodes.txt`
+echo "erigon using static peers: $static_nodes"
 echo "Initing the genesis"
-geth init \
+erigon init \
     --datadir "$EXECUTION_DATA_DIR" \
     "$GETH_GENESIS_FILE"
-
-#$if [ -n "$JWT_SECRET_FILE" ]; then
-#$    ADDITIONAL_ARGS="$ADDITIONAL_ARGS --authrpc.port=$EXECUTION_ENGINE_HTTP_PORT --authrpc.addr=0.0.0.0 --authrpc.jwtsecret=$JWT_SECRET_FILE"
-#$    echo "Geth is using JWT"
-#$fi
-
-if [ -n "$GETH_PASSWORD_FILE" ]; then
-    echo "$ETH1_PASSPHRASE" > "$GETH_PASSWORD_FILE"
-fi
-
-if [ -n "$CLIQUE_UNLOCK_KEY" ]; then
-    ADDITIONAL_ARGS="$ADDITIONAL_ARGS --unlock=$CLIQUE_UNLOCK_KEY --password=/data/geth-account-passwords.txt"
-fi
 
 if [ -n "$IS_MINING" ]; then
     if $IS_MINING; then
@@ -97,8 +85,9 @@ fi
 echo "Starting geth"
 echo "Starting geth with additional args: $ADDITIONAL_ARGS"
 
-geth-bad-block-creator \
+erigon \
   --datadir="$EXECUTION_DATA_DIR" \
+  --discovery.dns="" \
   --networkid="$NETWORK_ID" \
   --port "$EXECUTION_P2P_PORT" \
   --nat "extip:$IP_ADDR" \
@@ -106,17 +95,12 @@ geth-bad-block-creator \
   --http.port "$EXECUTION_HTTP_PORT" \
   --http.addr 0.0.0.0 \
   --http.corsdomain "*" \
-  --ws --ws.api "$WS_APIS" \
-  --ws.port="$EXECUTION_WS_PORT" \
-  --ws.addr 0.0.0.0 \
-  --keystore '/source/apps/data/geth-keystores/' \
-  --rpc.allow-unprotected-txs \
+  --ws \
   --allow-insecure-unlock \
   --netrestrict="$NETRESTRICT_RANGE" \
   --syncmode=full \
-  --authrpc.vhosts="*" \
-  --authrpc.port="$EXECUTION_ENGINE_HTTP_PORT" \
-  --authrpc.addr=0.0.0.0 \
+  --engine.port="$EXECUTION_ENGINE_HTTP_PORT" \
+  --engine.addr=0.0.0.0 \
   --authrpc.jwtsecret="$JWT_SECRET_FILE" \
-  --vmodule=rpc=5 \
+  --staticpeers="$static_nodes" \
   --override.terminaltotaldifficulty="$TERMINAL_TOTAL_DIFFICULTY" $ADDITIONAL_ARGS
