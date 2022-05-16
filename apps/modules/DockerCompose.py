@@ -1,9 +1,10 @@
+import logging
 import re
 
-from .ETBConfig import GenericClient, ConsensusClient, ExecutionClient, ETBConfig
-
 from ruamel import yaml
-import logging
+
+from .ETBConfig import (ConsensusClient, ETBConfig, ExecutionClient,
+                        GenericClient)
 
 logger = logging.getLogger("bootstrapper_log")
 
@@ -45,6 +46,7 @@ class ClientWriter(object):
             "consensus-checkpoint-file",
             "ws-web3-ip-addr",
             "http-web3-ip-addr",
+            "execution-bootnode",
         ]
 
         self.base_execution_env_vars = [
@@ -86,6 +88,7 @@ class ClientWriter(object):
             "execution-engine-port",  # no auth both http/ws are the same.
             "execution-engine-http-port",
             "execution-engine-ws-port",
+            "execution-bootnode-private-key",
         ]
 
     def _get_docker_entrypoint(self):

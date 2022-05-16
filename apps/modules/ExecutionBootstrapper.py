@@ -1,7 +1,10 @@
-import logging
-from .ExecutionGenesis import ExecutionGenesisWriter
 import json
+import logging
 import random
+import subprocess
+
+from .ETBConfig import ExecutionClient
+from .ExecutionGenesis import ExecutionGenesisWriter
 
 logger = logging.getLogger("bootstrapper_log")
 
@@ -34,6 +37,70 @@ class ETBExecutionBootstrapper(object):
                     jwt_secret_file = ec.get("jwt-secret-file", node)
                     with open(jwt_secret_file, "w") as f:
                         f.write(jwt_secret)
+
+    def create_erigon_nodekey_files(self):
+        for name, ec in self.etb_config.get("execution-clients").items():
+            if ec.get("client") == "erigon":
+                for node in range(ec.get("num-nodes")):
+                    with open(
+                        f"{ec.get_execution_data_dir(node)}/nodekey.txt", "w"
+                    ) as f:
+                        f.write(hex(random.getrandbits(32 * 8))[2:])
+
+        for name, cc in self.etb_config.get("consensus-clients").items():
+            if cc.has("local-execution-client") and cc.get("local-execution-client"):
+                for node in range(cc.get("num-nodes")):
+                    if cc.execution_config.get("client") == "erigon":
+                        with open(
+                            f"{cc.get_execution_data_dir(node)}/nodekey.txt", "w"
+                        ) as f:
+                            f.write(hex(random.getrandbits(32 * 8))[2:])
+
+    def get_erigon_enodes(self):
+        enodes = []
+        for name, ec in self.etb_config.get("execution-clients").items():
+            if ec.get("client") == "erigon":
+                for node in range(ec.get("num-nodes")):
+                    with open(
+                        f"{ec.get_execution_data_dir(node)}/nodekey.txt", "r"
+                    ) as f:
+                        nodekey = f.read()
+                    cmd = [
+                        "bootnode",
+                        "--nodekeyhex",
+                        f"{nodekey}",
+                        "--writeaddress",
+                    ]
+
+                    out = subprocess.run(cmd, capture_output=True)
+                    enode = out.stdout.decode("utf-8").strip()
+                    ip = cc.get("ip-addr", node)
+                    p2p_port = cc.execution_config.get("execution-p2p-port")
+                    enodes.append(f"{enode}@{ip}:{p2p_port}")
+
+        for name, cc in self.etb_config.get("consensus-clients").items():
+            if cc.has("local-execution-client") and cc.get("local-execution-client"):
+                for node in range(cc.get("num-nodes")):
+                    if cc.execution_config.get("client") == "erigon":
+                        with open(
+                            f"{cc.get_execution_data_dir(node)}/nodekey.txt", "r"
+                        ) as f:
+                            nodekey = f.read()
+
+                        # turn the nodekey into enode
+                        cmd = [
+                            "bootnode",
+                            "--nodekeyhex",
+                            f"{nodekey}",
+                            "--writeaddress",
+                        ]
+
+                        out = subprocess.run(cmd, capture_output=True)
+                        enode = out.stdout.decode("utf-8").strip()
+                        ip = cc.get("ip-addr", node)
+                        p2p_port = cc.execution_config.get("execution-p2p-port")
+                        enodes.append(f"enode://{enode}@{ip}:{p2p_port}")
+        return enodes
 
     def write_all_execution_genesis_files(self):
         """

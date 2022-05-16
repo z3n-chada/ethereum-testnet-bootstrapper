@@ -66,6 +66,10 @@ class EthereumTestnetBootstrapper(object):
         # of the dirs and sub-dirs.
         self.clear_last_run()
         self.create_testnet_directory_structure()
+
+        execution_bootstrapper = ETBExecutionBootstrapper(self.etb_config)
+        # we use this in order to get calculatable enodes.
+        execution_bootstrapper.create_erigon_nodekey_files()
         # go ahead and do jwt.
         for items, cc in self.etb_config.get("consensus-clients").items():
             if cc.has("jwt-secret-file"):
@@ -115,24 +119,59 @@ class EthereumTestnetBootstrapper(object):
         # with open(self.etb_config.get("consensus-checkpoint-file"), "w") as f:
         #     f.write("1")
 
-        # go ahead and link all of the execution clients.
+        # go ahead and get the enode of all non-erigon clients.
         etb_rpc = ETBExecutionRPC(self.etb_config, timeout=5)
 
-        logger.info("TestnetBootstrapper: Gathering enode info for clients")
-        node_info = etb_rpc.do_rpc_request(admin_node_info_RPC(), all_clients=True)
+        logger.info(
+            "TestnetBootstrapper: Gathering enode info for clients that support it."
+        )
+        admin_rpc_nodes = self.get_all_clients_with_admin_rpc_api()
+        node_info = etb_rpc.do_rpc_request(
+            admin_node_info_RPC(), client_nodes=admin_rpc_nodes, all_clients=False
+        )
 
         enodes = {}
         for name, info in node_info.items():
             enodes[name] = info["result"]["enode"]
 
+        print(enodes, flush=True)
+
+        erigon_enodes = execution_bootstrapper.get_erigon_enodes()
+
+        all_enodes = list(enodes.values()) + erigon_enodes
+
+        enode_list = ",".join(all_enodes)
+
+        print(enode_list, flush=True)
+
+        with open(self.etb_config.get("execution-enodes-file"), "w") as f:
+            f.write(enode_list)
+        # create the erigon-static-peers file
+        with open(self.etb_config.get("erigon-checkpoint-file"), "w") as f:
+            f.write("1")
+
         with open(self.etb_config.get("consensus-checkpoint-file"), "w") as f:
             f.write("1")
 
-        logger.info("TestnetBootstrapper: Peering the execution clients")
-        logger.debug(f"enodes: {enodes}")
-        for enode in enodes.values():
-            etb_rpc.do_rpc_request(admin_add_peer_RPC(enode), all_clients=True)
+        for enode in all_enodes:
+            etb_rpc.do_rpc_request(
+                admin_add_peer_RPC(enode),
+                client_nodes=admin_rpc_nodes,
+                all_clients=False,
+            )
             time.sleep(1)
+
+        # now we need to add the erigon enodes.
+        # with open(self.etb_config.get("consensus-checkpoint-file"), "w") as f:
+        #     f.write("1")
+
+        # logger.info("TestnetBootstrapper: Peering the execution clients")
+        # logger.debug(f"enodes: {enodes}")
+        # for enode in enodes.values():
+        #     etb_rpc.do_rpc_request(admin_add_peer_RPC(enode), all_clients=True)
+        #     time.sleep(1)
+        with open(self.etb_config.get("consensus-checkpoint-file"), "w") as f:
+            f.write("1")
 
     def clear_last_run(self):
         testnet_root = self.etb_config.get("testnet-root")
@@ -149,3 +188,20 @@ class EthereumTestnetBootstrapper(object):
         docker_compose = generate_docker_compose(self.etb_config)
         with open(docker_path, "w") as f:
             yaml.safe_dump(docker_compose, f)
+
+    def get_all_clients_with_admin_rpc_api(self):
+        # use this method to make sure we only used the admin rpc interface with clients
+        # that accept it.
+        clients = []
+        for name, ec in self.etb_config.get("execution-clients").items():
+            if "admin" in ec.get("http-apis").lower():
+                for n in range(ec.get("num-nodes")):
+                    clients.append(f"{name}-{n}")
+        # consensus clients with execution clients using admin rpc
+        for name, cc in self.etb_config.get("consensus_clients").items():
+            if cc.has("local-execution-client") and cc.get("local-execution-client"):
+                if "admin" in cc.execution_config.get("http-apis").lower():
+                    for n in range(ec.get("num-nodes")):
+                        clients.append(f"{name}-{n}")
+
+        return clients
