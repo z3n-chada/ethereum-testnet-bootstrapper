@@ -44,11 +44,11 @@ for var in "${env_vars[@]}" ; do
     fi
 done
 
-echo "geth got a valid env-var set"
+echo "erigon got a valid env-var set"
 
 ADDITIONAL_ARGS="--verbosity=$EXECUTION_LOG_LEVEL"
 
-echo "Lauching geth-execution client"
+echo "Lauching erigon-execution client"
 
 while [ ! -f "/data/erigon-execution-clients-ready" ]; do
     sleep 1
@@ -78,12 +78,12 @@ fi
 # geth is either the bootnode, or it should use the bootnode.
 if [ -n "$EXECUTION_BOOTNODE_PRIVATE_KEY" ]; then
     ADDITIONAL_ARGS="$ADDITIONAL_ARGS --nodekeyhex=$EXECUTION_BOOTNODE_PRIVATE_KEY"
-elif [ -n "$EXECUTION_BOOTNODE" ]; then
+fi
+if [ -n "$EXECUTION_BOOTNODE" ]; then
     ADDITIONAL_ARGS="$ADDITIONAL_ARGS --bootnodes=$EXECUTION_BOOTNODE"
 fi
 
-echo "Starting geth"
-echo "Starting geth with additional args: $ADDITIONAL_ARGS"
+echo "Starting erigon with additional args: $ADDITIONAL_ARGS"
 
 erigon \
   --datadir="$EXECUTION_DATA_DIR" \
@@ -99,6 +99,7 @@ erigon \
   --allow-insecure-unlock \
   --netrestrict="$NETRESTRICT_RANGE" \
   --syncmode=full \
+  --prune=htrc \
   --engine.port="$EXECUTION_ENGINE_HTTP_PORT" \
   --engine.addr=0.0.0.0 \
   --authrpc.jwtsecret="$JWT_SECRET_FILE" \
