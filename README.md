@@ -26,6 +26,7 @@ The issues listed here are not neccesarily related to security bugs, they could 
     - undisclosed
 - [lighthouse](https://github.com/sigp/lighthouse)
     - (logic) [attestation for future blocks](https://github.com/sigp/lighthouse/pull/3183)
+    - (non-security) [unsupported debug api endpoint](https://github.com/sigp/lighthouse/issues/3187)
 - [nethermind](https://github.com/NethermindEth/nethermind)
     - (non-security) [cascading errors duu to bad CLI args](https://github.com/NethermindEth/nethermind/issues/3942)
     - undisclosed
