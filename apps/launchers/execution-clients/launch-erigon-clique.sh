@@ -78,6 +78,8 @@ fi
 # geth is either the bootnode, or it should use the bootnode.
 if [ -n "$EXECUTION_BOOTNODE_PRIVATE_KEY" ]; then
     ADDITIONAL_ARGS="$ADDITIONAL_ARGS --nodekeyhex=$EXECUTION_BOOTNODE_PRIVATE_KEY"
+else
+    ADDITIONAL_ARGS="$ADDITIONAL_ARGS --nodekey=$EXECUTION_DATA_DIR/nodekey.txt"
 fi
 if [ -n "$EXECUTION_BOOTNODE" ]; then
     ADDITIONAL_ARGS="$ADDITIONAL_ARGS --bootnodes=$EXECUTION_BOOTNODE"
