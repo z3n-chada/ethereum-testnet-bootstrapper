@@ -117,17 +117,6 @@ execution-bootnodes:
   geth-bootnode:
       execution-client: "geth-bootstrapper"
       execution-bootnode-config: "base-execution-bootnode"
-  # currently not working correctly. use /source/apps/really-dumb-peering-workaround.py
-  # geth-bootnode:
-  #   client-name: "geth-bootnode"
-  #   image: "bootnode-client"
-  #   tag: "latest"
-  #   start-ip-addr: "10.0.20.210" # must match the execution-config
-  #   entrypoint: "/source/apps/launchers/bootnodes/launch-geth-bootnode.sh"
-
-  #   num-nodes: 1 # not implemented must be 1 and match the execution-bootnode-config
-  #   execution-bootnode-config: "base-execution-bootnode"
-
 
 consensus-bootnodes:
   eth2-bootnode:
@@ -153,8 +142,8 @@ execution-configs:
     execution-ws-port: 8646
     execution-engine-http-port: 8551   # http/ws same port.
     execution-engine-ws-port: 8551   # include for nimbus
-    # execution-engine-port: N/A
     execution-p2p-port: 666
+    execution-metric-port: 9001
 
   besu-execution-config:
     client: "besu"
@@ -166,6 +155,7 @@ execution-configs:
     execution-ws-port: 8646
     execution-engine-http-port: 8551
     execution-engine-ws-port: 8552
+    execution-metric-port: 9001
 
   nethermind-execution-config:
     client: "nethermind"
@@ -177,6 +167,7 @@ execution-configs:
     execution-engine-http-port: 8551 # doesn't do http/ws the same.
     execution-engine-ws-port: 8552
     execution-p2p-port: 666
+    execution-metric-port: 9001
 
   erigon-execution-config:
     client: "erigon"
@@ -189,6 +180,7 @@ execution-configs:
     execution-engine-http-port: 8551   # http/ws same port.
     execution-engine-ws-port: 8551   # include for nimbus
     execution-p2p-port: 666
+    execution-metric-port: 9001
 
 consensus-configs:
 
@@ -239,21 +231,6 @@ execution-clients:
       http-web3-ip-addr: "10.0.20.2"  # use the geth-bootstrapper
       execution-http-port: 8645       # geth boostrapper arg.
       tx-fuzz-launcher: "/source/apps/launchers/fuzzers/launch-tx-fuzzer.sh"
-  # besu-bootstrapper: 
-  #   client-name: "besu"
-  #   container-name: "besu-bootstrapper"
-  #   start-ip-addr: "10.0.20.2"
-  #   image: "besu"
-  #   tag: "main"
-  #   depends: "ethereum-testnet-bootstrapper"
-  #   entrypoint: "/source/apps/launchers/execution-clients/launch-bootstrapper-besu-clique.sh" #wrt to docker.
-  #   execution-config: "besu-execution-config"
-  #   num-nodes: 1
-  #   data-dir: '/data/local_testnet/execution-bootstrapper'
-  #   debug: False
-
-  #   additional-env:
-  #     besu-private-key: "0x1e48147d3eb2af708706c71188703913e3b2dead2716dbe0caa8ccf4ff1d5573"
 
 consensus-clients:
 # Consensus Client Setup:
@@ -300,7 +277,7 @@ consensus-clients:
 
     local-execution-client: true
     execution-config: "geth-execution-config"
-    execution-launcher: "/source/apps/launchers/execution-clients/launch-geth-clique.sh"
+    execution-launcher: "/source/apps/launchers/execution-clients/launch-geth-clique.sh" #wrt to docker.
 
 
     testnet-dir: '/data/local_testnet/prysm-geth'
@@ -389,7 +366,7 @@ consensus-clients:
     consensus-bootnode-config: "eth2-bootnode-config"
     local-execution-client: true
     execution-config: "geth-execution-config"
-    execution-launcher: "/source/apps/launchers/execution-clients/launch-geth-clique.sh"
+    execution-launcher: "/source/apps/launchers/execution-clients/launch-geth-clique.sh" #wrt to docker.
 
     testnet-dir: '/data/local_testnet/teku-geth'
     jwt-secret-file: "/data/local_testnet/teku-geth/jwt-secret"
@@ -475,7 +452,7 @@ consensus-clients:
 
     local-execution-client: true
     execution-config: "geth-execution-config"
-    execution-launcher: "/source/apps/launchers/execution-clients/launch-geth-clique.sh"
+    execution-launcher: "/source/apps/launchers/execution-clients/launch-geth-clique.sh" #wrt to docker.
 
     validator-offset-start: 24 # so validators of different clients don't overlap
 
@@ -549,7 +526,7 @@ consensus-clients:
 
     local-execution-client: true
     execution-config: "geth-execution-config"
-    execution-launcher: "/source/apps/launchers/execution-clients/launch-geth-clique.sh"
+    execution-launcher: "/source/apps/launchers/execution-clients/launch-geth-clique.sh" #wrt to docker.
 
     num-nodes: 1 # how many beacon nodes
     testnet-dir: '/data/local_testnet/lighthouse-geth'
@@ -625,7 +602,7 @@ consensus-clients:
   
     local-execution-client: true
     execution-config: "geth-execution-config"
-    execution-launcher: "/source/apps/launchers/execution-clients/launch-geth-clique.sh"
+    execution-launcher: "/source/apps/launchers/execution-clients/launch-geth-clique.sh" #wrt to docker.
   
     testnet-dir: '/data/local_testnet/lodestar-geth'
     jwt-secret-file: "/data/local_testnet/lodestar-geth/jwt-secret"
@@ -689,7 +666,7 @@ testnet-bootstrapper:
   ethereum-testnet-bootstrapper:
     #docker-compose
     image: "ethereum-testnet-bootstrapper"
-    tag: "latest"
+    tag: "testing"
     container-name: "testnet-bootstrapper"
     start-ip-addr: "10.0.20.202"
     num-nodes: 1
@@ -700,8 +677,8 @@ generic-modules:
   status-check:
     client-name: "status-check"
     image: "ethereum-testnet-bootstrapper"
-    tag: "latest"
+    tag: "testing"
     container-name: "status-check"
     start-ip-addr: "10.0.20.207"
     num-nodes: 1
-    entrypoint: "python3 /source/apps/status-check.py --config /data/etb-config.yaml --phase0-slot 32 --phase1-slot 128 --phase2-slot 144 --phase3-slot 150 --number-of-checks 3 --log-prefix antithesis --terminate-experiment-prefix terminate"
+    entrypoint: "python3 /source/apps/status-check.py --config /data/etb-config.yaml --phase0-slot 32 --phase1-slot 122 --phase2-slot 144 --phase3-slot 180 --number-of-checks 3 --log-prefix antithesis --terminate-experiment-prefix terminate"
