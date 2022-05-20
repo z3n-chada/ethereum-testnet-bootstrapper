@@ -45,7 +45,7 @@ class ETBExecutionBootstrapper(object):
                     with open(
                         f"{ec.get_execution_data_dir(node)}/nodekey.txt", "w"
                     ) as f:
-                        f.write(hex(random.getrandbits(32 * 8))[2:])
+                        f.write(f"{hex(random.getrandbits(32*8))[2:].zfill(64)}")
 
         for name, cc in self.etb_config.get("consensus-clients").items():
             if cc.has("local-execution-client") and cc.get("local-execution-client"):
@@ -54,16 +54,14 @@ class ETBExecutionBootstrapper(object):
                         with open(
                             f"{cc.get_execution_data_dir(node)}/nodekey.txt", "w"
                         ) as f:
-                            f.write(hex(random.getrandbits(32 * 8))[2:])
+                            f.write(f"{hex(random.getrandbits(32*8))[2:].zfill(64)}")
 
     def get_erigon_enodes(self):
         enodes = []
         for name, ec in self.etb_config.get("execution-clients").items():
             if ec.get("client") == "erigon":
                 for node in range(ec.get("num-nodes")):
-                    with open(
-                        f"{ec.get_execution_data_dir(node)}/nodekey.txt", "r"
-                    ) as f:
+                    with open(f"{ec.get_execution_data_dir(node)}/nodekey.txt", "r") as f:
                         nodekey = f.read()
                     cmd = [
                         "bootnode",
