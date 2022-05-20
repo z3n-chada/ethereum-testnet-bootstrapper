@@ -32,6 +32,8 @@ The issues listed here are not neccesarily related to security bugs, they could 
     - undisclosed
 - [geth](https://github.com/ethereum/go-ethereum)
     - undisclosed
+- [erigon](https://github.com/ledgerwatch/erigon)
+    - (non-security/testing) [0x0 hash acceptance](https://github.com/ledgerwatch/erigon/pull/4186)
 - [eth2-testnet-genesis](https://github.com/protolambda/eth2-testnet-genesis)
     - (non-security) fix altair beaconstate genesis
 
