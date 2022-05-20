@@ -3,6 +3,7 @@ docker:
     ip-subnet: "10.0.20.0/24" 
     volumes: ['./data:/data/', './:/source/']
     # for writing the docker-compose.yaml
+    #
 files:
   # all files with respect to docker path
   testnet-root: '/data/'
@@ -23,11 +24,16 @@ files:
   consensus-checkpoint-file: "/data/consensus-clients-ready"
   #this file is written with its time for the first execution client to come up.
   execution-checkpoint-file: "/data/execution-clients-ready"
+  # erigon gets its own due to peering limitations
+  erigon-checkpoint-file: "/data/erigon-execution-clients-ready"
   # execution client bootnode/bootstrapper. Contains enode+\n for all bootstrap
   consensus-bootnode-checkpoint-file: "/data/consensus-bootnodes-ready"
   # nodes
   execution-enode-file: "/data/execution-bootstrapper/enodes.txt"
   # the enr for the bootnode we chose.
+
+  # all of the enodes of el clients comma seperated.
+  execution-enodes-file: "/data/execution-enodes.txt"
 
 
 config-params:
@@ -92,14 +98,10 @@ accounts:
 
 execution-bootnode-configs:
   base-execution-bootnode:
-    execution-bootnode-start-ip-addr: "10.0.20.210"
+    execution-client: "geth-bootstrapper"
     execution-bootnode-disc-port: 666
     execution-bootnode-private-key: "522d5e0fd25b33b2d9a28c0376013c3704aa79c1dc5424d107531f22d54f9d58"
     execution-bootnode-enode: "enode://d87b29dcf9ab5b2e6f36c83b0c58a3f97b049e743b0e57fa643d6fa2fc8de417307c8a94bb9e54f8ddc9bcc66ac142e241249d177872ca622981f9f8395d6449"
-    execution-bootnode-enode-file: "/data/execution-bootnode/enode.txt"
-    execution-bootnode-enode-dir: "/data/execution-bootnode"
-    num-nodes: 1 # not implemented and must be 1
-    execution-bootnode-verbosity: 4
 
 consensus-bootnode-configs:
   eth2-bootnode-config:
@@ -112,24 +114,16 @@ consensus-bootnode-configs:
 
 
 execution-bootnodes:
-  # currently not working correctly. use /source/apps/really-dumb-peering-workaround.py
-  # geth-bootnode:
-  #   client-name: "geth-bootnode"
-  #   image: "bootnode-client"
-  #   tag: "latest"
-  #   start-ip-addr: "10.0.20.210" # must match the execution-config
-  #   entrypoint: "/source/apps/launchers/bootnodes/launch-geth-bootnode.sh"
-
-  #   num-nodes: 1 # not implemented must be 1 and match the execution-bootnode-config
-  #   execution-bootnode-config: "base-execution-bootnode"
-
+  geth-bootnode:
+      execution-client: "geth-bootstrapper"
+      execution-bootnode-config: "base-execution-bootnode"
 
 consensus-bootnodes:
   eth2-bootnode:
     # args for docker-compose
     client-name: "eth2-bootnode"
     container-name: "eth2-bootnode"
-    image: "bootnode-client"
+    image: "ethereum-testnet-bootstrapper"
     tag: "latest"
     start-ip-addr: "10.0.20.201"
     entrypoint: "/source/apps/launchers/bootnodes/launch-eth2-bootnode.sh"
@@ -146,32 +140,47 @@ execution-configs:
     ws-apis: "clique,admin,net,eth,web3,personal,engine"
     execution-http-port: 8645
     execution-ws-port: 8646
-    execution-auth-http-port: 8551   # http/ws same port.
-    execution-auth-ws-port: 8551   # include for nimbus
-    # execution-engine-port: N/A
+    execution-engine-http-port: 8551   # http/ws same port.
+    execution-engine-ws-port: 8551   # include for nimbus
     execution-p2p-port: 666
+    execution-metric-port: 9001
 
   besu-execution-config:
     client: "besu"
-    execution-log-level: "debug"
+    execution-log-level: "info"
     http-apis: "ADMIN,ETH,NET,TXPOOL,WEB3,ENGINE"
     ws-apis: "ADMIN,ETH,NET,TXPOOL,WEB3,ENGINE"
+    execution-p2p-port: 666
     execution-http-port: 8645
     execution-ws-port: 8646
-    execution-auth-http-port: 8551 # doesn't do http/ws the same.
-    execution-auth-ws-port: 8552
-    execution-p2p-port: 666
+    execution-engine-http-port: 8551
+    execution-engine-ws-port: 8552
+    execution-metric-port: 9001
 
   nethermind-execution-config:
     client: "nethermind"
-    execution-log-level: "debug"
+    execution-log-level: "info"
     http-apis: "net,eth,consensus,subscribe,web3,admin"
     ws-apis: "net,eth,consensus,subscribe,web3,admin"
     execution-http-port: 8645
     execution-ws-port: 8646
-    execution-auth-http-port: 8551 # doesn't do http/ws the same.
-    execution-auth-ws-port: 8552
+    execution-engine-http-port: 8551 # doesn't do http/ws the same.
+    execution-engine-ws-port: 8552
     execution-p2p-port: 666
+    execution-metric-port: 9001
+
+  erigon-execution-config:
+    client: "erigon"
+    # 0=silent, 1=error, 2=warn, 3=info, 4=debug, 5=detail (default: 3)
+    execution-log-level: "4" # detail
+    http-apis: "engine,net,eth,clique"
+    ws-apis: "engine,net,eth,clique"
+    execution-http-port: 8645
+    execution-ws-port: 8646
+    execution-engine-http-port: 8551   # http/ws same port.
+    execution-engine-ws-port: 8551   # include for nimbus
+    execution-p2p-port: 666
+    execution-metric-port: 9001
 
 consensus-configs:
 
@@ -197,8 +206,8 @@ execution-clients:
     client-name: "geth-bootstrapper"
     container-name: "geth-bootstrapper"
     start-ip-addr: "10.0.20.2"
-    image: "geth-client"
-    tag: "master"
+    image: "etb-all-clients"
+    tag: "latest"
     depends: "ethereum-testnet-bootstrapper"
     entrypoint: "/source/apps/launchers/execution-clients/launch-geth-clique.sh" #wrt to docker.
 
@@ -213,21 +222,15 @@ execution-clients:
       is-mining: True
       eth1-passphrase: "testnet-password"
       clique-unlock-key: "51Dd070D1f6f8dB48CA5b0E47D7e899aea6b1AF5"
-  # besu-bootstrapper: 
-  #   client-name: "besu"
-  #   container-name: "besu-bootstrapper"
-  #   start-ip-addr: "10.0.20.2"
-  #   image: "besu"
-  #   tag: "main"
-  #   depends: "ethereum-testnet-bootstrapper"
-  #   entrypoint: "/source/apps/launchers/execution-clients/launch-bootstrapper-besu-clique.sh" #wrt to docker.
-  #   execution-config: "besu-execution-config"
-  #   num-nodes: 1
-  #   data-dir: '/data/local_testnet/execution-bootstrapper'
-  #   debug: False
 
-  #   additional-env:
-  #     besu-private-key: "0x1e48147d3eb2af708706c71188703913e3b2dead2716dbe0caa8ccf4ff1d5573"
+      tx-fuzz-enabled: True
+      tx-fuzz-private-keys: "0x1e48147d3eb2af708706c71188703913e3b2dead2716dbe0caa8ccf4ff1d5573,0x6cf9f64e4bdf9b5547882e276da15a590f0873d313a2a833f07f3ec9d45fdc7e,0x045b49f8c41b5562fbfc54c3d5c76df1cd7b2c340494383b2e3783de81c39184,0xa7c0262c56b2f5b9dd43c7cb544aff29e77e2b2a4ced2a34964016ff4cbf7675"
+      tx-fuzz-public-keys: "0x51Dd070D1f6f8dB48CA5b0E47D7e899aea6b1AF5,0x6B477789219c9D5b80159652AA913A5eee39d07e,0xa03f25d5839029323Be765Fbc02E262628923338,0x60337eFAD102533d73E7c7D03736B8c4b87cdB2e"
+      tx-fuzz-mode: "spam"
+      launch-new-execution-client: False # don't make a new geth node
+      http-web3-ip-addr: "10.0.20.2"  # use the geth-bootstrapper
+      execution-http-port: 8645       # geth boostrapper arg.
+      tx-fuzz-launcher: "/source/apps/launchers/fuzzers/launch-tx-fuzzer.sh"
 
 consensus-clients:
 # Consensus Client Setup:
@@ -260,8 +263,8 @@ consensus-clients:
   prysm-geth:
     client-name: 'prysm'
     # docker-compose
-    image: "prysm-client"
-    tag: "kilnv2"
+    image: "etb-all-clients"
+    tag: "latest"
     container-name: "prysm-client-geth"
     entrypoint: "/source/apps/launchers/consensus-clients/launch-prysm.sh"
     start-ip-addr: "10.0.20.10"
@@ -274,7 +277,7 @@ consensus-clients:
 
     local-execution-client: true
     execution-config: "geth-execution-config"
-    execution-launcher: "/source/apps/launchers/execution-clients/launch-geth-clique.sh"
+    execution-launcher: "/source/apps/launchers/execution-clients/launch-geth-clique.sh" #wrt to docker.
 
 
     testnet-dir: '/data/local_testnet/prysm-geth'
@@ -290,8 +293,8 @@ consensus-clients:
   prysm-besu:
     client-name: 'prysm'
     # docker-compose
-    image: "prysm-client"
-    tag: "kilnv2"
+    image: "etb-all-clients"
+    tag: "latest"
     container-name: "prysm-client-besu"
     entrypoint: "/source/apps/launchers/consensus-clients/launch-prysm.sh"
     start-ip-addr: "10.0.20.12"
@@ -320,8 +323,8 @@ consensus-clients:
   prysm-nethermind:
     client-name: 'prysm'
     # docker-compose
-    image: "prysm-client"
-    tag: "kilnv2"
+    image: "etb-all-clients"
+    tag: "latest"
     container-name: "prysm-client-nethermind"
     entrypoint: "/source/apps/launchers/consensus-clients/launch-prysm.sh"
     start-ip-addr: "10.0.20.14"
@@ -350,8 +353,8 @@ consensus-clients:
   teku-geth:
     client-name: 'teku'
     # docker-compose
-    image: "teku-client"
-    tag: "kilnv2"
+    image: "etb-all-clients"
+    tag: "latest"
     container-name: "teku-client-geth"
     entrypoint: "/source/apps/launchers/consensus-clients/launch-teku.sh"
     start-ip-addr: "10.0.20.20"
@@ -363,7 +366,7 @@ consensus-clients:
     consensus-bootnode-config: "eth2-bootnode-config"
     local-execution-client: true
     execution-config: "geth-execution-config"
-    execution-launcher: "/source/apps/launchers/execution-clients/launch-geth-clique.sh"
+    execution-launcher: "/source/apps/launchers/execution-clients/launch-geth-clique.sh" #wrt to docker.
 
     testnet-dir: '/data/local_testnet/teku-geth'
     jwt-secret-file: "/data/local_testnet/teku-geth/jwt-secret"
@@ -373,12 +376,12 @@ consensus-clients:
     # args specific to teku nodes.
     additional-env:
       teku-debug-level: "DEBUG"
-
+#
   teku-besu:
     client-name: 'teku'
     # docker-compose
-    image: "teku-client"
-    tag: "kilnv2"
+    image: "etb-all-clients"
+    tag: "latest"
     container-name: "teku-client-besu"
     entrypoint: "/source/apps/launchers/consensus-clients/launch-teku.sh"
     start-ip-addr: "10.0.20.22"
@@ -405,8 +408,8 @@ consensus-clients:
   teku-nethermind:
     client-name: 'teku'
     # docker-compose
-    image: "teku-client"
-    tag: "kilnv2"
+    image: "etb-all-clients"
+    tag: "latest"
     container-name: "teku-client-nethermind"
     entrypoint: "/source/apps/launchers/consensus-clients/launch-teku.sh"
     start-ip-addr: "10.0.20.24"
@@ -433,8 +436,8 @@ consensus-clients:
   nimbus-geth:
     client-name: 'nimbus'
     # docker-compose
-    image: "nimbus-client"
-    tag: "kilnv2"
+    image: "etb-all-clients"
+    tag: "latest"
     container-name: "nimbus-client-geth"
     entrypoint: "/source/apps/launchers/consensus-clients/launch-nimbus.sh"
     start-ip-addr: "10.0.20.30"
@@ -449,18 +452,18 @@ consensus-clients:
 
     local-execution-client: true
     execution-config: "geth-execution-config"
-    execution-launcher: "/source/apps/launchers/execution-clients/launch-geth-clique.sh"
+    execution-launcher: "/source/apps/launchers/execution-clients/launch-geth-clique.sh" #wrt to docker.
 
     validator-offset-start: 24 # so validators of different clients don't overlap
 
     additional-env:
       nimbus-debug-level: "trace"
-
+#
   nimbus-besu:
     client-name: 'nimbus'
     # docker-compose
-    image: "nimbus-client"
-    tag: "kilnv2"
+    image: "etb-all-clients"
+    tag: "latest"
     container-name: "nimbus-client-besu"
     entrypoint: "/source/apps/launchers/consensus-clients/launch-nimbus.sh"
     start-ip-addr: "10.0.20.32"
@@ -485,8 +488,8 @@ consensus-clients:
   nimbus-nethermind:
     client-name: 'nimbus'
     # docker-compose
-    image: "nimbus-client"
-    tag: "kilnv2"
+    image: "etb-all-clients"
+    tag: "latest"
     container-name: "nimbus-client-nethermind"
     entrypoint: "/source/apps/launchers/consensus-clients/launch-nimbus.sh"
     start-ip-addr: "10.0.20.34"
@@ -511,8 +514,8 @@ consensus-clients:
   lighthouse-geth:
     client-name: 'lighthouse'
     # docker-compose
-    image: "lighthouse-client"
-    tag: "kilnv2"
+    image: "etb-all-clients"
+    tag: "latest"
     container-name: "lighthouse-client-geth"
     entrypoint: "/source/apps/launchers/consensus-clients/launch-lighthouse.sh"
     start-ip-addr: "10.0.20.40"
@@ -523,7 +526,7 @@ consensus-clients:
 
     local-execution-client: true
     execution-config: "geth-execution-config"
-    execution-launcher: "/source/apps/launchers/execution-clients/launch-geth-clique.sh"
+    execution-launcher: "/source/apps/launchers/execution-clients/launch-geth-clique.sh" #wrt to docker.
 
     num-nodes: 1 # how many beacon nodes
     testnet-dir: '/data/local_testnet/lighthouse-geth'
@@ -536,8 +539,8 @@ consensus-clients:
   lighthouse-besu:
     client-name: 'lighthouse'
     # docker-compose
-    image: "lighthouse-client"
-    tag: "kilnv2"
+    image: "etb-all-clients"
+    tag: "latest"
     container-name: "lighthouse-client-besu"
     entrypoint: "/source/apps/launchers/consensus-clients/launch-lighthouse.sh"
     start-ip-addr: "10.0.20.42"
@@ -561,8 +564,8 @@ consensus-clients:
   lighthouse-nethermind:
     client-name: 'lighthouse'
     # docker-compose
-    image: "lighthouse-client"
-    tag: "kilnv2"
+    image: "etb-all-clients"
+    tag: "latest"
     container-name: "lighthouse-client-nethermind"
     entrypoint: "/source/apps/launchers/consensus-clients/launch-lighthouse.sh"
     start-ip-addr: "10.0.20.44"
@@ -586,8 +589,8 @@ consensus-clients:
   lodestar-geth:
     client-name: 'lodestar'
     # docker-compose
-    image: "lodestar-client"
-    tag: "kilnv2"
+    image: "etb-all-clients"
+    tag: "latest"
     container-name: "lodestar-client-geth"
     entrypoint: "/source/apps/launchers/consensus-clients/launch-lodestar.sh"
     start-ip-addr: "10.0.20.50"
@@ -599,7 +602,7 @@ consensus-clients:
   
     local-execution-client: true
     execution-config: "geth-execution-config"
-    execution-launcher: "/source/apps/launchers/execution-clients/launch-geth-clique.sh"
+    execution-launcher: "/source/apps/launchers/execution-clients/launch-geth-clique.sh" #wrt to docker.
   
     testnet-dir: '/data/local_testnet/lodestar-geth'
     jwt-secret-file: "/data/local_testnet/lodestar-geth/jwt-secret"
@@ -611,8 +614,8 @@ consensus-clients:
   lodestar-besu:
     client-name: 'lodestar'
     # docker-compose
-    image: "lodestar-client"
-    tag: "kilnv2"
+    image: "etb-all-clients"
+    tag: "latest"
     container-name: "lodestar-client-besu"
     entrypoint: "/source/apps/launchers/consensus-clients/launch-lodestar.sh"
     start-ip-addr: "10.0.20.52"
@@ -636,8 +639,8 @@ consensus-clients:
   lodestar-nethermind:
     client-name: 'lodestar'
     # docker-compose
-    image: "lodestar-client"
-    tag: "kilnv2"
+    image: "etb-all-clients"
+    tag: "latest"
     container-name: "lodestar-client-nethermind"
     entrypoint: "/source/apps/launchers/consensus-clients/launch-lodestar.sh"
     start-ip-addr: "10.0.20.54"
@@ -663,46 +666,19 @@ testnet-bootstrapper:
   ethereum-testnet-bootstrapper:
     #docker-compose
     image: "ethereum-testnet-bootstrapper"
-    tag: "latest"
+    tag: "testing"
     container-name: "testnet-bootstrapper"
     start-ip-addr: "10.0.20.202"
     num-nodes: 1
     entrypoint: "/source/entrypoint.sh --config /data/etb-config.yaml --bootstrap-testnet" 
 
 generic-modules:
-  tx-fuzzer:
-    client-name: "tx-fuzzer"
-    container-name: "tx-fuzzer"
-    start-ip-addr: "10.0.20.222"
-    image: "teku-client" # we just need a client that has tx-fuzzer and the execution client.
-    tag: "kilnv2"
-    depends: "ethereum-testnet-bootstrapper"
-    entrypoint: "/source/apps/launchers/fuzzers/launch-tx-fuzzer.sh"
-    num-nodes: 1
-
-    additional-env:
-      tx-fuzz-enabled: True
-      tx-fuzz-private-keys: "0x1e48147d3eb2af708706c71188703913e3b2dead2716dbe0caa8ccf4ff1d5573,0x6cf9f64e4bdf9b5547882e276da15a590f0873d313a2a833f07f3ec9d45fdc7e,0x045b49f8c41b5562fbfc54c3d5c76df1cd7b2c340494383b2e3783de81c39184,0xa7c0262c56b2f5b9dd43c7cb544aff29e77e2b2a4ced2a34964016ff4cbf7675"
-      tx-fuzz-public-keys: "0x51Dd070D1f6f8dB48CA5b0E47D7e899aea6b1AF5,0x6B477789219c9D5b80159652AA913A5eee39d07e,0xa03f25d5839029323Be765Fbc02E262628923338,0x60337eFAD102533d73E7c7D03736B8c4b87cdB2e"
-      tx-fuzz-mode: "spam"
-      launch-new-execution-client: False # don't make a new geth node
-      http-web3-ip-addr: "10.0.20.2"  # use the geth-bootstrapper
-      execution-http-port: 8645       # geth boostrapper arg.
-
-  network-monitor:
-    client-name: "network-monitor"
-    image: "ethereum-testnet-bootstrapper"
-    tag: "latest"
-    container-name: "network-monitor"
-    start-ip-addr: "10.0.20.206"
-    num-nodes: 1
-    entrypoint: "python3 /source/apps/network-monitor.py --config /data/etb-config.yaml"
   
   status-check:
     client-name: "status-check"
     image: "ethereum-testnet-bootstrapper"
-    tag: "latest"
+    tag: "testing"
     container-name: "status-check"
     start-ip-addr: "10.0.20.207"
     num-nodes: 1
-    entrypoint: "python3 /source/apps/status-check.py --config /data/etb-config.yaml --phase0-slot 32 --experiment-slot 128 --phase1-slot 128 --phase2-slot 160 --number-of-checks 3"
+    entrypoint: "python3 /source/apps/status-check.py --config /data/etb-config.yaml --phase0-slot 32 --phase1-slot 122 --phase2-slot 144 --phase3-slot 180 --number-of-checks 3 --log-prefix antithesis --terminate-experiment-prefix terminate"

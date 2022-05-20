@@ -11,20 +11,31 @@ All of the docker images map the current directory to /source/ so if you would l
 if you are happy running the defaults then just /config/{path to the config} will suffice. 
 
 ## Trophies
-The issues listed here are not neccesarily related to security bugs, they could be edge case scenarios that clients haven't covered. 
+The issues listed here are not neccesarily related to security bugs, they could be edge case scenarios that clients haven't covered. Bugs listed here are from local tests and using the Antithesis testing platform.
 
-- Prysm
+- [prysm](https://github.com/prysmaticlabs/prysm)
     - (non-security) invalid config file parsing for PRESET\_BASE field.
     - (non-security, non-spec) handeling 0 hash for eth1 root hash.
     - (non-security) handle genesis from non-phase0 genesis beaconstates.
     - (non-security) api /eth/vX/beacon/headers/X uses the incorrect htr (SignedBeaconBlockHeader instead of BeaconBlockHeader)
-- eth2-testnet-genesis
-    - (non-security) fix altair beaconstate genesis
-- nimbus
+    - (race condition) [race condition for eth1data](https://github.com/prysmaticlabs/prysm/issues/10531)
+    - (race condition) [race condition for reValidatePeer](https://github.com/prysmaticlabs/prysm/issues/10530)
+- [nimbus](https://github.com/status-im/nimbus-eth2)
     - several nil dereferences on Eth1Monitor
+    - (networking) undisclosed
     - undisclosed
-- geth
+- [lighthouse](https://github.com/sigp/lighthouse)
+    - (logic) [attestation for future blocks](https://github.com/sigp/lighthouse/pull/3183)
+    - (non-security) [unsupported debug api endpoint](https://github.com/sigp/lighthouse/issues/3187)
+- [nethermind](https://github.com/NethermindEth/nethermind)
+    - (non-security) [cascading errors duu to bad CLI args](https://github.com/NethermindEth/nethermind/issues/3942)
     - undisclosed
+- [geth](https://github.com/ethereum/go-ethereum)
+    - undisclosed
+- [erigon](https://github.com/ledgerwatch/erigon)
+    - (non-security/testing) [0x0 hash acceptance](https://github.com/ledgerwatch/erigon/pull/4186)
+- [eth2-testnet-genesis](https://github.com/protolambda/eth2-testnet-genesis)
+    - (non-security) fix altair beaconstate genesis
 
 # Overview
 Dockers contain the cl and the el clients with which they can become nodes on the network. The bootstrapper (ethereum-testnet-bootstrapper) reads the configuration for the testnet and populates all of the required directories.  

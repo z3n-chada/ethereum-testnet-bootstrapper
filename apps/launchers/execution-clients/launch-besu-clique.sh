@@ -42,41 +42,34 @@ echo "besu bootstrapper got a valid env-var set"
 
 ADDITIONAL_ARGS="--logging=$EXECUTION_LOG_LEVEL"
 
-if [[ "$END_FORK_NAME" = "bellatrix" ]]; then
-    # since we are doing the merge in the consensus
-    # we need to add the terminal total difficutly override
-    echo "Besu client is taking part in a merge testnet, adding the required flags."
-    ADDITIONAL_ARGS="$ADDITIONAL_ARGS --Xmerge-support=true"
-    echo "Besu using --Xmerge-support"
-else
-    echo "Besu not overriding terminal total difficulty. Got an END_FORK:$END_FORK_NAME"
-    echo "if you are trying to test a merge configuration check that the config file is sane"
-    ADDITIONAL_ARGS="$ADDITIONAL_ARGS --Xmerge-support=false"
-fi 
-
 while [ ! -f "$EXECUTION_CHECKPOINT_FILE" ]; do
     sleep 1
     echo "Waiting on exeuction genesis"
 done
 
-if [ -n "$JWT_SECRET_FILE" ]; then
-    echo "Besu is using JWT auth"
-    ADDITIONAL_ARGS="$ADDITIONAL_ARGS --engine-jwt-enabled=true"
-    # add the auth port for engine.
-    ADDITIONAL_ARGS="$ADDITIONAL_ARGS --engine-rpc-http-port=$EXECUTION_AUTH_HTTP_PORT --engine-rpc-ws-port=$EXECUTION_AUTH_WS_PORT"
-else
-    echo "Besu is not using JWT auth"
-    ADDITIONAL_ARGS="$ADDITIONAL_ARGS --rpc-http-authentication-enabled=false --rpc-ws-authentication-enabled=false --engine-jwt-enabled=false"
-    ADDITIONAL_ARGS="$ADDITIONAL_ARGS --engine-rpc-http-port=$EXECUTION_ENGINE_HTTP_PORT --engine-rpc-ws-port=$EXECUTION_ENGINE_WS_PORT"
-fi
+# if [ -n "$JWT_SECRET_FILE" ]; then
+#     echo "Besu is using JWT auth"
+#     ADDITIONAL_ARGS="$ADDITIONAL_ARGS --engine-jwt-enabled=true"
+#     # add the auth port for engine.
+#     ADDITIONAL_ARGS="$ADDITIONAL_ARGS --engine-rpc-http-port=$EXECUTION_ENGINE_HTTP_PORT --engine-rpc-ws-port=$EXECUTION_ENGINE_WS_PORT"
+# # else
+# #     echo "Besu is not using JWT auth"
+# #     ADDITIONAL_ARGS="$ADDITIONAL_ARGS --rpc-http-authentication-enabled=false --rpc-ws-authentication-enabled=false --engine-jwt-enabled=false"
+# #     ADDITIONAL_ARGS="$ADDITIONAL_ARGS --engine-rpc-http-port=$EXECUTION_ENGINE_HTTP_PORT --engine-rpc-ws-port=$EXECUTION_ENGINE_WS_PORT"
+# # fi
+# fi
 
 
-echo "besu launching with additional args: $ADDITIONAL_ARGS"
+#echo "besu launching with additional args: $ADDITIONAL_ARGS"
+
+  #--discovery-enabled=false \
 
 besu \
-  $ADDITIONAL_ARGS \
+  --logging="$EXECUTION_LOG_LEVEL" \
+  --bootnodes="$EXECUTION_BOOTNODE" \
   --data-path="$EXECUTION_DATA_DIR" \
   --genesis-file="$BESU_GENESIS_FILE" \
+  --discovery-dns-url="" \
   --network-id="$NETWORK_ID" \
   --rpc-http-enabled=true --rpc-http-api="$HTTP_APIS" \
   --rpc-http-host=0.0.0.0 \
@@ -91,6 +84,10 @@ besu \
   --nat-method=DOCKER \
   --sync-mode=FULL \
   --engine-host-allowlist="*" \
+  --Xmerge-support=true \
   --fast-sync-min-peers=1 \
-  --discovery-enabled=false \
-  --p2p-port="$EXECUTION_P2P_PORT"
+  --p2p-port="$EXECUTION_P2P_PORT" \
+  --engine-jwt-enabled=true \
+  --engine-jwt-secret="$JWT_SECRET_FILE" \
+  --engine-rpc-http-port="$EXECUTION_ENGINE_HTTP_PORT" \
+  --engine-rpc-ws-port="$EXECUTION_ENGINE_WS_PORT"

@@ -4,9 +4,10 @@
     many config operations can be repetitive so we add these functions
     here to speed up module/app development.
 """
+import logging
+
 # from .ExecutionRPC import ExecutionClientJsonRPC
 from ruamel import yaml
-import logging
 
 logger = logging.getLogger("bootstrapper_log")
 
@@ -50,6 +51,12 @@ class ConsensusBootnodeConfig(GenericConfigurationEntry):
     def __init__(self, consensus_bootnode_config):
         super().__init__(consensus_bootnode_config)
         self.__name__ = "ConsensusBootnodeConfig"
+
+
+class ExecutionBootnodeConfig(GenericConfigurationEntry):
+    def __init__(self, execution_bootnode_config):
+        super().__init__(execution_bootnode_config)
+        self.__name__ = "ExecutionBootnodeConfig"
 
 
 class GenericClient(GenericConfigurationEntry):
@@ -121,6 +128,16 @@ class GenericClient(GenericConfigurationEntry):
         else:
             self.consensus_bootnode_config = None
 
+        if "execution-bootnode-config" in self.config:
+            self.execution_bootnode_config = (
+                self.etb_config.get_execution_bootnode_config(
+                    self.config["execution-bootnode-config"]
+                )
+            )
+            self.config_entries.append(self.execution_bootnode_config)
+        else:
+            self.execution_bootnode_config = None
+
         if "additional-env" in self.config:
             self.additional_env = self.config["additional-env"]
 
@@ -175,7 +192,7 @@ class GenericClient(GenericConfigurationEntry):
         """
         if not self.has(value):
             raise Exception(
-                f"{self.__name__}:requested value:{value} it doesn't have. "
+                f"{self.__name__}:requested value: {value} it doesn't have. "
             )
 
         if isinstance(node, int):
@@ -259,11 +276,32 @@ class GenericClient(GenericConfigurationEntry):
     def get_jwt_secret_file(self, node):
         return f"{self.config['jwt-secret-file']}-{node}"
 
+    def get_execution_bootnode(self, node):
+        bootnodes = self.etb_config.get("execution-bootnodes")
+        for name, bn in bootnodes.items():
+            bootnode_enode = bn.get("execution-bootnode-enode")
+            bootnode_ip = bn.get_ip_addr(0)  # only one client per bootnode
+            bootnode_disc_port = self.get("execution-p2p-port")
+            return f"{bootnode_enode}@{bootnode_ip}:{bootnode_disc_port}"
+
 
 class ConsensusBootnodeClient(GenericClient):
     def __init__(self, name, etb_config, bootnode_config):
         super().__init__(name, etb_config, bootnode_config)
         self.__name__ = "ConsensusBootnodeClient"
+
+
+class ExecutionBootnodeClient(GenericClient):
+    def __init__(self, name, etb_config, bootnode_config):
+        super().__init__(name, etb_config, bootnode_config)
+        self.__name__ = "ExecutionBootnodeClient"
+        for name, ec in self.etb_config.get("execution-clients").items():
+            if name == self.get("execution-client"):
+                self.execution_client = ec
+
+    # wrapper to pull ip address from the referenced el client
+    def get_ip_addr(self, node):
+        return self.execution_client.get("ip-addr", node)
 
 
 class ConsensusClient(GenericClient):
@@ -441,9 +479,9 @@ class ETBConfig(GenericConfigurationEntry):
     def get_consensus_clients(self):
         clients = {}
         # get the consensus clients.
-        for cc in self.config["consensus-clients"]:
-            client = ConsensusClient(cc, self, self.config["consensus-clients"][cc])
-            clients[cc] = client
+        for name, cc in self.config["consensus-clients"].items():
+            client = ConsensusClient(name, self, cc)
+            clients[name] = client
 
         return clients
 
@@ -453,6 +491,23 @@ class ETBConfig(GenericConfigurationEntry):
         for name, ec in self.config["execution-clients"].items():
             client = ExecutionClient(name, self, ec)
             clients[name] = client
+
+        return clients
+
+    def get_all_execution_clients(self):
+        clients = {}
+        # get the consensus clients.
+        for name, ec in self.config["execution-clients"].items():
+            client = ExecutionClient(name, self, ec)
+            clients[name] = client
+
+        for name, cc in self.get("consensus-clients").items():
+            if cc.has("has-local-exectuion-client"):
+                clients[name] = ExecutionClient(
+                    name,
+                    self,
+                    self.config["consensus-clients"][name],
+                )
 
         return clients
 
@@ -473,6 +528,14 @@ class ETBConfig(GenericConfigurationEntry):
 
         return clients
 
+    def get_execution_bootnodes(self):
+        clients = {}
+        for name, eb in self.config["execution-bootnodes"].items():
+            client = ExecutionBootnodeClient(name, self, eb)
+            clients[name] = client
+
+        return clients
+
     def get_consensus_config(self, name):
         if name not in self.config["consensus-configs"]:
             raise Exception(f"no consensus-config: {name}")
@@ -487,6 +550,11 @@ class ETBConfig(GenericConfigurationEntry):
         if name not in self.config["consensus-bootnode-configs"]:
             raise Exception(f"no consensus-bootnode-config: {name}")
         return ConsensusBootnodeConfig(self.config["consensus-bootnode-configs"][name])
+
+    def get_execution_bootnode_config(self, name):
+        if name not in self.config["execution-bootnode-configs"]:
+            raise Exception(f"no execution-bootnode-config: {name}")
+        return ExecutionBootnodeConfig(self.config["execution-bootnode-configs"][name])
 
     def get_testnet_bootstrapper(self):
         clients = {}

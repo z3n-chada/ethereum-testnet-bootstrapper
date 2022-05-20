@@ -9,15 +9,12 @@ for var in "${env_vars[@]}" ; do
     fi
 done
 
+# lauch the execution client
 if [[ -n "$EXECUTION_LAUNCHER" ]]; then
     echo "Teku launching execution client: $EXECUTION_LAUNCHER"
     "$EXECUTION_LAUNCHER" &
 fi
 
-
-ADDITIONAL_BEACON_ARGS="--logging=$TEKU_DEBUG_LEVEL"
-
-# lauch the execution client
 
 while [ ! -f "$CONSENSUS_CHECKPOINT_FILE" ]; do
     sleep 1
@@ -30,18 +27,8 @@ done
 
 bootnode_enr=`cat $CONSENSUS_BOOTNODE_ENR_FILE`
 
-
-ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --validators-proposer-default-fee-recipient=0xA18Fd83a55A9BEdB96d66C24b768259eED183be3 --ee-jwt-secret-file=$JWT_SECRET_FILE"
-
-if [ -n "$EXECUTION_ENGINE_PORT" ]; then
-    ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --ee-endpoint=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_ENGINE_PORT" 
-else
-    ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --ee-endpoint=http://$HTTP_WEB3_IP_ADDR:$EXECUTION_AUTH_HTTP_PORT"
-fi
-
-echo "Teku launching with additional-args: $ADDITIONAL_BEACON_ARGS"
-
 teku \
+    --logging="$TEKU_DEBUG_LEVEL" \
     --network="$TESTNET_DIR/config.yaml" \
     --initial-state="$TESTNET_DIR/genesis.ssz" \
     --data-path="$NODE_DIR" \
@@ -68,5 +55,8 @@ teku \
     --rest-api-host-allowlist="*" \
     --data-storage-non-canonical-blocks-enabled=true \
     --validators-graffiti="teku-$IP_ADDR" \
-    --validator-keys="$NODE_DIR/keys:$NODE_DIR/secrets" $ADDITIONAL_BEACON_ARGS \
-    --validators-keystore-locking-enabled=false 
+    --validator-keys="$NODE_DIR/keys:$NODE_DIR/secrets" \
+    --validators-keystore-locking-enabled=false \
+    --ee-endpoint="http://$HTTP_WEB3_IP_ADDR:$EXECUTION_ENGINE_HTTP_PORT" \
+    --validators-proposer-default-fee-recipient=0xA18Fd83a55A9BEdB96d66C24b768259eED183be3 \
+    --ee-jwt-secret-file="$JWT_SECRET_FILE"

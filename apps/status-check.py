@@ -40,13 +40,14 @@ class TestnetStatusChecker(object):
     """
 
     def __init__(self, args):
-        # self.thapi = TestnetHealthAPI(self.etb_config)
-        # self.thapi.add_metric(GetUniqueHeads(), name="consensus-check")
         self.etb_config = ETBConfig(args.config)
         self.now = self.etb_config.get("bootstrap-genesis")
 
         self.etb_beacon_api = ETBConsensusBeaconAPI(
-            self.etb_config, non_error=True, timeout=args.beaconapi_timeout, retry_delay=1
+            self.etb_config,
+            non_error=True,
+            timeout=args.beaconapi_timeout,
+            retry_delay=1,
         )
         self.health_metric = UniqueConsensusHeads()
 
@@ -86,8 +87,7 @@ class TestnetStatusChecker(object):
     def update_health_metric(self):
         curr_check = 0
         while curr_check < self.number_of_checks:
-            unique_heads = self.health_metric.perform_metric(
-                self.etb_beacon_api)
+            unique_heads = self.health_metric.perform_metric(self.etb_beacon_api)
             if len(unique_heads.keys()) == 1:
                 return unique_heads
             curr_check += 1
@@ -103,25 +103,6 @@ class TestnetStatusChecker(object):
             return True
         print(f"{self.fail_prefix} : {self.health_metric}", flush=True)
         return False
-
-    # def perform_status_check(self, log_prefix):
-
-    # query = "/eth/v2/beacon/headers/head"
-    # client_heads = self.thapi.perform_metric("consensus-check")
-    # unique_resps = {}
-
-    # for name, response in client_heads.items():
-    #     if response in unique_resps:
-    #         unique_resps[response].append(name)
-    #     else:
-    #         unique_resps[response] = [name]
-
-    # num_heads = len(unique_resps.keys())
-    # if num_heads != 1:
-    #     print(f"{log_prefix}: Error, query={query}")
-    #     print(unique_resps, flush=True)
-    # else:
-    #     print(f"{log_prefix}: Consensus, query={query}", flush=True)
 
     def start_experiment(self):
         print(f"{self.log_prefix}: start_faults", flush=True)
@@ -187,27 +168,6 @@ class TestnetStatusChecker(object):
             print(f"{self.log_prefix}: Phase3 passed.", flush=True)
         else:
             print(f"{self.log_prefix}: Phase3 failed.", flush=True)
-        # for x in range(self.number_of_checks):
-        #     self.perform_status_check("genesis")
-        #     time.sleep(self.check_delay)
-
-        # self.wait_for_time("phase0", self.phase0_time)
-        # for x in range(self.number_of_checks):
-        #    self.perform_status_check("phase0")
-        #    time.sleep(self.check_delay)
-
-        # self.wait_for_time("experiment", self.exp_time)
-        # self.perform_experiment()
-
-        # self.wait_for_time("phase1", self.phase1_time)
-        # for x in range(self.number_of_checks):
-        #     self.perform_status_check("phase1")
-        #     time.sleep(self.check_delay)
-
-        # self.wait_for_time("phase2", self.phase2_time)
-        # for x in range(self.number_of_checks):
-        #     self.perform_status_check("phase2")
-        #     time.sleep(self.check_delay)
 
 
 if __name__ == "__main__":
@@ -304,10 +264,9 @@ if __name__ == "__main__":
         help="string to print if we fail phase0.",
     )
 
-
-    args=parser.parse_args()
+    args = parser.parse_args()
     time.sleep(30)  # TODO: use a checkpoint file.
-    status_checker=TestnetStatusChecker(args)
+    status_checker = TestnetStatusChecker(args)
     status_checker.start_status_checker()
 
     print(f"{status_checker.log_prefix}: workload_complete", flush=True)
