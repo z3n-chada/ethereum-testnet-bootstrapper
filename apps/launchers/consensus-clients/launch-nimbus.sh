@@ -52,4 +52,5 @@ nimbus_beacon_node \
     --jwt-secret="$JWT_SECRET_FILE" \
     --web3-url=ws://"$WS_WEB3_IP_ADDR:$EXECUTION_ENGINE_WS_PORT" \
     --terminal-total-difficulty-override="$TERMINAL_TOTAL_DIFFICULTY" \
+    --dump \
     --log-level="$NIMBUS_DEBUG_LEVEL"
