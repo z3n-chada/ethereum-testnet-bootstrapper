@@ -82,9 +82,6 @@ class ClientWriter(object):
 
         self.optional_execution_vars = [
             "jwt-secret-file",
-            "execution-auth-port",  # when both http/ws are the same.
-            "execution-auth-http-port",
-            "execution-auth-ws-port",
             "execution-engine-port",  # no auth both http/ws are the same.
             "execution-engine-http-port",
             "execution-engine-ws-port",
