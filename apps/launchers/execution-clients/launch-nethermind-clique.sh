@@ -14,7 +14,6 @@ while [ ! -f "$EXECUTION_CHECKPOINT_FILE" ]; do
     echo "Waiting on exeuction genesis"
 done
 
-# TODO: engine and jwt_secret_file
   # --JsonRpc.JwtSecretFile="$JWT_SECRET_FILE" \
   # --Sync.FastBlocks=true \
   # --Sync.FastSync=true \
