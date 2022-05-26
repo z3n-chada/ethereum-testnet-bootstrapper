@@ -24,7 +24,7 @@ done
 
 bootnode_enr=`cat $CONSENSUS_BOOTNODE_ENR_FILE`
 
-sleep 20
+sleep 50
 
 nimbus_beacon_node \
     --non-interactive \

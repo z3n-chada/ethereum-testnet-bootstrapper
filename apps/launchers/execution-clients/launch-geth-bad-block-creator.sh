@@ -62,11 +62,6 @@ geth init \
     --datadir "$EXECUTION_DATA_DIR" \
     "$GETH_GENESIS_FILE"
 
-#$if [ -n "$JWT_SECRET_FILE" ]; then
-#$    ADDITIONAL_ARGS="$ADDITIONAL_ARGS --authrpc.port=$EXECUTION_ENGINE_HTTP_PORT --authrpc.addr=0.0.0.0 --authrpc.jwtsecret=$JWT_SECRET_FILE"
-#$    echo "Geth is using JWT"
-#$fi
-
 if [ -n "$GETH_PASSWORD_FILE" ]; then
     echo "$ETH1_PASSPHRASE" > "$GETH_PASSWORD_FILE"
 fi
@@ -75,18 +70,13 @@ if [ -n "$CLIQUE_UNLOCK_KEY" ]; then
     ADDITIONAL_ARGS="$ADDITIONAL_ARGS --unlock=$CLIQUE_UNLOCK_KEY --password=/data/geth-account-passwords.txt"
 fi
 
-if [ -n "$IS_MINING" ]; then
-    if $IS_MINING; then
-        ADDITIONAL_ARGS="$ADDITIONAL_ARGS --mine"
-    fi
+if [ "$IS_MINING" = "true" ]; then
+    ADDITIONAL_ARGS="$ADDITIONAL_ARGS --mine"
 fi
 
-if [ -n "$TX_FUZZ_ENABLED" ]; then
-    if $TX_FUZZ_ENABLED; then
-        $TX_FUZZ_LAUNCHER &
-    fi
+if [ "$TX_FUZZ_ENABLED" = "true" ]; then
+    $TX_FUZZ_LAUNCHER &
 fi
-
 # geth is either the bootnode, or it should use the bootnode.
 if [ -n "$EXECUTION_BOOTNODE_PRIVATE_KEY" ]; then
     ADDITIONAL_ARGS="$ADDITIONAL_ARGS --nodekeyhex=$EXECUTION_BOOTNODE_PRIVATE_KEY"

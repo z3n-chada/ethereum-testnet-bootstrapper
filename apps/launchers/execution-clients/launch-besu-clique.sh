@@ -47,22 +47,7 @@ while [ ! -f "$EXECUTION_CHECKPOINT_FILE" ]; do
     echo "Waiting on exeuction genesis"
 done
 
-# if [ -n "$JWT_SECRET_FILE" ]; then
-#     echo "Besu is using JWT auth"
-#     ADDITIONAL_ARGS="$ADDITIONAL_ARGS --engine-jwt-enabled=true"
-#     # add the auth port for engine.
-#     ADDITIONAL_ARGS="$ADDITIONAL_ARGS --engine-rpc-http-port=$EXECUTION_ENGINE_HTTP_PORT --engine-rpc-ws-port=$EXECUTION_ENGINE_WS_PORT"
-# # else
-# #     echo "Besu is not using JWT auth"
-# #     ADDITIONAL_ARGS="$ADDITIONAL_ARGS --rpc-http-authentication-enabled=false --rpc-ws-authentication-enabled=false --engine-jwt-enabled=false"
-# #     ADDITIONAL_ARGS="$ADDITIONAL_ARGS --engine-rpc-http-port=$EXECUTION_ENGINE_HTTP_PORT --engine-rpc-ws-port=$EXECUTION_ENGINE_WS_PORT"
-# # fi
-# fi
-
-
-#echo "besu launching with additional args: $ADDITIONAL_ARGS"
-
-  #--discovery-enabled=false \
+#--discovery-enabled=false \
 
 besu \
   --logging="$EXECUTION_LOG_LEVEL" \

@@ -12,10 +12,6 @@ if [[ -n "$EXECUTION_LAUNCHER" ]]; then
     "$EXECUTION_LAUNCHER" &
 fi
 
-#ADDITIONAL_BEACON_ARGS="--log-file=$NODE_DIR/beacon.log" 
-#ADDITIONAL_VALIDATOR_ARGS="--log-file=$NODE_DIR/validator.log"
-
-
 while [ ! -f "$CONSENSUS_BOOTNODE_ENR_FILE" ]; do
     echo "waiting on bootnode"
     sleep 1
@@ -33,9 +29,6 @@ while [ ! -f "$CONSENSUS_CHECKPOINT_FILE" ]; do
     echo "waiting on consensus checkpoint file.."
     sleep 1
 done
-
-# echo "prysm launching with additional-beacon-args: $ADDITIONAL_BEACON_ARGS"
-# echo "prysm launching with additional-validator-args: $ADDITIONAL_VALIDATOR_ARGS"
 
   #--execution-provider="http://$HTTP_WEB3_IP_ADDR:$EXECUTION_ENGINE_HTTP_PORT" \
 beacon-chain \
