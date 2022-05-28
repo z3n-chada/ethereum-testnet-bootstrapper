@@ -48,13 +48,15 @@ while [ ! -f "$EXECUTION_CHECKPOINT_FILE" ]; do
 done
 
 #--discovery-enabled=false \
-
+#--discovery-dns-url="" \
+#--Xmerge-support=true \
+#--miner-coinbase="{{fee_recipient}}"
+#--sync-mode=FULL \
 besu \
   --logging="$EXECUTION_LOG_LEVEL" \
   --bootnodes="$EXECUTION_BOOTNODE" \
   --data-path="$EXECUTION_DATA_DIR" \
   --genesis-file="$BESU_GENESIS_FILE" \
-  --discovery-dns-url="" \
   --network-id="$NETWORK_ID" \
   --rpc-http-enabled=true --rpc-http-api="$HTTP_APIS" \
   --rpc-http-host=0.0.0.0 \
@@ -67,12 +69,11 @@ besu \
   --p2p-enabled=true \
   --p2p-host="$IP_ADDR" \
   --nat-method=DOCKER \
-  --sync-mode=FULL \
-  --engine-host-allowlist="*" \
-  --Xmerge-support=true \
+  --sync-mode=X_SNAP \
   --fast-sync-min-peers=1 \
   --p2p-port="$EXECUTION_P2P_PORT" \
-  --engine-jwt-enabled=true \
+  --engine-rpc-enabled=true \
+  --engine-jwt-enabled \
   --engine-jwt-secret="$JWT_SECRET_FILE" \
-  --engine-rpc-http-port="$EXECUTION_ENGINE_HTTP_PORT" \
-  --engine-rpc-ws-port="$EXECUTION_ENGINE_WS_PORT"
+  --engine-host-allowlist="*" \
+  --engine-rpc-port="$EXECUTION_ENGINE_HTTP_PORT" 
