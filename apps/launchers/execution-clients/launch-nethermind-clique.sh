@@ -33,6 +33,7 @@ done
 #     echo "Nethermind is not using JWT auth"
 #     ADDITIONAL_ARGS="$ADDITIONAL_ARGS --JsonRpc.AdditionalRpcUrls=http://localhost:$EXECUTION_ENGINE_HTTP_PORT|http|net;eth;subscribe;engine;web3;client;clique|no-auth,http://localhost:$EXECUTION_ENGINE_WS_PORT|ws|net;eth;subscribe;engine;web3;client|no-auth --JsonRpc.UnsecureDevNoRpcAuthentication=True"
 # fi
+# --Init.IsMining=true \
 echo "$EXECUTION_BOOTNODE" 
 echo "{}" > /tmp/nethermind.cfg
 nethermind \
@@ -40,7 +41,6 @@ nethermind \
   --config="/tmp/nethermind.cfg" \
   --datadir="$EXECUTION_DATA_DIR" \
   --Init.ChainSpecPath="$NETHER_MIND_GENESIS_FILE" \
-  --Init.IsMining=true \
   --Init.StoreReceipts=true \
   --Init.WebSocketsEnabled=true \
   --Init.EnableUnsecuredDevWallet=true \
