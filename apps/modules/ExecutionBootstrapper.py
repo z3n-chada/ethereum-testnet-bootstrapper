@@ -61,7 +61,9 @@ class ETBExecutionBootstrapper(object):
         for name, ec in self.etb_config.get("execution-clients").items():
             if ec.get("client") == "erigon":
                 for node in range(ec.get("num-nodes")):
-                    with open(f"{ec.get_execution_data_dir(node)}/nodekey.txt", "r") as f:
+                    with open(
+                        f"{ec.get_execution_data_dir(node)}/nodekey.txt", "r"
+                    ) as f:
                         nodekey = f.read()
                     cmd = [
                         "bootnode",
@@ -124,3 +126,8 @@ class ETBExecutionBootstrapper(object):
             json.dump(nethermind_genesis, f)
 
         # nethermind is picky..
+        # add erigon genesis for new fields for their genesis.
+        erigon_genesis_path = self.etb_config.get("erigon-genesis-file")
+        erigon_genesis = egw.create_erigon_genesis()
+        with open(erigon_genesis_path, "w") as f:
+            json.dump(erigon_genesis, f)

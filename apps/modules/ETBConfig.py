@@ -359,6 +359,7 @@ class ETBConfig(GenericConfigurationEntry):
             "files": [
                 "testnet-root",
                 "geth-genesis-file",
+                "erigon-genesis-file",
                 "besu-genesis-file",
                 "nether-mind-genesis-file",
                 "consensus-config-file",

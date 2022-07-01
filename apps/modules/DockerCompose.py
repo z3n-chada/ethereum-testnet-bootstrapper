@@ -64,6 +64,7 @@ class ClientWriter(object):
             "geth-genesis-file",
             "besu-genesis-file",
             "nether-mind-genesis-file",
+            "erigon-genesis-file",
             "end-fork-name",
             "execution-checkpoint-file",
             "execution-log-level",

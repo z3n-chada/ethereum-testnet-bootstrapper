@@ -13,8 +13,7 @@ env_vars=(
     "NETWORK_ID" 
     "END_FORK_NAME" 
     "EXECUTION_LOG_LEVEL"
-    "GETH_GENESIS_FILE" 
-    "GETH_EXECUTION_GENESIS"
+    "ERIGON_GENESIS_FILE" 
 )
 
 # OPTIONAL: 
@@ -61,7 +60,7 @@ echo "erigon using static peers: $static_nodes"
 echo "Initing the genesis"
 erigon init \
     --datadir "$EXECUTION_DATA_DIR" \
-    "$GETH_GENESIS_FILE"
+    "$ERIGON_GENESIS_FILE"
 
 
 if [ "$IS_MINING" = "true" ]; then
