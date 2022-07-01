@@ -50,7 +50,7 @@ nimbus_beacon_node \
     --doppelganger-detection=true \
     --bootstrap-node="$bootnode_enr" \
     --jwt-secret="$JWT_SECRET_FILE" \
-    --web3-url=ws://"$WS_WEB3_IP_ADDR:$EXECUTION_ENGINE_WS_PORT" \
+    --web3-url=http://"$HTTP_WEB3_IP_ADDR:$EXECUTION_ENGINE_HTTP_PORT" \
     --terminal-total-difficulty-override="$TERMINAL_TOTAL_DIFFICULTY" \
     --dump \
     --log-level="$NIMBUS_DEBUG_LEVEL"
