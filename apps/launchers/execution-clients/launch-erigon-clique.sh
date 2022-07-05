@@ -96,7 +96,6 @@ erigon \
   --ws \
   --allow-insecure-unlock \
   --netrestrict="$NETRESTRICT_RANGE" \
-  --syncmode=full \
   --prune=htrc \
   --engine.port="$EXECUTION_ENGINE_HTTP_PORT" \
   --engine.addr=0.0.0.0 \
