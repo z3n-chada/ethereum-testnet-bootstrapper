@@ -52,7 +52,9 @@ beacon-chain \
   --force-clear-db \
   --jwt-secret="$JWT_SECRET_FILE" \
   --http-web3provider="http://$HTTP_WEB3_IP_ADDR:$EXECUTION_ENGINE_HTTP_PORT" \
-  --min-sync-peers 1 &
+  --min-sync-peers 1 \
+  --enable-forkchoice-doubly-linked-tree \
+  --enable-vectorized-htr &
 
 sleep 10
 
