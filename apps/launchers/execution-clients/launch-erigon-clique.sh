@@ -101,5 +101,4 @@ erigon \
   --engine.port="$EXECUTION_ENGINE_HTTP_PORT" \
   --engine.addr=0.0.0.0 \
   --authrpc.jwtsecret="$JWT_SECRET_FILE" \
-  --staticpeers="$static_nodes" \
-  --override.terminaltotaldifficulty="$TERMINAL_TOTAL_DIFFICULTY" $ADDITIONAL_ARGS
+  --staticpeers="$static_nodes" $ADDITIONAL_ARGS
