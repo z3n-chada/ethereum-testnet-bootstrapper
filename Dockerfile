@@ -5,9 +5,11 @@ WORKDIR /git
 RUN git clone https://github.com/skylenet/eth2-testnet-genesis.git \
     && cd eth2-testnet-genesis && git checkout faster-validator-creation \
     && go install . \
-    && go install github.com/protolambda/eth2-val-tools@latest \
     && go install github.com/wealdtech/ethereal/v2@latest \
     && go install github.com/protolambda/eth2-bootnode@latest 
+
+RUN git clone https://github.com/z3n-chada/eth2-val-tools.git \
+    && cd eth2-val-tools && go install ./...
 
 RUN git clone https://github.com/ethereum/go-ethereum.git \
     && cd go-ethereum && git checkout master \
