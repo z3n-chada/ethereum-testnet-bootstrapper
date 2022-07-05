@@ -25,6 +25,9 @@ done
 bootnode_enr=`cat $CONSENSUS_BOOTNODE_ENR_FILE`
 
 sleep 50
+# 
+#     --rpc \
+#     --rpc-address="0.0.0.0" --rpc-port="$BEACON_RPC_PORT" \
 
 nimbus_beacon_node \
     --non-interactive \
@@ -33,8 +36,6 @@ nimbus_beacon_node \
     --network="$TESTNET_DIR" \
     --secrets-dir="$NODE_DIR/secrets" \
     --validators-dir="$NODE_DIR/keys" \
-    --rpc \
-    --rpc-address="0.0.0.0" --rpc-port="$BEACON_RPC_PORT" \
     --rest \
     --rest-address="0.0.0.0" --rest-port="$BEACON_API_PORT" \
     --listen-address="$IP_ADDR" \
