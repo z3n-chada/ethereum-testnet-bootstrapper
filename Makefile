@@ -14,6 +14,9 @@ init-bootstrapper:
 write-docker-compose:
 	docker run -it -v $(shell pwd)/:/source/ -v $(shell pwd)/data/:/data ethereum-testnet-bootstrapper --config $(config) --write-docker-compose
 
+build-dockers:
+	cd etb-dockers && ./build_dockers.sh
+
 clean:
 	docker run -it -v $(shell pwd)/:/source/ -v $(shell pwd)/data/:/data ethereum-testnet-bootstrapper --config $(config) --clear-last-run
 	rm docker-compose.yaml
