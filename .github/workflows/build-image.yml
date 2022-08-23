@@ -27,5 +27,5 @@ jobs:
               timeout-minutes: 500
               run: |
                   cd etb-dockers && ./build_dockers.sh
-                  docker tag etb-all-clients:latest-inst ${ANTITHESIS_SERVER}/${REPOSITORY}/${IMAGE_NAME}:${TAG}
+                  docker tag etb-all-clients:inst ${ANTITHESIS_SERVER}/${REPOSITORY}/${IMAGE_NAME}:${TAG}
                   docker push ${ANTITHESIS_SERVER}/${REPOSITORY}/${IMAGE_NAME}:${TAG}
