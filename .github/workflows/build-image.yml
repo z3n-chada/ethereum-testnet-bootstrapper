@@ -18,6 +18,8 @@ jobs:
         runs-on: self-hosted
         steps:
             - uses: actions/checkout@v3
+              with:
+                submodules: true
             - name: Dockerhub login
               run: |
                   echo "${ANTITHESIS_LOGIN_FILE}" | docker login -u _json_key https://${ANTITHESIS_SERVER} --password-stdin
