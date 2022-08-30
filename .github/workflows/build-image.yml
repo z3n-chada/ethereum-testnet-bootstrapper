@@ -1,0 +1,31 @@
+name: docker antithesis
+
+on:
+  workflow_dispatch:
+  schedule:
+      # Runs daily at 00:00 (see https://crontab.guru/#0_0_*_*_*)
+    - cron: '0 0 * * *'
+
+env:
+    ANTITHESIS_LOGIN_FILE: ${{ secrets.ANTITHESIS_LOGIN_FILE }}
+    ANTITHESIS_SERVER: us-central1-docker.pkg.dev/molten-verve-216720
+    REPOSITORY: ethereum-repository
+    IMAGE_NAME: etb-all-clients
+    TAG: inst
+
+jobs:
+    build_etb_all_clients:
+        runs-on: self-hosted
+        steps:
+            - uses: actions/checkout@v3
+              with:
+                submodules: true
+            - name: Dockerhub login
+              run: |
+                  echo "${ANTITHESIS_LOGIN_FILE}" | docker login -u _json_key https://${ANTITHESIS_SERVER} --password-stdin
+            - name: Build and push etb-all-clients image
+              timeout-minutes: 500
+              run: |
+                  cd etb-dockers && ./build_dockers.sh
+                  docker tag etb-all-clients:inst ${ANTITHESIS_SERVER}/${REPOSITORY}/${IMAGE_NAME}:${TAG}
+                  docker push ${ANTITHESIS_SERVER}/${REPOSITORY}/${IMAGE_NAME}:${TAG}
