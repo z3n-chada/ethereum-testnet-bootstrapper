@@ -56,7 +56,6 @@ nethermind \
   --Network.P2PPort="$EXECUTION_P2P_PORT" \
   --Network.Bootnodes="$EXECUTION_BOOTNODE" \
   --Merge.Enabled=true \
-  --Merge.FeeRecipient="0xf97e180c050e5Ab072211Ad2C213Eb5AEE4DF134" \
   --Merge.TerminalTotalDifficulty="$TERMINAL_TOTAL_DIFFICULTY" \
   --JsonRpc.JwtSecretFile=$JWT_SECRET_FILE \
   --JsonRpc.AdditionalRpcUrls="http://localhost:$EXECUTION_ENGINE_HTTP_PORT|http|net;eth;subscribe;engine;web3;client;clique,http://localhost:$EXECUTION_ENGINE_WS_PORT|ws|net;eth;subscribe;engine;web3;client"

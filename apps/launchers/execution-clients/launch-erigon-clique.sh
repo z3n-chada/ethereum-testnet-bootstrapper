@@ -83,6 +83,8 @@ fi
 
 echo "Starting erigon with additional args: $ADDITIONAL_ARGS"
 
+echo "execution engine port: $EXECUTION_ENGINE_HTTP_PORT"
+
 erigon \
   --datadir="$EXECUTION_DATA_DIR" \
   --discovery.dns="" \
@@ -97,7 +99,7 @@ erigon \
   --allow-insecure-unlock \
   --netrestrict="$NETRESTRICT_RANGE" \
   --prune=htrc \
-  --engine.port="$EXECUTION_ENGINE_HTTP_PORT" \
-  --engine.addr=0.0.0.0 \
+  --authrpc.port="$EXECUTION_ENGINE_HTTP_PORT" \
+  --authrpc.addr=0.0.0.0 \
   --authrpc.jwtsecret="$JWT_SECRET_FILE" \
   --staticpeers="$static_nodes" $ADDITIONAL_ARGS
