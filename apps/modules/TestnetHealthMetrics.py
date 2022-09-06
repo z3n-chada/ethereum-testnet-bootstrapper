@@ -25,6 +25,20 @@ class TestnetHealthMetric(object):
             return f"{self.metric_name}: {self.result}"
 
     def perform_metric(self, etb_api):
+        """
+        Concrete implementations should override this method to use the provided ETB API
+        to generate the relevant metric.
+
+        Implementors should take care to set the following properties:
+        1. last_run (a datetime)
+        2. result
+
+        The expectation is that the implementation will cache the result of the ETB API call
+        in self.result, refreshing that if the delta between the current time and the last_run is
+        over some cache threshold.
+
+        Implementors should return the metric value.
+        """
         raise Exception("perform_metric must be overridden")
 
 
@@ -44,20 +58,23 @@ class UniqueConsensusHeads(TestnetHealthMetric):
             self.request_obj, all_clients=True
         ).items():
             if response is not None:
-                slot = response.json()["data"]["message"]["slot"]
-                state_root = response.json()["data"]["message"]["state_root"]
                 try:
-                    graffiti_hex = response.json()["data"]["message"]["body"][
-                        "graffiti"
-                    ]
-                    graffiti = (
-                        bytes.fromhex(graffiti_hex[2:])
-                        .decode("utf-8")
-                        .replace("\x00", "")
-                    )
-                except:
-                    graffiti = "Error Parsing Graffiti"
-                all_responses[name] = (slot, state_root, graffiti)
+                    slot = response.json()["data"]["message"]["slot"]
+                    state_root = response.json()["data"]["message"]["state_root"]
+                    try:
+                        graffiti_hex = response.json()["data"]["message"]["body"][
+                            "graffiti"
+                        ]
+                        graffiti = (
+                            bytes.fromhex(graffiti_hex[2:])
+                            .decode("utf-8")
+                            .replace("\x00", "")
+                        )
+                    except:
+                        graffiti = "Error Parsing Graffiti"
+                    all_responses[name] = (slot, state_root, graffiti)
+                except KeyError as e:
+                    print(f"ERROR: API response data did not match expected JSON structure: {e}; content={response.text}", flush=True)
             else:
                 all_responses[name] = (-1, -1, "host-unreachable")
         # parse all the responses to get unique heads.
@@ -68,13 +85,14 @@ class UniqueConsensusHeads(TestnetHealthMetric):
             else:
                 unique_resps[response] = [name]
 
-        num_heads = len(unique_resps.keys())
+        self.result = unique_resps
+        # num_heads = len(unique_resps.keys())
 
-        if num_heads != 1:
-            self.result = f"found {num_heads-1} forks: {unique_resps}"
-        else:
-            slot, state_root, graffiti = list(unique_resps.keys())[0]
-            self.result = f"found {num_heads-1} forks: {slot}:{state_root}:{graffiti}"
+        # if num_heads != 1:
+        #     self.result = f"found {num_heads-1} forks: {unique_resps}"
+        # else:
+        #     slot, state_root, graffiti = list(unique_resps.keys())[0]
+        #     self.result = f"found {num_heads-1} forks: {slot}:{state_root}:{graffiti}"
 
         return unique_resps
 

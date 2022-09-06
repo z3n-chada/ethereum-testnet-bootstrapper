@@ -15,7 +15,7 @@ class RPCMethod(object):
     A generic method that we can send and receive.
     """
 
-    def __init__(self, method, params, _id=1, timeout=5):
+    def __init__(self, method, params, _id=1, timeout=30):
         self.payload = {
             "method": method,
             "params": params,
@@ -25,44 +25,40 @@ class RPCMethod(object):
         self.timeout = timeout
 
     def get_response(self, url):
-        start = int(time.time())
-        to = self.timeout
-        while time.time() - start < to:
-            try:
-                response = requests.post(url, json=self.payload, timeout=to)
-                return response
-
-            except requests.ConnectionError:
-                # odds are the bootstrapper is trying to connect to a client
-                # that is not up already.
-                print(
-                    f"{url}: {self.payload}: getting requests.ConnectionError",
-                    flush=True,
-                )
-                # time.sleep(1)  # should we just return None?
-                return None
-            except requests.Timeout as e:
-                # actually timed out.
-                raise e
+        try:
+            response = requests.post(url, json=self.payload, timeout=self.timeout)
+            return response
+        except requests.ConnectionError:
+            # odds are the bootstrapper is trying to connect to a client
+            # that is not up already.
+            print(
+                f"{url}: {self.payload}: getting requests.ConnectionError",
+                flush=True,
+            )
+            return None
+        except requests.Timeout as e:
+            # actually timed out.
+            # raise e
+            return None
 
 
 class eth_get_block_RPC(RPCMethod):
-    def __init__(self, blk="latest", _id=1, timeout=5):
+    def __init__(self, blk="latest", _id=1, timeout=30):
         super().__init__("eth_getBlockByNumber", [blk, True], _id, timeout)
 
 
 class admin_node_info_RPC(RPCMethod):
-    def __init__(self, _id=1, timeout=5):
+    def __init__(self, _id=1, timeout=30):
         super().__init__("admin_nodeInfo", [], _id, timeout)
 
 
 class admin_add_peer_RPC(RPCMethod):
-    def __init__(self, enode, _id=1, timeout=5):
+    def __init__(self, enode, _id=1, timeout=30):
         super().__init__("admin_addPeer", [enode], _id, timeout)
 
 
 class admin_peers_RPC(RPCMethod):
-    def __init__(self, _id=1, timeout=5):
+    def __init__(self, _id=1, timeout=30):
         super().__init__("admin_peers", [], _id, timeout)
 
 
@@ -71,26 +67,24 @@ class ExecutionJSONRPC(object):
     A client that represents a single execution endpoint to interact with.
     """
 
-    def __init__(self, endpoint_url, non_error=True, timeout=5, retry_delay=1):
+    def __init__(self, endpoint_url, non_error=True, timeout=30, retry_delay=3):
         self.endpoint_url = endpoint_url
         self.non_error = non_error
         self.timeout = timeout
+        self.retry_attempts = 5
         self.retry_delay = retry_delay
 
     def _is_valid_response(self, response):
         if response is None:
             return False
-        if response.status_code == 200:
-            if "error" not in response.json():
-                return True
+        return response.status_code == 200 and "error" not in response.json()
 
     def get_rpc_response(self, rpc):
-        start = int(time.time())
-        while int(time.time()) <= start + self.timeout:
+        for retry_attempt in range(0, self.retry_attempts):
             response = rpc.get_response(self.endpoint_url)
             if self._is_valid_response(response):
                 return response.json()
-            time.sleep(self.retry_delay)
+            time.sleep(self.retry_delay ** retry_attempt)
         return None
 
 
@@ -101,7 +95,7 @@ class ETBExecutionRPC(object):
     """
 
     def __init__(
-        self, etb_config, non_error=True, timeout=5, retry_delay=1, protocol="http"
+        self, etb_config, non_error=True, timeout=30, retry_delay=2, protocol="http"
     ):
         self.etb_config = etb_config
         self.non_error = non_error
@@ -161,7 +155,7 @@ class ETBExecutionRPC(object):
         threadpool_endpoints = [self.execution_endpoints[name] for name in ep]
         threadpool_buckets = [name for name in ep]
 
-        with ThreadPoolExecutor(max_workers=len(ep)) as executor:
+        with ThreadPoolExecutor(max_workers=3) as executor:
             results = executor.map(
                 _threadpool_executor_rpc_request_proxy,
                 threadpool_buckets,
@@ -181,7 +175,7 @@ class ETBExecutionRPC(object):
 if __name__ == "__main__":
     from ETBConfig import ETBConfig
 
-    etb_rpc = ETBExecutionRPC(ETBConfig("configs/mainnet/testing.yaml"), timeout=2)
+    etb_rpc = ETBExecutionRPC(ETBConfig("configs/mainnet/testing.yaml"), timeout=30)
 
     # node_info = etb_rpc.do_rpc_request(admin_node_info_RPC(_id=2), all_clients=True)
     # print(node_info)
