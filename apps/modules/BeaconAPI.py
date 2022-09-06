@@ -21,7 +21,7 @@ import requests
 
 
 class APIRequest(object):
-    def __init__(self, path, timeout=5):
+    def __init__(self, path, timeout=60):
         self.path = path
         self.timeout = timeout
         self.error = None  # defined by inheritance.
@@ -47,7 +47,7 @@ class APIRequest(object):
 
 
 class BeaconGetBlock(APIRequest):
-    def __init__(self, block, timeout=5):
+    def __init__(self, block, timeout=60):
         super().__init__(f"/eth/v2/beacon/blocks/{block}", timeout=timeout)
 
 
@@ -69,7 +69,7 @@ class BeaconAPI(object):
     timeout issues.
     """
 
-    def __init__(self, base_url, non_error=True, timeout=5, retry_delay=1):
+    def __init__(self, base_url, non_error=True, timeout=60, retry_delay=1):
         self.base_url = base_url
         self.non_error = non_error
         self.timeout = timeout
@@ -77,6 +77,7 @@ class BeaconAPI(object):
 
     def get_api_response(self, api_request):
         start = int(time.time())
+        response = None
         while time.time() - start < self.timeout:
             response = api_request.get_response(self.base_url)
             if response is not None:
@@ -92,7 +93,7 @@ class BeaconAPI(object):
 
 
 class ETBConsensusBeaconAPI(object):
-    def __init__(self, etb_config, non_error=True, timeout=5, retry_delay=4):
+    def __init__(self, etb_config, non_error=True, timeout=60, retry_delay=4):
         self.etb_config = etb_config
         self.timeout = timeout
         self.retry_delay = retry_delay
