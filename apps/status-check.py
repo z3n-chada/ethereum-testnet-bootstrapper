@@ -26,8 +26,6 @@ from modules.ETBConfig import ETBConfig
 from modules.TestnetHealthMetrics import UniqueConsensusHeads
 
 
-
-
 class TestnetStatusChecker(object):
     """
     Status Checker checks the network at important intervals and outputs
@@ -87,28 +85,24 @@ class TestnetStatusChecker(object):
         self.terminate_experiment_string = args.terminate_experiment_string
 
     def update_health_metric(self):
-        """
-        Update the configured metric, calling the metric multiple times if necessary.
-
-        Returns the list of unique heads.
-        """
         curr_check = 0
-        unique_heads = {}
         while curr_check < self.number_of_checks:
             unique_heads = self.health_metric.perform_metric(self.etb_beacon_api)
-            if len(self.health_metric.result) == 1:
-                break
+            if len(unique_heads.keys()) == 1:
+                return unique_heads
             curr_check += 1
             time.sleep(self.check_delay)
         return unique_heads
 
-    def _test_for_one_head_block(self, unique_heads)-> tuple[bool, str]:
-        unique_heads = [r for r in unique_heads if r[0] != "na"]
-        num_heads = len(unique_heads)
-        if num_heads == 1:
-            slot, state_root, graffiti = unique_heads[0]
-            return (True, f"found no forks: {slot}:{state_root}:{graffiti}")
-        return (False, f"found {num_heads-1} forks: {unique_heads}")
+    def testnet_healthy(self):
+        curr_check = 0
+
+        unique_heads = self.update_health_metric()
+        if len(unique_heads.keys()) == 1:
+            print(f"{self.pass_prefix} : {self.health_metric}", flush=True)
+            return True
+        print(f"{self.fail_prefix} : {self.health_metric}", flush=True)
+        return False
 
     def start_experiment(self):
         print(f"{self.log_prefix}: start_faults", flush=True)
@@ -117,7 +111,7 @@ class TestnetStatusChecker(object):
     def stop_experiment(self):
         print(f"{self.log_prefix}: stop_faults", flush=True)
 
-    def wait_until(self, log_prefix: str, t: int, do_check_heads: bool = False):
+    def wait_until(self, log_prefix, t, do_check_heads=False):
         """
         Wait in units of secs_per_slot, unless the time left is less than
         that.
@@ -128,69 +122,39 @@ class TestnetStatusChecker(object):
             now = int(time.time())
             time_left = t - now
             print(
-                f"status-check: {log_prefix}: {time_left} seconds remain",
+                f"status-check: {log_prefix}.. {time_left} seconds remain",
                 flush=True,
             )
             if time_left > self.secs_per_eth2_slot:
+                wait_time = self.secs_per_eth2_slot
                 if do_check_heads:
-                    _, msg = self._test_for_one_head_block(self.update_health_metric())
-                    print(f"status-check: {log_prefix}: {msg}", flush=True)
+                    self.update_health_metric()
+                    print(self.health_metric.__repr__(), flush=True)
                     # accomodate the time it took to run metric.
                     skew = int(time.time()) - now
                     skew_wait = self.secs_per_eth2_slot - skew
                     if skew_wait > 0:
                         time.sleep(skew_wait)
                 else:
-                    time.sleep(self.secs_per_eth2_slot)
+                    time.sleep(wait_time)
+
             else:
                 time.sleep(1)
 
-    def check_until(self, t: int, exit_early: bool = False) -> tuple[bool, str]:
-        """
-        Perform periodic health checks until the given time has elapsed. If the exit_early flag is set,
-        the method returns as soon as the health check passes.
-
-        Implementation tries to perform health checks on on the same frequency as slots change.
-
-        Returns a boolean indicating whether the last health check passed.
-        Note: if you specify exit_early, this should always return True by definition.
-        """
-        result = (False, "No message")
-        while True:
-            now = int(time.time())
-            time_left = t - now
-            if time_left > 0:
-                print(
-                    f"status-check: {time_left} seconds remain",
-                    flush=True,
-                )
-                if time_left > self.secs_per_eth2_slot:
-                    result = self._test_for_one_head_block(self.update_health_metric())
-                    if result[0] and exit_early:
-                        break
-                    else:
-                        skew = int(time.time()) - now
-                        skew_wait = self.secs_per_eth2_slot - skew
-                        if skew_wait > 0:
-                            time.sleep(skew_wait)
-                else:
-                    time.sleep(time_left) # see out the remaining time
-                    break
-            else:
-                break
-        return result
-
-
     def start_status_checker(self):
+
         self.wait_until("genesis", int(self.genesis_time))
         print(f"{self.log_prefix}: Consensus Genesis Occured", flush=True)
 
         # wait until phase0 to ensure all is working.
         self.wait_until("phase0", self.phase0_time, do_check_heads=True)
-        healthy, msg = self._test_for_one_head_block(self.update_health_metric())
-        print(f"{self.log_prefix}: Phase0 {self.pass_prefix if healthy else self.fail_prefix}. {msg}", flush=True)
-        # 2022-05-06: MLE| removing the terminate at phase 0
-        # print(f"{self.log_prefix}: terminate")
+        if self.testnet_healthy():
+            print(f"{self.log_prefix}: Phase0 passed.", flush=True)
+            print(f"{self.health_metric.__repr__()}", flush=True)
+        else:
+            print(f"{self.log_prefix}: Phase0 failed.", flush=True)
+            print(f"{self.health_metric.__repr__()}", flush=True)
+            print(f"{self.log_prefix}: terminate")
 
         self.wait_until("phase1", self.phase1_time, do_check_heads=True)
         self.start_experiment()
@@ -199,12 +163,16 @@ class TestnetStatusChecker(object):
         self.stop_experiment()
         print(f"{self.log_prefix}: Phase2 elapsed", flush=True)
 
-        # self.wait_until("phase3", self.phase3_time, do_check_heads=True)
-        result, msg = self.check_until(self.phase3_time, exit_early=True)
-        print(f"status-check: phase3 {self.pass_prefix if result else self.fail_prefix}: {msg}", flush=True)
+        self.wait_until("phase3", self.phase3_time, do_check_heads=True)
+        if self.testnet_healthy():
+            print(f"{self.log_prefix}: Phase3 passed.", flush=True)
+        else:
+            print(f"{self.log_prefix}: Phase3 failed.", flush=True)
+
 
 if __name__ == "__main__":
     import argparse
+    import time
 
     parser = argparse.ArgumentParser()
 
@@ -296,10 +264,9 @@ if __name__ == "__main__":
         help="string to print if we fail phase0.",
     )
 
-
-    args=parser.parse_args()
+    args = parser.parse_args()
     time.sleep(30)  # TODO: use a checkpoint file.
-    status_checker=TestnetStatusChecker(args)
+    status_checker = TestnetStatusChecker(args)
     status_checker.start_status_checker()
 
     print(f"{status_checker.log_prefix}: workload_complete", flush=True)
