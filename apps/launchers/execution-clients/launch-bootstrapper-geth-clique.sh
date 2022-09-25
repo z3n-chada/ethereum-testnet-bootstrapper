@@ -2,32 +2,6 @@
 
 # this file is run in the geth docker via docker-compose entrypoint. 
 
-# args are: <data_dir> <generated_genesis.json> <network_id> <http_port> <http_apis> <ws_port> <ws_apis>
-
-#CHAIN_ID: 16778854,
-#END_FORK_NAME: bellatrix,
-#EXECUTION_DATA_DIR: /data/local_testnet/execution-bootstrapper,
-#EXECUTION_ENGINE_PORT: 8647, 
-#EXECUTION_HTTP_PORT: 8645, 
-#EXECUTION_P2P_PORT: 666,
-#EXECUTION_WS_PORT: 8646, 
-#GETH_GENESIS_FILE: /data/geth-genesis.json, 
-#HTTP_APIS: 'admin,net,eth,web3,personal,engine',
-#IP_ADDR: 10.0.20.2
-#NETRESTRICT_RANGE: 10.0.20.0/24
-#NETWORK_ID: 16778854,
-#TERMINAL_TOTAL_DIFFICULTY: 256,
-#WS_APIS: 'admin,net,eth,web3,personal,engine'
-
-env_vars=( "EXECUTION_DATA_DIR" "GETH_GENESIS_FILE" "NETWORK_ID" "EXECUTION_P2P_PORT" "EXECUTION_HTTP_PORT" "EXECUTION_WS_PORT" "HTTP_APIS" "WS_APIS" "IP_ADDR" "NETRESTRICT_RANGE" "END_FORK_NAME" "EXECUTION_LOG_LEVEL")
-
-for var in "${env_vars[@]}" ; do
-    if [[ -z "$var" ]]; then
-        echo "$var not set"
-        exit 1
-    fi
-done
-
 while [ ! -f "$EXECUTION_CHECKPOINT_FILE" ]; do
     sleep 1
     echo "Waiting on exeuction genesis"
@@ -51,13 +25,14 @@ else
     echo "if you are trying to test a merge configuration check that the config file is sane"
 fi 
 
-echo "testnet-password" > /data/geth-account-passwords.txt
 
-
-echo "Initing the genesis"
-geth init \
-    --datadir "$EXECUTION_DATA_DIR" \
-    "$GETH_GENESIS_FILE"
+if [ ! -f "/data/testnet-resumable" ]; then
+    echo "Initing the genesis"
+    geth init \
+        --datadir "$EXECUTION_DATA_DIR" \
+        "$GETH_GENESIS_FILE"
+    echo "testnet-password" > /data/geth-account-passwords.txt
+fi
 
 #while [ ! -f "$EXECUTION_BOOTNODE_ENODE_FILE" ]; 
 #do sleep 1

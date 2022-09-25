@@ -1,14 +1,5 @@
 #!/bin/bash
 
-env_vars=( "PRESET_BASE", "START_FORK_NAME", "END_FORK_NAME", "LODESTAR_DEBUG_LEVEL", "TESTNET_DIR", "NODE_DIR", "HTTP_WEB3_IP_ADDR", "IP_ADDR", "CONSENSUS_P2P_PORT", "BEACON_METRIC_PORT", "BEACON_RPC_PORT", "BEACON_API_PORT", "VALIDATOR_METRIC_PORT", "GRAFFITI", "NETRESTRICT_RANGE" , "EXECUTION_HTTP_PORT", "TOTALTERMINALDIFFICULTY", "CONSENSUS_TARGET_PEERS", "VALIDATOR_RPC_PORT", "CONSENSUS_BOOTNODE_ENR_FILE", "CONSENSUS_CHECKPOINT_FILE", "LSTAR_DEBUG_LEVEL")
-
-for var in "${env_vars[@]}" ; do
-    if [[ -z "$var" ]]; then
-        echo "$var not set"
-        exit 1
-    fi
-done
-
 # launch the local exectuion client
 if [[ -n "$EXECUTION_LAUNCHER" ]]; then
     echo "lodestar-$IP_ADDR lauching a local execution client"
@@ -28,6 +19,15 @@ done
 
 bootnode_enr=`cat $CONSENSUS_BOOTNODE_ENR_FILE`
 echo $bootnode_enr
+
+if [ -f "/data/testnet-resumable" ]; then
+    echo "Removing old locks."
+    # unstable
+    rm -rf "$NODE_DIR"/keys/*/voting-keystore.json.lock
+    # stable
+    rm -rf "$NODE_DIR"/keys/*.lock
+    rm -rf "NODE_DIR"/validator*
+fi
 
 lodestar beacon \
     --rootDir="$NODE_DIR" \

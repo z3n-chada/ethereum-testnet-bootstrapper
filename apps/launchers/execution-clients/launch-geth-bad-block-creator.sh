@@ -1,49 +1,5 @@
 #!/bin/bash
 
-#"BOOTNODE_ENR" 
-env_vars=( 
-    "EXECUTION_CHECKPOINT_FILE"
-    "IP_ADDR" 
-    "EXECUTION_DATA_DIR" 
-    "EXECUTION_HTTP_PORT" 
-    "EXECUTION_WS_PORT" 
-    "EXECUTION_P2P_PORT" 
-    "HTTP_APIS" 
-    "WS_APIS" 
-    "NETWORK_ID" 
-    "END_FORK_NAME" 
-    "EXECUTION_LOG_LEVEL"
-    "GETH_GENESIS_FILE" 
-    "GETH_EXECUTION_GENESIS"
-)
-
-# OPTIONAL: 
-    # TERMINAL_TOTAL_DIFFICULTY
-    # EXECUTION_HTTP_ENGINE_PORT
-    # EXECUTION_WS_ENGINE_PORT
-    # EXECUTION_HTTP_AUTH_ENGINE_PORT
-    # EXECUTION_WS_AUTH_ENGINE_PORT
-    # EXECUTION_HTTP_AUTH_PORT
-    # EXECUTION_WS_AUTH__PORT
-    # JWT_SECRET_FILE
-    # TX_FUZZ_ENABLED
-    # NETRESTRICT_RANGE
-    # MAX_PEERS
-    ###For the bootstrapper###
-    # GETH_PASSWORD_FILE
-    # CLIQUE_UNLOCK_KEY
-    # IS_MINING
-    # ETH1_PASSPHRASE
-
-
-
-for var in "${env_vars[@]}" ; do
-    if [[ -z "$var" ]]; then
-        echo "$var not set"
-        exit 1
-    fi
-done
-
 echo "geth got a valid env-var set"
 
 ADDITIONAL_ARGS="--verbosity=$EXECUTION_LOG_LEVEL"
@@ -56,14 +12,14 @@ while [ ! -f "/data/execution-clients-ready" ]; do
 done
 
 echo "Detected execution genesis"
-
-echo "Initing the genesis"
-geth init \
-    --datadir "$EXECUTION_DATA_DIR" \
-    "$GETH_GENESIS_FILE"
-
-if [ -n "$GETH_PASSWORD_FILE" ]; then
-    echo "$ETH1_PASSPHRASE" > "$GETH_PASSWORD_FILE"
+if [ ! -f "/data/testnet-resumable" ]; then
+    echo "Initing the genesis"
+    geth init \
+        --datadir "$EXECUTION_DATA_DIR" \
+        "$GETH_GENESIS_FILE"
+    if [ -n "$GETH_PASSWORD_FILE" ]; then
+        echo "$ETH1_PASSPHRASE" > "$GETH_PASSWORD_FILE"
+    fi
 fi
 
 if [ -n "$CLIQUE_UNLOCK_KEY" ]; then

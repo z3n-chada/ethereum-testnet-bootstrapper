@@ -1,14 +1,4 @@
 #!/bin/bash
-
-env_vars=( "PRESET_BASE", "START_FORK_NAME", "END_FORK_NAME", "DEBUG_LEVEL", "TESTNET_DIR", "NODE_DIR", "HTTP_WEB3_IP_ADDR", "IP_ADDR", "CONSENSUS_P2P_PORT", "BEACON_METRIC_PORT", "BEACON_RPC_PORT", "BEACON_API_PORT", "VALIDATOR_METRIC_PORT", "GRAFFITI", "NETRESTRICT_RANGE" , "EXECUTION_HTTP_PORT", "TERMINAL_TOTAL_DIFFICULTY", "CONSENSUS_BOOTNODE_ENR_FILE" "CONSENSUS_CHECKPOINT_FILE", "BESU_GENESIS_FILE", "GETH_GENESIS_FILE", "NETHERMIND_GENESIS_FILE" )
-
-for var in "${env_vars[@]}" ; do
-    if [[ -z "$var" ]]; then
-        echo "$var not set"
-        exit 1
-    fi
-done
-
 if [[ -n "$EXECUTION_LAUNCHER" ]]; then
     "$EXECUTION_LAUNCHER" &
 fi
@@ -25,9 +15,6 @@ done
 bootnode_enr=`cat $CONSENSUS_BOOTNODE_ENR_FILE`
 
 sleep 50
-# 
-#     --rpc \
-#     --rpc-address="0.0.0.0" --rpc-port="$BEACON_RPC_PORT" \
 
 nimbus_beacon_node \
     --non-interactive \

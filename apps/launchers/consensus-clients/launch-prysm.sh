@@ -1,12 +1,4 @@
 #!/bin/bash 
-env_vars=( "PRESET_BASE", "START_FORK_NAME", "END_FORK_NAME", "DEBUG_LEVEL", "TESTNET_DIR", "NODE_DIR", "HTTP_WEB3_IP_ADDR", "IP_ADDR", "CONSENSUS_P2P_PORT", "BEACON_METRIC_PORT", "BEACON_RPC_PORT", "BEACON_API_PORT", "VALIDATOR_METRIC_PORT", "GRAFFITI", "NETRESTRICT_RANGE" , "EXECUTION_HTTP_PORT", "CONSENSUS_CHECKPOINT_FILE", "CONSENSUS_BOOTNODE_ENR_FILE", "CONSENSUS_TARGET_PEERS")
-
-for var in "${env_vars[@]}" ; do
-    if [[ -z "$var" ]]; then
-        echo "$var not set"
-        exit 1
-    fi
-done
 
 if [[ -n "$EXECUTION_LAUNCHER" ]]; then
     "$EXECUTION_LAUNCHER" &
@@ -19,18 +11,12 @@ done
 
 bootnode_enr=`cat $CONSENSUS_BOOTNODE_ENR_FILE`
 
-
-# if [[ $PRESET_BASE == "minimal" ]]; then
-#     ADDITIONAL_BEACON_ARGS="$ADDITIONAL_BEACON_ARGS --minimal-config"
-#     ADDITIONAL_VALIDATOR_ARGS="$ADDITIONAL_VALIDATOR_ARGS --minimal-config"
-# fi
-
 while [ ! -f "$CONSENSUS_CHECKPOINT_FILE" ]; do
     echo "waiting on consensus checkpoint file.."
     sleep 1
 done
 
-  #--execution-provider="http://$HTTP_WEB3_IP_ADDR:$EXECUTION_ENGINE_HTTP_PORT" \
+#--force-clear-db \ for auto-resume to work we don't want to blow this away.
 beacon-chain \
   --log-file="$NODE_DIR/beacon.log" \
   --accept-terms-of-use=true \
@@ -49,7 +35,6 @@ beacon-chain \
   --enable-debug-rpc-endpoints \
   --p2p-allowlist="$NETRESTRICT_RANGE" \
   --subscribe-all-subnets \
-  --force-clear-db \
   --jwt-secret="$JWT_SECRET_FILE" \
   --http-web3provider="http://$HTTP_WEB3_IP_ADDR:$EXECUTION_ENGINE_HTTP_PORT" \
   --min-sync-peers 1 \
