@@ -55,7 +55,7 @@ class EthereumTestnetBootstrapper(object):
             bootnode_path = Path(cbc.get("consensus-bootnode-enr-file"))
             bootnode_path.parents[0].mkdir(exist_ok=True)
 
-        shutil.copy(self.config_path, self.etb_config.get("etb-config-file"))
+        shutil.copy(self.config_path, self.etb_config.get("bootstrap-config-file"))
 
     def init_bootstrapper(self):
         """
@@ -86,9 +86,15 @@ class EthereumTestnetBootstrapper(object):
                     jwt_secret_file = ec.get("jwt-secret-file", node)
                     with open(jwt_secret_file, "w") as f:
                         f.write(jwt_secret)
+
         logger.info("Finished initing the testnet")
 
-    def bootstrap_testnet(self):
+    def bootstrap_testnet(self, enable_resume=False):
+        # bail out if we are resuming a testnet.
+        if enable_resume:
+            if Path(self.etb_config.get("resumable-checkpoint-file")).is_file():
+                logger.info("Resuming an already started testnet experiment.")
+                return
         # when we bootstrap the testnet we must do the following.
 
         # write now() to the config file so all modules have the same reference time.
@@ -172,6 +178,14 @@ class EthereumTestnetBootstrapper(object):
         #     time.sleep(1)
         with open(self.etb_config.get("consensus-checkpoint-file"), "w") as f:
             f.write("1")
+
+        # now that we have everything running, if enable-resume is detected.
+        if enable_resume:
+            logger.info(
+                "Enable-resume detected... adding the resumable checkpoint file"
+            )
+            with open(self.etb_config.get("resumable-checkpoint-file"), "w") as f:
+                f.write("1")
 
     def clear_last_run(self):
         testnet_root = self.etb_config.get("testnet-root")

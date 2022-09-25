@@ -20,6 +20,7 @@
         at this point should be considered errors.
 """
 import time
+from pathlib import Path
 
 from modules.BeaconAPI import BeaconAPI, ETBConsensusBeaconAPI
 from modules.ETBConfig import ETBConfig
@@ -84,6 +85,9 @@ class TestnetStatusChecker(object):
         # signal an early termination.
         self.terminate_experiment_string = args.terminate_experiment_string
 
+        if args.enable_resume:
+            self.enable_resume = True
+
     def update_health_metric(self):
         curr_check = 0
         while curr_check < self.number_of_checks:
@@ -145,6 +149,8 @@ class TestnetStatusChecker(object):
 
         self.wait_until("genesis", int(self.genesis_time))
         print(f"{self.log_prefix}: Consensus Genesis Occured", flush=True)
+        with open(self.etb_config.get("consensus-genesis-checkpoint-file"), "w") as f:
+            f.write("1")
 
         # wait until phase0 to ensure all is working.
         self.wait_until("phase0", self.phase0_time, do_check_heads=True)
@@ -264,8 +270,16 @@ if __name__ == "__main__":
         help="string to print if we fail phase0.",
     )
 
+    parser.add_argument(
+        "--enable-resume",
+        dest="enable_resume",
+        action="store_true",
+        default=False,
+        help="Try to resume if a previous consensus genesis occured.",
+    )
     args = parser.parse_args()
-    time.sleep(30)  # TODO: use a checkpoint file.
+    while not Path(args.config).is_file():
+        time.sleep(1)
     status_checker = TestnetStatusChecker(args)
     status_checker.start_status_checker()
 

@@ -1,6 +1,6 @@
 import argparse
-from pathlib import Path
 import shutil
+from pathlib import Path
 
 from modules.TestnetBootstrapper import EthereumTestnetBootstrapper
 
@@ -75,6 +75,14 @@ if __name__ == "__main__":
         help="logging level to use.",
     )
 
+    parser.add_argument(
+        "--enable-resume",
+        dest="enable_resume",
+        action="store_true",
+        default=False,
+        help="allow the clients to be stopped and resumed.",
+    )
+
     args = parser.parse_args()
 
     etb = EthereumTestnetBootstrapper(args.config)
@@ -85,7 +93,7 @@ if __name__ == "__main__":
         etb.write_docker_compose()
 
     if args.bootstrap_testnet:
-        etb.bootstrap_testnet()
+        etb.bootstrap_testnet(args.enable_resume)
 
     if args.init_bootstrapper:
         etb.init_bootstrapper()
