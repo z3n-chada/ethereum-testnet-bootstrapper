@@ -94,6 +94,7 @@ class EthereumTestnetBootstrapper(object):
         if enable_resume:
             if Path(self.etb_config.get("resumable-checkpoint-file")).is_file():
                 logger.info("Resuming an already started testnet experiment.")
+                self.link_all_execution_clients()
                 return
         # when we bootstrap the testnet we must do the following.
 
@@ -219,3 +220,39 @@ class EthereumTestnetBootstrapper(object):
                         clients.append(f"{name}-{n}")
 
         return clients
+
+    def link_all_execution_clients(self):
+
+        etb_rpc = ETBExecutionRPC(self.etb_config, timeout=5)
+
+        logger.info(
+            "TestnetBootstrapper: Gathering enode info for clients that support it."
+        )
+        admin_rpc_nodes = self.get_all_clients_with_admin_rpc_api()
+        node_info = etb_rpc.do_rpc_request(
+            admin_node_info_RPC(), client_nodes=admin_rpc_nodes, all_clients=False
+        )
+
+        enodes = {}
+
+        for name, info in node_info.items():
+            enodes[name] = info["result"]["enode"]
+
+        print(enodes, flush=True)
+
+        erigon_enodes = execution_bootstrapper.get_erigon_enodes()
+
+        all_enodes = list(enodes.values()) + erigon_enodes
+
+        enode_list = ",".join(all_enodes)
+
+        print(enode_list, flush=True)
+
+        for enode in all_enodes:
+            etb_rpc.do_rpc_request(
+                admin_add_peer_RPC(enode),
+                client_nodes=admin_rpc_nodes,
+                all_clients=False,
+            )
+            time.sleep(1)
+
