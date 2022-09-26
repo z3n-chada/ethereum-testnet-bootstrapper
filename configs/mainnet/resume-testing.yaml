@@ -830,4 +830,4 @@ generic-modules:
     container-name: "status-check"
     start-ip-addr: "10.0.20.207"
     num-nodes: 1
-    entrypoint: "python3 /source/apps/status-check.py --config /data/etb-config.yaml --enable-resume --phase0-slot 32 --phase1-slot 122 --phase2-slot 144 --phase3-slot 1080 --number-of-checks 3 --log-prefix antithesis --terminate-experiment-prefix terminate"
+    entrypoint: "python3 /source/apps/status-check.py --config /data/etb-config.yaml --enable-resume --phase0-slot 192 --phase1-slot 224 --phase2-slot 256 --phase3-slot 288 --number-of-checks 3 --log-prefix antithesis --terminate-experiment-prefix terminate"
