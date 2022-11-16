@@ -3,7 +3,7 @@
 env_vars=("IP_ADDR" "CONSENSUS_BOOTNODE_API_PORT" "CONSENSUS_BOOTNODE_PRIVATE_KEY" "CONSENSUS_BOOTNODE_ENR_FILE" "CONSENSUS_BOOTNODE_ENR_PORT" "CONSENSUS_BOOTNODE_CHECKPOINT_FILE")
 
 for var in "${env_vars[@]}" ; do
-    if [[ -z "$var" ]]; then
+    if [[ -z "${!var}" ]]; then
         echo "$var not set"
         exit 1
     fi

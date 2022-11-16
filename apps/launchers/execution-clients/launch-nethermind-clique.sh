@@ -1,7 +1,7 @@
 env_vars=( "EXECUTION_DATA_DIR" "BESU_GENESIS_FILE" "NETWORK_ID" "EXECUTION_P2P_PORT" "EXECUTION_HTTP_PORT" "EXECUTION_WS_PORT" "HTTP_APIS" "WS_APIS" "IP_ADDR" "NETRESTRICT_RANGE" "END_FORK_NAME" "EXECUTION_ENGINE_PORT" "BESU_PRIVATE_KEY" "CONSENSUS_TARGET_PEERS" "EXECUTION_CHECKPOINT_FILE" "EXECUTION_LOG_LEVEL")
 
 for var in "${env_vars[@]}" ; do
-    if [[ -z "$var" ]]; then
+    if [[ -z "${!var}" ]]; then
         echo "$var not set"
         exit 1
     fi
