@@ -9,7 +9,8 @@ logger = logging.getLogger("bootstrapper_log")
 class ConsensusDirectoryGenerator(object):
     """
     Generic ConsensusDirectoryGenerator. Given a ConsensusClient it generates the required
-    directory structure for the client to start up.
+    directory structure for the client to start up as well as populating the directories with
+    all the required files, e.g. genesis ssz, config files, etc.
     """
 
     def __init__(self, consensus_client, password=None):
@@ -40,8 +41,8 @@ class ConsensusDirectoryGenerator(object):
 
         The Clients Consensus-Config specifies the number of validators per
         node, and the client specifies the number of nodes. Thus to have
-        mulitple clients you must ensure that the validator offsets between
-        each client is atleast num_nodes*num_validators above the previous
+        multiple clients you must ensure that the validator offsets between
+        each client is at least num_nodes*num_validators above the previous
         client.
 
         You can check this using the ETBConfig.check_configuration_sanity()
