@@ -1,19 +1,15 @@
 .PHONY: clean
 
-
+# build the ethereum-testnet-bootstrapper docker.
 build-bootstrapper:
 	docker build -t ethereum-testnet-bootstrapper -f Dockerfile .
 
-run-bootstrapper: 
+# init the testnet dirs and all files needed to later bootstrap the testnet.
+init-testnet:
+	docker run -it -v $(shell pwd)/:/source/ -v $(shell pwd)/data/:/data ethereum-testnet-bootstrapper --config $(config) --init-testnet
+
+run-bootstrapper:
 	docker run -it -v $(shell pwd)/:/source/ -v $(shell pwd)/data/:/data ethereum-testnet-bootstrapper --config $(config) --bootstrap-mode
-
-init-bootstrapper:
-	docker run -it -v $(shell pwd)/:/source/ -v $(shell pwd)/data/:/data ethereum-testnet-bootstrapper --config $(config) --init-bootstrapper
-	docker run -it -v $(shell pwd)/:/source/ -v $(shell pwd)/data/:/data ethereum-testnet-bootstrapper --config $(config) --write-docker-compose
-
-write-docker-compose:
-	docker run -it -v $(shell pwd)/:/source/ -v $(shell pwd)/data/:/data ethereum-testnet-bootstrapper --config $(config) --write-docker-compose
-
 build-dockers:
 	cd etb-dockers && ./build_dockers.sh
 

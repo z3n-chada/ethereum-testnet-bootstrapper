@@ -1,6 +1,6 @@
 from web3.auto import w3
 
-from EthDepositContract import deposit_contract_json
+from .EthDepositContract import deposit_contract_json
 
 w3.eth.account.enable_unaudited_hdwallet_features()
 

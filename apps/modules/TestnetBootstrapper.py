@@ -1,3 +1,7 @@
+"""
+    This module is the glue to tie together all the execution and consensus client bootstrapping
+    phases. There is a high level doc in docs that discusses this process.
+"""
 import logging
 import os
 import random
@@ -19,74 +23,45 @@ logger = logging.getLogger("bootstrapper_log")
 
 class EthereumTestnetBootstrapper(object):
     """
-    Creates docker-compose.yaml file to bootstrap a testnet.
-    The docker-compose will call back into this module to perform all
-    of the needed tasks.
+    The Testnet Bootstrapper wraps all the consensus and execution
+    bootstrapper logic to bootstrap all the clients. It also handles
+    the consensus bootnode.
+
+    The EthereumTestnetBootstrapper is used to init the testnet and later is
+    used to bootstrap and run the testnet.
     """
 
     def __init__(self, config_path):
         self.etb_config = ETBConfig(config_path)
         self.config_path = config_path
 
-    def create_testnet_directory_structure(self):
+    def init_testnet(self):
+        """
+        The init routine simply processes the etb-config file and performs all
+        the work that can be done statically. This includes creating the dir
+        structure for the testnet and populating the cl bootnode enr file.
+        """
+        # clear the last run
+        self.clear_last_run()
 
         # testnet dir
         Path(self.etb_config.get("testnet-dir")).mkdir()
 
-        # create the execution-client dirs
-        logger.info("Creating execution client directories")
-        for name, ec in self.etb_config.get("execution-clients").items():
-            Path(ec.get("execution-data-dir")).mkdir()
+        # create the stand-alone execution-client dirs and jwt secrets
+        eb = ETBExecutionBootstrapper(self.etb_config)
+        eb.create_stand_alone_execution_dirs()
+        eb.create_execution_client_jwt()
 
-        # create consensus client dirs and their cooresponding execution dirs
-        logger.info("Createing consensus client directories")
-        for name, cc in self.etb_config.get("consensus-clients").items():
-            Path(cc.get("testnet-dir")).mkdir()
-            for node in range(cc.get("num-nodes")):
-                node_path = Path(cc.get("node-dir", node))
-                node_path.mkdir()
-                if cc.has_local_exectuion_client:
-                    ec_path = node_path.joinpath(
-                        cc.get("execution-config").get("client")
-                    )
-                    ec_path.mkdir()
+        # create consensus client dirs and their corresponding execution client dirs.
+        cb = ETBConsensusBootstrapper(self.etb_config)
+        cb.create_consensus_dirs()
+        cb.create_consensus_client_jwt()
 
-        for name, cbc in self.etb_config.get("consensus-bootnodes").items():
-            bootnode_path = Path(cbc.get("consensus-bootnode-enr-file"))
-            bootnode_path.parents[0].mkdir(exist_ok=True)
+        self._write_docker_compose()
+        self._write_consensus_bootnode_enr()
 
+        # copy in the config file we used for the init process.
         shutil.copy(self.config_path, self.etb_config.get("etb-config-file"))
-
-    def init_bootstrapper(self):
-        """
-        Init all of the files and directories that we will need when we run
-        the bootstrapper.
-        """
-        # before we start generating ssz files we first create all
-        # of the dirs and sub-dirs.
-        self.clear_last_run()
-        self.create_testnet_directory_structure()
-
-        execution_bootstrapper = ETBExecutionBootstrapper(self.etb_config)
-        # we use this in order to get calculatable enodes.
-        execution_bootstrapper.create_erigon_nodekey_files()
-        # go ahead and do jwt.
-        for items, cc in self.etb_config.get("consensus-clients").items():
-            if cc.has("jwt-secret-file"):
-                for node in range(cc.get("num-nodes")):
-                    jwt_secret = f"0x{random.randbytes(32).hex()}"
-                    jwt_secret_file = cc.get("jwt-secret-file", node)
-                    with open(jwt_secret_file, "w") as f:
-                        f.write(jwt_secret)
-
-        for name, ec in self.etb_config.get("execution-clients").items():
-            if ec.has("jwt-secret-file"):
-                for node in range(ec.get("num-nodes")):
-                    jwt_secret = f"0x{random.randbytes(32).hex()}"
-                    jwt_secret_file = ec.get("jwt-secret-file", node)
-                    with open(jwt_secret_file, "w") as f:
-                        f.write(jwt_secret)
-        logger.info("Finished initing the testnet")
 
     def bootstrap_testnet(self):
         # when we bootstrap the testnet we must do the following.
@@ -174,20 +149,17 @@ class EthereumTestnetBootstrapper(object):
             f.write("1")
 
     def clear_last_run(self):
+        """
+        Clear all the files and dirs present in the testnet-root.
+        """
         testnet_root = self.etb_config.get("testnet-root")
-        for file in os.listdir(testnet_root):
-            path = Path(os.path.join(testnet_root, file))
-            if path.is_dir():
-                shutil.rmtree(path)
-            else:
-                path.unlink()
-
-    def write_docker_compose(self):
-        logger.info("Creating docker-compose file")
-        docker_path = self.etb_config.get("docker-compose-file")
-        docker_compose = generate_docker_compose(self.etb_config)
-        with open(docker_path, "w") as f:
-            yaml.safe_dump(docker_compose, f)
+        if Path(testnet_root).exists():
+            for file in os.listdir(testnet_root):
+                path = Path(os.path.join(testnet_root, file))
+                if path.is_dir():
+                    shutil.rmtree(path)
+                else:
+                    path.unlink()
 
     def get_all_clients_with_admin_rpc_api(self):
         # use this method to make sure we only used the admin rpc interface with clients
@@ -205,3 +177,24 @@ class EthereumTestnetBootstrapper(object):
                         clients.append(f"{name}-{n}")
 
         return clients
+
+    # General private helpers to keep functions short.
+    def _write_docker_compose(self):
+        """
+        Write the docker-compose file to bring the testnet up for bootstrapping
+        and running.
+        """
+        logger.info("Creating docker-compose file")
+        docker_path = self.etb_config.get("docker-compose-file")
+        docker_compose = generate_docker_compose(self.etb_config)
+        with open(docker_path, "w") as f:
+            yaml.safe_dump(docker_compose, f)
+
+    def _write_consensus_bootnode_enr(self):
+        """
+        Populate the enr file to be used by the consensus bootnode.
+        """
+        # handle the consensus bootnode enr files:
+        for name, cbc in self.etb_config.get("consensus-bootnodes").items():
+            bootnode_path = Path(cbc.get("consensus-bootnode-enr-file"))
+            bootnode_path.parents[0].mkdir(exist_ok=True)

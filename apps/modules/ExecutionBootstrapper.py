@@ -5,6 +5,7 @@
 import json
 import logging
 import random
+from pathlib import Path
 import subprocess
 
 from .ETBConfig import ExecutionClient
@@ -45,6 +46,17 @@ class ETBExecutionBootstrapper(object):
                     jwt_secret_file = ec.get("jwt-secret-file", node)
                     with open(jwt_secret_file, "w") as f:
                         f.write(jwt_secret)
+
+    def create_stand_alone_execution_dirs(self):
+        """
+        For execution clients they may be stand-alone or consensus paired. A stand-alone client
+        is one that the docker instance running it only has the execution client running, v.s. a
+        paired client which has both a consensus and execution client. This method creates the dirs
+        used by all stand-alone execution clients.
+        """
+        logger.info("Creating stand-alone execution client directories")
+        for name, ec in self.etb_config.get("execution-clients").items():
+            Path(ec.get("execution-data-dir")).mkdir()
 
     def write_all_execution_genesis_files(self):
         """

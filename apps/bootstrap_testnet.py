@@ -15,13 +15,6 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--write-docker-compose",
-        dest="write_docker_compose",
-        action="store_true",
-        help="Write the docker-compose.yaml file to bootstrap the network",
-    )
-
-    parser.add_argument(
         "--clear-last-run",
         dest="clear_last_run",
         action="store_true",
@@ -30,20 +23,26 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--init-bootstrapper",
-        dest="init_bootstrapper",
+        "--init-testnet",
+        dest="init_testnet",
         action="store_true",
         default=False,
         help="Initialize the testnet to be bootstrapped.",
     )
+    # parser.add_argument(
+    #     "--write-docker-compose",
+    #     dest="write_docker_compose",
+    #     action="store_true",
+    #     help="Write the docker-compose.yaml file to bootstrap the network",
+    # )
 
-    parser.add_argument(
-        "--bootstrap-testnet",
-        dest="bootstrap_testnet",
-        action="store_true",
-        default=False,
-        help="Start the testnet",
-    )
+    # parser.add_argument(
+    #     "--bootstrap-testnet",
+    #     dest="bootstrap_testnet",
+    #     action="store_true",
+    #     default=False,
+    #     help="Start the testnet",
+    # )
 
     parser.add_argument(
         "--log-to-stdout",
@@ -81,11 +80,11 @@ if __name__ == "__main__":
     if args.clear_last_run:
         etb.clear_last_run()
 
-    if args.write_docker_compose:
-        etb.write_docker_compose()
+    if args.init_testnet:
+        etb.init_testnet()
 
-    if args.bootstrap_testnet:
-        etb.bootstrap_testnet()
-
-    if args.init_bootstrapper:
-        etb.init_bootstrapper()
+    # if args.write_docker_compose:
+    #     etb.write_docker_compose()
+    #
+    # if args.bootstrap_testnet:
+    #     etb.bootstrap_testnet()
