@@ -36,6 +36,7 @@ mainnet_defaults = {
     "min-slashing-penalty-quotient": 128,
     "proportional-slashing-multiplier": 2,
     "churn-limit-quotient": 65536,
+    'min-validator-withdrawability-delay': 1,
 }
 
 potential_overrides = ["eth1-follow-distance", "min-genesis-active-validator-count"]
@@ -70,6 +71,7 @@ def create_consensus_config(etb_config):
         pd[k] = v
     return f"""
 PRESET_BASE: \"{etb_config.get('preset-base')}\"
+CONFIG_NAME: \"post-merge-genesis-local-testnet-0\"
 
 # Genesis
 # ---------------------------------------------------------------
@@ -91,6 +93,14 @@ ALTAIR_FORK_EPOCH: {etb_config.get('altair-fork-epoch')}
 # Bellatrix (aka merge)
 BELLATRIX_FORK_VERSION: 0x{etb_config.get('bellatrix-fork-version'):08x}
 BELLATRIX_FORK_EPOCH: {etb_config.get('bellatrix-fork-epoch')}
+
+# Capella
+CAPELLA_FORK_VERSION: 0x{etb_config.get('capella-fork-version'):08x}
+CAPELLA_FORK_EPOCH: {etb_config.get('capella-fork-epoch')}
+
+#EIP-4844
+EIP4844_FORK_EPOCH: {etb_config.get('eip4844-fork-epoch')}
+
 # Sharding
 SHARDING_FORK_VERSION: 0x{etb_config.get('sharding-fork-version'):08x}
 SHARDING_FORK_EPOCH: {etb_config.get('sharding-fork-epoch')}
@@ -104,7 +114,7 @@ MIN_ANCHOR_POW_BLOCK_DIFFICULTY: 4294967296
 SECONDS_PER_SLOT: {pd['seconds-per-slot']}
 # 14 (estimate from Eth1 mainnet)
 SECONDS_PER_ETH1_BLOCK: {etb_config.get('seconds-per-eth1-block')}
-MIN_VALIDATOR_WITHDRAWABILITY_DELAY: 256
+MIN_VALIDATOR_WITHDRAWABILITY_DELAY: {pd['min-validator-withdrawability-delay']}
 SHARD_COMMITTEE_PERIOD: {pd['shard-committee-period']}
 ETH1_FOLLOW_DISTANCE: {pd['eth1-follow-distance']}
 
@@ -124,10 +134,10 @@ CHURN_LIMIT_QUOTIENT: {pd['churn-limit-quotient']}
 # Transition
 # ---------------------------------------------------------------
 # TBD, 2**256-2**10 is a placeholder
-TERMINAL_TOTAL_DIFFICULTY: {etb_config.get('terminal-total-difficulty')}
+TERMINAL_TOTAL_DIFFICULTY: 0
 # By default, don't use these params
-TERMINAL_BLOCK_HASH: {etb_config.get('terminal-block-hash')}
-TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH: {etb_config.get('terminal-block-hash-activation-epoch')}
+TERMINAL_BLOCK_HASH: 0x0000000000000000000000000000000000000000000000000000000000000000
+TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH: 18446744073709551615
 
 
 # Deposit contract
@@ -137,6 +147,95 @@ DEPOSIT_CHAIN_ID: {etb_config.get('chain-id')}
 DEPOSIT_NETWORK_ID: {etb_config.get('network-id')}
 # Allocated in Execution-layer genesis
 DEPOSIT_CONTRACT_ADDRESS: {etb_config.get('deposit-contract-address')}
+
+#Updated penalty values
+# ---------------------------------------------------------------
+# 3 * 2**24 (= 50,331,648)
+INACTIVITY_PENALTY_QUOTIENT_ALTAIR: 50331648
+# 2**6 (= 64)
+MIN_SLASHING_PENALTY_QUOTIENT_ALTAIR: 64
+# 2
+PROPORTIONAL_SLASHING_MULTIPLIER_ALTAIR: 2
+# Sync committee
+# ---------------------------------------------------------------
+# 2**9 (= 512)
+SYNC_COMMITTEE_SIZE: 512
+# 2**8 (= 256)
+EPOCHS_PER_SYNC_COMMITTEE_PERIOD: 256
+# Sync protocol
+# ---------------------------------------------------------------
+# 1
+MIN_SYNC_COMMITTEE_PARTICIPANTS: 1
+# SLOTS_PER_EPOCH * EPOCHS_PER_SYNC_COMMITTEE_PERIOD (= 32 * 256)
+UPDATE_TIMEOUT: 8192
+# Mainnet preset - Bellatrix
+# Updated penalty values
+# ---------------------------------------------------------------
+# 2**24 (= 16,777,216)
+INACTIVITY_PENALTY_QUOTIENT_BELLATRIX: 16777216
+# 2**5 (= 32)
+MIN_SLASHING_PENALTY_QUOTIENT_BELLATRIX: 32
+# 3
+PROPORTIONAL_SLASHING_MULTIPLIER_BELLATRIX: 3
+# Execution
+# ---------------------------------------------------------------
+# 2**30 (= 1,073,741,824)
+MAX_BYTES_PER_TRANSACTION: 1073741824
+# 2**20 (= 1,048,576)
+MAX_TRANSACTIONS_PER_PAYLOAD: 1048576
+# 2**8 (= 256)
+BYTES_PER_LOGS_BLOOM: 256
+# 2**5 (= 32)
+MAX_EXTRA_DATA_BYTES: 32
+# Minimal preset - Capella
+# Mainnet preset - Custody Game
+# Time parameters
+# ---------------------------------------------------------------
+# 2**1 (= 2) epochs, 12.8 minutes
+RANDAO_PENALTY_EPOCHS: 2
+# 2**15 (= 32,768) epochs, ~146 days
+EARLY_DERIVED_SECRET_PENALTY_MAX_FUTURE_EPOCHS: 32768
+# 2**14 (= 16,384) epochs ~73 days
+EPOCHS_PER_CUSTODY_PERIOD: 16384
+# 2**11 (= 2,048) epochs, ~9 days
+CUSTODY_PERIOD_TO_RANDAO_PADDING: 2048
+# 2**15 (= 32,768) epochs, ~146 days
+MAX_CHUNK_CHALLENGE_DELAY: 32768
+# Max operations
+# ---------------------------------------------------------------
+# 2**8 (= 256)
+MAX_CUSTODY_KEY_REVEALS: 256
+# 2**0 (= 1)
+MAX_EARLY_DERIVED_SECRET_REVEALS: 1
+# 2**2 (= 2)
+MAX_CUSTODY_CHUNK_CHALLENGES: 4
+# 2** 4 (= 16)
+MAX_CUSTODY_CHUNK_CHALLENGE_RESP: 16
+# 2**0 (= 1)
+MAX_CUSTODY_SLASHINGS: 1
+# Reward and penalty quotients
+# ---------------------------------------------------------------
+EARLY_DERIVED_SECRET_REVEAL_SLOT_REWARD_MULTIPLE: 2
+# 2**8 (= 256)
+MINOR_REWARD_QUOTIENT: 256
+# Mainnet preset - Phase0
+# Misc
+# ---------------------------------------------------------------
+# 2**6 (= 64)
+MAX_COMMITTEES_PER_SLOT: 64
+# 2**7 (= 128)
+TARGET_COMMITTEE_SIZE: 128
+# 2**11 (= 2,048)
+MAX_VALIDATORS_PER_COMMITTEE: 2048
+# See issue 563
+SHUFFLE_ROUND_COUNT: 90
+# 4
+# 4
+HYSTERESIS_QUOTIENT: 4
+
+SLOTS_PER_EPOCH: 32
+
+MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP: 16384
 """
 
 
