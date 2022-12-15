@@ -11,7 +11,7 @@ logger = logging.getLogger("bootstrapper_log")
 
 class ETBExecutionBootstrapper(object):
     """
-    This bootstrapper is responsible for setting up all of the
+    This bootstrapper is responsible for setting up all the
     execution clients. (including consensus local execution clients)
     """
 
@@ -30,6 +30,10 @@ class ETBExecutionBootstrapper(object):
         logger.info("ExecutionBootstrapper: all execution genesis files written")
 
     def create_execution_client_jwt(self):
+        """
+        For all the execution clients we are doing an init for, check to see if
+        they use jwt-secrets, if they do go ahead and create them.
+        """
         for name, ec in self.etb_config.get("execution-clients").items():
             if ec.has("jwt-secret-file"):
                 for node in range(ec.get("num-nodes")):
@@ -37,10 +41,11 @@ class ETBExecutionBootstrapper(object):
                     jwt_secret_file = ec.get("jwt-secret-file", node)
                     with open(jwt_secret_file, "w") as f:
                         f.write(jwt_secret)
+
     def write_all_execution_genesis_files(self):
         """
-        Here we create the genesis.json files that the execution
-        clients use for genesis.
+        This method creates all of the execution genesis files for the clients we support.
+        The genesis files are created and written to the file specified by the etb-CLIENT-genesis-file
         """
         egw = ExecutionGenesisWriter(self.etb_config)
         logger.debug("Creating execution genesis files.")
