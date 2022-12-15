@@ -44,7 +44,8 @@ config-params:
   # used for configuring execution genesis
   execution-layer:
     seconds-per-eth1-block: 14
-    # execution-genesis-delay: 0
+    execution-genesis-delay: 0
+    shanghai-delay: 1000000
     chain-id: 0x03000666
     network-id: 0x03000666
 

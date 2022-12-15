@@ -63,65 +63,61 @@ class ExecutionGenesisWriter(object):
             "istanbulBlock": 0,
             "berlinBlock": 0,
             "londonBlock": 0,
-            "mergeForkBlock": self.etb_config.get("merge-fork-block"),
-            "terminalTotalDifficulty": self.etb_config.get("terminal-total-difficulty"),
+            "mergeForkBlock": 0,
+            "arrowGlacierBlock": 0,
+            "grayGlacierBlock": 0,
+            "shanghaiTime": self.execution_genesis + self.etb_config.get("shanghai-delay"),
+            "terminalTotalDifficulty": 0,
         }
         self.genesis["config"] = config
 
-        if self.etb_config.get("clique-enabled"):
-            signers = "".join(s for s in self.etb_config.get("clique-signers"))
-            extradata = f"0x{'0'*64}{signers}{'0'*130}"
-            self.genesis["extraData"] = extradata
-            self.genesis["config"]["clique"] = {
-                "period": self.etb_config.get("seconds-per-eth1-block"),
-                "epoch": self.etb_config.get("clique-epoch"),
-            }
         return self.genesis
 
     def create_erigon_genesis(self):
 
-        self.genesis = {
-            "alloc": self.get_allocs(),
-            "coinbase": "0x0000000000000000000000000000000000000000",
-            "difficulty": "0x01",
-            "extraData": "",
-            "gasLimit": "0x400000",
-            "nonce": "0x1234",
-            "mixhash": "0x" + ("0" * 64),
-            "parentHash": "0x" + ("0" * 64),
-            "timestamp": str(self.execution_genesis),
-        }
-
-        # TODO etb-config fetch.
-        config = {
-            "chainId": self.etb_config.get("chain-id"),
-            "homesteadBlock": 0,
-            "eip150Block": 0,
-            "eip150Hash": "0x0000000000000000000000000000000000000000000000000000000000000000",
-            "eip155Block": 0,
-            "eip158Block": 0,
-            "byzantiumBlock": 0,
-            "constantinopleBlock": 0,
-            "petersburgBlock": 0,
-            "istanbulBlock": 0,
-            "berlinBlock": 0,
-            "londonBlock": 0,
-            "terminalBlockHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
-            "mergeNetsplitBlock": self.etb_config.get("merge-fork-block"),
-            "terminalTotalDifficulty": self.etb_config.get("terminal-total-difficulty"),
-        }
-        self.genesis["config"] = config
-
-        if self.etb_config.get("clique-enabled"):
-            signers = "".join(s for s in self.etb_config.get("clique-signers"))
-            extradata = f"0x{'0'*64}{signers}{'0'*130}"
-            self.genesis["extraData"] = extradata
-            self.genesis["config"]["clique"] = {
-                "period": self.etb_config.get("seconds-per-eth1-block"),
-                "epoch": self.etb_config.get("clique-epoch"),
-            }
-            self.genesis["config"]["consensus"] = "clique"
-        return self.genesis
+        return self.create_geth_genesis()
+        # self.genesis = {
+        #     "alloc": self.get_allocs(),
+        #     "coinbase": "0x0000000000000000000000000000000000000000",
+        #     "difficulty": "0x01",
+        #     "extraData": "",
+        #     "gasLimit": "0x400000",
+        #     "nonce": "0x1234",
+        #     "mixhash": "0x" + ("0" * 64),
+        #     "parentHash": "0x" + ("0" * 64),
+        #     "timestamp": str(self.execution_genesis),
+        # }
+        #
+        # config = {
+        #     "chainId": self.etb_config.get("chain-id"),
+        #     "homesteadBlock": 0,
+        #     "eip150Block": 0,
+        #     "eip150Hash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+        #     "eip155Block": 0,
+        #     "eip158Block": 0,
+        #     "byzantiumBlock": 0,
+        #     "constantinopleBlock": 0,
+        #     "petersburgBlock": 0,
+        #     "istanbulBlock": 0,
+        #     "berlinBlock": 0,
+        #     "londonBlock": 0,
+        #     "terminalBlockHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+        #     "mergeNetsplitBlock": self.etb_config.get("merge-fork-block"),
+        #     "terminalTotalDifficulty": self.etb_config.get("terminal-total-difficulty"),
+        # }
+        # self.genesis["config"] = config
+        #
+        # if self.etb_config.get("clique-enabled"):
+        #     signers = "".join(s for s in self.etb_config.get("clique-signers"))
+        #     extradata = f"0x{'0' * 64}{signers}{'0' * 130}"
+        #     self.genesis["extraData"] = extradata
+        #     self.genesis["config"]["clique"] = {
+        #         "period": self.etb_config.get("seconds-per-eth1-block"),
+        #         "epoch": self.etb_config.get("clique-epoch"),
+        #     }
+        #     self.genesis["config"]["consensus"] = "clique"
+        #
+        # return self.genesis
 
     def create_besu_genesis(self):
         # "baseFeePerGas": self.ec["base-fee-per-gas"],
@@ -159,7 +155,7 @@ class ExecutionGenesisWriter(object):
                 "epochLength": self.etb_config.get("clique-epoch"),
             }
             signers = "".join(s for s in self.etb_config.get("clique-signers"))
-            extradata = f"0x{'0'*64}{signers}{'0'*130}"
+            extradata = f"0x{'0' * 64}{signers}{'0' * 130}"
 
             self.genesis["extraData"] = extradata
             self.genesis["config"]["clique"] = clique
@@ -177,9 +173,9 @@ class ExecutionGenesisWriter(object):
             )
 
             self.genesis["alloc"][acct.address]["privateKey"] = acct.privateKey.hex()[
-                2:
-            ]
-
+                                                                2:
+                                                                ]
+        raise Exception("Reimplement me.")
         return self.genesis
 
     def create_nethermind_genesis(self):
@@ -257,7 +253,7 @@ class ExecutionGenesisWriter(object):
                 }
             }
             signers = "".join(s for s in self.etb_config.get("clique-signers"))
-            extradata = f"0x{'0'*64}{signers}{'0'*130}"
+            extradata = f"0x{'0' * 64}{signers}{'0' * 130}"
             self.genesis["genesis"]["extraData"] = extradata
         else:
             self.genesis["engine"]["Ethash"] = {
@@ -272,5 +268,5 @@ class ExecutionGenesisWriter(object):
                 }
             }
             raise Exception("ethash network not implemented")
-
+        raise Exception("Reimplement me.")
         return self.genesis
