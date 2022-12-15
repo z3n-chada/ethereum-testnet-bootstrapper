@@ -455,12 +455,6 @@ class ETBConfig(GenericConfigurationEntry):
 
         raise Exception(f"{self.__name__} failed to get {value} that we have")
 
-    # def get_bootstrap_genesis(self):
-    #    return self.config["bootstrap-genesis"]
-
-    def set_bootstrap_genesis(self, t):
-        self.config["bootstrap-genesis"] = t
-
     def get_all_clients(self):
         all_clients = {}
         # consensus clients
@@ -574,11 +568,6 @@ class ETBConfig(GenericConfigurationEntry):
         if name not in self.config["execution-clients"]:
             raise Exception(f"no execution client: {name}")
         return ExecutionClient(name, self, self.config["execution-clients"][name])
-
-    # def get_execution_bootstrapper_client(self):
-    #     bootstrapper_name = self.get("execution-bootstrapper")
-    #     print("returning execution client")
-    #     return self.get_execution_client(bootstrapper_name)
 
     def get_netrestrict_range(self):
         return self.config["docker"]["ip-subnet"]
