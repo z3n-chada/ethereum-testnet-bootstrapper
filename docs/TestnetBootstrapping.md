@@ -33,38 +33,56 @@ the init process.
 
 ```
 ...(local project files)...
-
-data/
-├── etb-config.yaml
-└── local_testnet/
-    ├── execution-bootstrapper/
-    │   └── jwt-secret-0-0
-    ├── lighthouse-geth/
-    │   ├── jwt-secret-0
-    │   └── node_0/
-    │       └── geth/
-    ├── lodestar-geth/
-    │   ├── jwt-secret-0
-    │   └── node_0/
-    │       └── geth/
-    ├── nimbus-geth/
-    │   ├── jwt-secret-0
-    │   └── node_0/
-    │       └── geth/
-    ├── prysm-geth/
-    │   ├── jwt-secret-0
-    │   └── node_0/
-    │       └── geth/
-    └── teku-geth/
-        ├── jwt-secret-0
-        └── node_0/
-            └── geth/
+├── docker-compose.yaml
+├── data/
+│   ├── etb-config.yaml
+│   └── local_testnet/
+│       ├── execution-bootstrapper/
+│       │   └── jwt-secret-0
+│       ├── lighthouse-geth/
+│       │   ├── jwt-secret-0
+│       │   └── node_0/
+│       │       └── geth/
+│       ├── lodestar-geth/
+│       │   ├── jwt-secret-0
+│       │   └── node_0/
+│       │       └── geth/
+│       ├── nimbus-geth/
+│       │   ├── jwt-secret-0
+│       │   └── node_0/
+│       │       └── geth/
+│       ├── prysm-geth/
+│       │   ├── jwt-secret-0
+│       │   └── node_0
+│       │       └── geth/
+│       └── teku-geth/
+│           ├── jwt-secret-0
+│           └── node_0/
+│               └── geth/
 
 ```
 You are now ready to run a docker testnet locally.
 ## Bootstrapping/Running
 The last phase is bootstrapping. This phase happens when you are ready to run
-the testnet. 
+the testnet. This phase makes extensive use of checkpoint files. The reason for
+this is that we bring up every single docker container including the 
+bootstrapper. Checkpoint files exist to allow all of the containers to know 
+when their relevant data is ready for use and their dependent docker images are
+running and ready to accept connections. The following sections are ordered in 
+terms of their checkpoint files.
+### etb-config-checkpoint
+1. [ethereum-testnet-bootstrpper]: open the etb-config-file and set the current time
+write the file. 
+2. [ethereum-testnet-bootstrapper]: write the checkpoint file ``etb-config-checkpoint``
+to signal to the docker images that the etb-config file is ready to be opened.
+### consensus-bootnode-checkpoint
+There are no dependencies. 
+1. [ethereum-testnet-bootstrapper]: write the checkpoint file ``consensus-bootnode-checkpoint``
+to signal the CL bootnode to come online.
+### execution-checkpoint-file
+1. [ethereum-testnet-bootstrapper]: create the genesis json for all the EL clients.
+2. [ethereum-testnet-bootstrapper]: write the checkpoint file ``execution-checkpoint``
+to signal all the EL clients to come online.
 ## Testnet Directory Structure
 When we create a testnet to launch with docker instances we give all the clients a shared directory they can use. This
 is the testnet dir.
