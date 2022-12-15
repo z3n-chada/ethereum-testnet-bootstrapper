@@ -12,7 +12,6 @@ files:
   geth-genesis-file: "/data/geth-genesis.json"
   besu-genesis-file: "/data/besu-genesis.json"
   nether-mind-genesis-file: "/data/nethermind-genesis.json" # nethermind cares about envargs
-  erigon-genesis-file: "/data/erigon-genesis.json"
 
   consensus-config-file: "/data/consensus-config.yaml"
   consensus-genesis-file: "/data/genesis.ssz"
@@ -25,8 +24,6 @@ files:
   consensus-checkpoint-file: "/data/consensus-clients-ready"
   #this file is written with its time for the first execution client to come up.
   execution-checkpoint-file: "/data/execution-clients-ready"
-  # erigon gets its own due to peering limitations
-  erigon-checkpoint-file: "/data/erigon-execution-clients-ready"
   # execution client bootnode/bootstrapper. Contains enode+\n for all bootstrap
   consensus-bootnode-checkpoint-file: "/data/consensus-bootnodes-ready"
   # nodes
@@ -35,6 +32,8 @@ files:
 
   # all of the enodes of el clients comma seperated.
   execution-enodes-file: "/data/execution-enodes.txt"
+  # notify all clients the etb-config file is ready.
+  etb-config-checkpoint-file: "/data/etb-config-file-ready"
 
 
 config-params:
@@ -203,7 +202,7 @@ execution-clients:
     image: "etb-all-clients"
     tag: "latest"
     depends: "ethereum-testnet-bootstrapper"
-    entrypoint: "/source/apps/launchers/execution-clients/launch-geth-clique.sh" #wrt to docker.
+    entrypoint: "/source/deps/launchers/el/launch-geth.sh" #wrt to docker.
 
     execution-config: "geth-execution-config"
     num-nodes: 1
@@ -263,7 +262,7 @@ consensus-clients:
 
     local-execution-client: true
     execution-config: "geth-execution-config"
-    execution-launcher: "/source/apps/launchers/execution-clients/launch-geth-clique.sh"
+    execution-launcher: "/source/deps/launchers/el/launch-geth.sh"
 
 
     testnet-dir: '/data/local_testnet/prysm-geth'
@@ -292,7 +291,7 @@ consensus-clients:
     consensus-bootnode-config: "eth2-bootnode-config"
     local-execution-client: true
     execution-config: "geth-execution-config"
-    execution-launcher: "/source/apps/launchers/execution-clients/launch-geth-clique.sh"
+    execution-launcher: "/source/deps/launchers/el/launch-geth.sh"
 
     testnet-dir: '/data/local_testnet/teku-geth'
     jwt-secret-file: "/data/local_testnet/teku-geth/jwt-secret"
@@ -322,7 +321,7 @@ consensus-clients:
 
     local-execution-client: true
     execution-config: "geth-execution-config"
-    execution-launcher: "/source/apps/launchers/execution-clients/launch-geth-clique.sh"
+    execution-launcher: "/source/deps/launchers/el/launch-geth.sh"
 
     validator-offset-start: 8 # so validators of different clients don't overlap
 
@@ -345,7 +344,7 @@ consensus-clients:
 
     local-execution-client: true
     execution-config: "geth-execution-config"
-    execution-launcher: "/source/apps/launchers/execution-clients/launch-geth-clique.sh"
+    execution-launcher: "/source/deps/launchers/el/launch-geth.sh"
 
     num-nodes: 1 # how many beacon nodes
     testnet-dir: '/data/local_testnet/lighthouse-geth'
@@ -371,7 +370,7 @@ consensus-clients:
   
     local-execution-client: true
     execution-config: "geth-execution-config"
-    execution-launcher: "/source/apps/launchers/execution-clients/launch-geth-clique.sh"
+    execution-launcher: "/source/deps/launchers/el/launch-geth.sh"
   
     testnet-dir: '/data/local_testnet/lodestar-geth'
     jwt-secret-file: "/data/local_testnet/lodestar-geth/jwt-secret"
