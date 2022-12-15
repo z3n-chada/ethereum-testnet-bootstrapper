@@ -9,7 +9,8 @@ class ExecutionGenesisWriter(object):
     def __init__(self, global_config):
         self.etb_config = global_config
         self.genesis = {}
-        self.execution_genesis = self.etb_config.get("bootstrap-genesis") + self.etb_config.get("execution-genesis-delay")
+        self.execution_genesis = self.etb_config.get("bootstrap-genesis") + self.etb_config.get(
+            "execution-genesis-delay")
 
     def get_allocs(self):
         allocs = {}
@@ -73,7 +74,7 @@ class ExecutionGenesisWriter(object):
 
     def create_erigon_genesis(self):
 
-        return self.create_geth_genesis()
+        raise Exception("Currently not supported.")
         # self.genesis = {
         #     "alloc": self.get_allocs(),
         #     "coinbase": "0x0000000000000000000000000000000000000000",
@@ -122,6 +123,7 @@ class ExecutionGenesisWriter(object):
         self.genesis = {
             "alloc": self.get_allocs(),
             "coinbase": "0x0000000000000000000000000000000000000000",
+            "baseFeePerGas": "0x3B9ACA00",
             "difficulty": "0x01",
             "extraData": "",
             "gasLimit": "0x400000",
@@ -129,37 +131,24 @@ class ExecutionGenesisWriter(object):
             "mixhash": "0x0000000000000000000000000000000000000000000000000000000000000000",
             "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
             "timestamp": str(self.execution_genesis),
-        }
-        config = {
-            "chainId": self.etb_config.get("chain-id"),
-            "homesteadBlock": 0,
-            "eip150Block": 0,
-            "eip155Block": 0,
-            "eip158Block": 0,
-            "byzantiumBlock": 0,
-            "constantinopleBlock": 0,
-            "petersburgBlock": 0,
-            "istanbulBlock": 0,
-            "berlinBlock": 0,
-            "londonBlock": 0,
-            "preMergeForkBlock": self.etb_config.get("merge-fork-block"),
-            "terminalTotalDifficulty": self.etb_config.get("terminal-total-difficulty"),
-        }
-        self.genesis["config"] = config
-
-        if self.etb_config.get("clique-enabled"):
-            clique = {
-                "blockPeriodSeconds": self.etb_config.get("seconds-per-eth1-block"),
-                "epochLength": self.etb_config.get("clique-epoch"),
+            "config": {
+                "chainId": self.etb_config.get("chain-id"),
+                "homesteadBlock": 0,
+                "eip150Block": 0,
+                "eip155Block": 0,
+                "eip158Block": 0,
+                "byzantiumBlock": 0,
+                "constantinopleBlock": 0,
+                "petersburgBlock": 0,
+                "istanbulBlock": 0,
+                "berlinBlock": 0,
+                "londonBlock": 0,
+                "preMergeForkBlock": 0,
+                "shanghaiTime": self.execution_genesis + self.etb_config.get("shanghai-delay"),
+                "terminalTotalDifficulty": 0,
+                "ethash": {},
             }
-            signers = "".join(s for s in self.etb_config.get("clique-signers"))
-            extradata = f"0x{'0' * 64}{signers}{'0' * 130}"
-
-            self.genesis["extraData"] = extradata
-            self.genesis["config"]["clique"] = clique
-        else:
-            self.genesis["config"]["ethash"] = {}
-            raise Exception("not implemented in launchers")
+        }
 
         # besu doesn't use keystores like geth, however you can embed the accounts in the genesis.
         mnemonic = self.etb_config.get("eth1-account-mnemonic")
@@ -170,10 +159,8 @@ class ExecutionGenesisWriter(object):
                 mnemonic, account_path=acc, passphrase=password
             )
 
-            self.genesis["alloc"][acct.address]["privateKey"] = acct.privateKey.hex()[
-                                                                2:
-                                                                ]
-        raise Exception("Reimplement me.")
+            self.genesis["alloc"][acct.address]["privateKey"] = acct.privateKey.hex()[2:]
+
         return self.genesis
 
     def create_nethermind_genesis(self):
@@ -187,9 +174,7 @@ class ExecutionGenesisWriter(object):
                 "maximumExtraDataSize": "0xffff",
                 "minGasLimit": "0x1388",
                 "networkID": hex(int(self.etb_config.get("chain-id"))),
-                "MergeForkIdTransition": hex(
-                    int(self.etb_config.get("merge-fork-block"))
-                ),
+                "MergeForkIdTransition": "0x0",
                 "eip150Transition": "0x0",
                 "eip158Transition": "0x0",
                 "eip160Transition": "0x0",
@@ -218,6 +203,8 @@ class ExecutionGenesisWriter(object):
                 "eip3198Transition": "0x0",
                 "eip3529Transition": "0x0",
                 "eip3541Transition": "0x0",
+                "eip4895TransitionTimestamp": "0x639b5c68",  # no idea what this is.
+                "terminalTotalDifficulty": "0x0",
             },
             "genesis": {
                 "seal": {
@@ -237,37 +224,19 @@ class ExecutionGenesisWriter(object):
             "nodes": [],
         }
 
-        if self.etb_config.get("clique-enabled"):
-            # self.genesis["engine"]["clique"] = {
-            #    "params": {
-            #        "period": hex(self.etb_config.get("seconds-per-eth1-block")),
-            #        "epoch": hex(self.etb_config.get("clique-epoch")),
-            #    }
-            # }
-            self.genesis["engine"]["clique"] = {
-                "params": {
-                    "period": self.etb_config.get("seconds-per-eth1-block"),
-                    "epoch": self.etb_config.get("clique-epoch"),
-                }
+        self.genesis["engine"]["Ethash"] = {
+            "params": {
+                "minimumDifficulty": "0x20000",
+                "difficultyBoundDivisor": "0x800",
+                "durationLimit": "0xd",
+                "blockReward": {"0x0": "0x1BC16D674EC80000"},
+                "homesteadTransition": "0x0",
+                "eip100bTransition": "0x0",
+                "difficultyBombDelays": {},
             }
-            signers = "".join(s for s in self.etb_config.get("clique-signers"))
-            extradata = f"0x{'0' * 64}{signers}{'0' * 130}"
-            self.genesis["genesis"]["extraData"] = extradata
-        else:
-            self.genesis["engine"]["Ethash"] = {
-                "params": {
-                    "minimumDifficulty": "0x20000",
-                    "difficultyBoundDivisor": "0x800",
-                    "durationLimit": "0xd",
-                    "blockReward": {"0x0": "0x1BC16D674EC80000"},
-                    "homesteadTransition": "0x0",
-                    "eip100bTransition": "0x0",
-                    "difficultyBombDelays": {},
-                }
-            }
-            raise Exception("ethash network not implemented")
-        raise Exception("Reimplement me.")
+        }
         return self.genesis
+
 
 # Testing
 if __name__ == "__main__":
@@ -282,4 +251,7 @@ if __name__ == "__main__":
 
     with open("/tmp/geth-genesis.json", 'w') as f:
         f.write(json.dumps(egw.create_geth_genesis()))
-
+    with open("/tmp/besu-genesis.json", 'w') as f:
+        f.write(json.dumps(egw.create_besu_genesis()))
+    with open("/tmp/nethermind-genesis.json", 'w') as f:
+        f.write(json.dumps(egw.create_nethermind_genesis()))
