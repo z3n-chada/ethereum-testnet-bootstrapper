@@ -44,46 +44,37 @@ config-params:
   # used for configuring execution genesis
   execution-layer:
     seconds-per-eth1-block: 14
-    execution-genesis-delay: 0
-    chain-id: 0x01000666
-    network-id: 0x01000666
-    merge-fork-block: 127 # consensus epoch 4 eth1_blocks + eth1-follow-distance
-    terminal-total-difficulty: 256 # mergeForkBlock*2 + a little more.
-    terminal-block-hash: "0x0000000000000000000000000000000000000000000000000000000000000000"
-    terminal-block-hash-activation-epoch: 18446744073709551615
-    # for now this always needs to be true.
-    clique:
-      clique-enabled: True
-      clique-signers: 
-        "51Dd070D1f6f8dB48CA5b0E47D7e899aea6b1AF5"
-      clique-epoch: 3000
+    # execution-genesis-delay: 0
+    chain-id: 0x03000666
+    network-id: 0x03000666
 
     # the first execution node that comes alive to bootstrap the network.
     execution-bootstrapper: "geth-bootstrapper"
 
   # used for generating the consensus config placed in /data/eth2-config.yaml
   consensus-layer:
-    consensus-genesis-delay: 225 # eth1-follow-distance*seconds-per-eth1-block + 1
+    # cconsensus-genesis-delay: 225 # eth1-follow-distance*seconds-per-eth1-block + 1
     preset-base: 'mainnet'
     min-genesis-active-validator-count: 20 # custom preseeded into genesis state.
     eth1-follow-distance: 16 # allow past eth1 blocks to be processed.
 
     forks:
-      genesis-fork-version: 0x01000666
-      genesis-fork-name: "phase0"
-      end-fork-name: "bellatrix"
+      genesis-fork-version: 0x03000666
 
       phase0-fork-version: 0x01000666
       phase0-fork-epoch: 0 # genesis
 
       altair-fork-version: 0x02000666
-      altair-fork-epoch: 2 # slot 64
+      altair-fork-epoch: 0 # genesis
 
       bellatrix-fork-version: 0x03000666
-      bellatrix-fork-epoch: 4 # slot 128
+      bellatrix-fork-epoch: 0 # genesis
+
+      capella-fork-version: 0x04000666
+      capella-fork-epoch: 18446744073709551615 # far future
 
       sharding-fork-version: 0x04000666
-      sharding-fork-epoch: 18446744073709551615
+      sharding-fork-epoch: 18446744073709551615 # far future
 
 accounts:
   eth1-account-mnemonic: "cat swing flag economy stadium alone churn speed unique patch report train"
