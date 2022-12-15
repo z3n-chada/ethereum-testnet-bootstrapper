@@ -385,11 +385,6 @@ class ETBConfig(GenericConfigurationEntry):
                 "terminal-bloch-hash-activation-epoch",
                 "execution-bootstrapper",
             ],
-            "config-params:execution-layer:clique": [
-                "clique-enabled",
-                "clique-signers",
-                "clique-epoch",
-            ],
             "config-params:consensus-layer": [
                 "consensus-genesis-delay",
                 "preset-base",
