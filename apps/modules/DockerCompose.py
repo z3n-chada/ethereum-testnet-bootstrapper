@@ -26,8 +26,6 @@ class ClientWriter(object):
 
         self.base_consensus_env_vars = [
             "preset-base",
-            "genesis-fork-name",
-            "end-fork-name",
             "testnet-dir",
             "node-dir",
             "ip-addr",
@@ -64,8 +62,6 @@ class ClientWriter(object):
             "geth-genesis-file",
             "besu-genesis-file",
             "nether-mind-genesis-file",
-            "erigon-genesis-file",
-            "end-fork-name",
             "execution-checkpoint-file",
             "execution-log-level",
         ]
