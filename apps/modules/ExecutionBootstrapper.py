@@ -1,3 +1,7 @@
+"""
+    Stores all fo the logic and methods required to bootstrap all the execution clients used
+    in an experiment/local testnet.
+"""
 import json
 import logging
 import random
@@ -44,7 +48,7 @@ class ETBExecutionBootstrapper(object):
 
     def write_all_execution_genesis_files(self):
         """
-        This method creates all of the execution genesis files for the clients we support.
+        This method creates all the execution genesis files for the clients we support.
         The genesis files are created and written to the file specified by the etb-CLIENT-genesis-file
         """
         egw = ExecutionGenesisWriter(self.etb_config)
