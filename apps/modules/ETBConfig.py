@@ -605,12 +605,34 @@ class ETBConfig(GenericConfigurationEntry):
 
         return keys
 
+    def get_clients_with_el_admin_interface(self):
+        """
+        Useful method to scrape all clients that have an EL client that
+        implement the admin rpc interface.
+
+        returns: a list with the client-names
+        """
+        clients = []
+        for name, ec in self.get("execution-clients").items():
+            if "admin" in ec.get("http-apis").lower():
+                for n in range(ec.get("num-nodes")):
+                    clients.append(f"{name}-{n}")
+        # consensus clients with execution clients using admin rpc
+        for name, cc in self.get("consensus_clients").items():
+            if cc.has("local-execution-client") and cc.get("local-execution-client"):
+                if "admin" in cc.execution_config.get("http-apis").lower():
+                    for n in range(ec.get("num-nodes")):
+                        clients.append(f"{name}-{n}")
+
+        return clients
+
 
 if __name__ == "__main__":
-    c = ETBConfig("configs/mainnet/testing.yaml")
-    c._get_docker_services()
-    ccs = c.get_consensus_clients()
-    print(ccs)
-    print(c.get_num_beacon_nodes())
-    for client in ccs.values():
-        print(client.serialize_to_docker_services())
+    c = ETBConfig("configs/mainnet/geth-post-merge-genesis.yaml")
+    print(c.get_clients_with_el_admin_interface())
+    # c._get_docker_services()
+    # ccs = c.get_consensus_clients()
+    # print(ccs)
+    # print(c.get_num_beacon_nodes())
+    # for client in ccs.values():
+    #     print(client.serialize_to_docker_services())

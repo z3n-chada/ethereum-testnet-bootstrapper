@@ -85,6 +85,16 @@ class EthereumTestnetBootstrapper(object):
         # bootstrap all the execution clients.
         el_bootstrapper.bootstrap_execution_clients()
         self._write_checkpoint_file("execution-checkpoint-file")
+
+        # pair all the EL clients together.
+        self._pair_el_clients(self._get_all_el_enodes())
+
+        # bootstrap all the consensus clients.
+        cl_bootstrapper.bootstrap_consensus_clients()
+        self._write_checkpoint_file("consensus-checkpoint-file")
+
+
+
     # def bootstrap_testnet(self):
     #     # when we bootstrap the testnet we must do the following.
     #w
@@ -183,22 +193,22 @@ class EthereumTestnetBootstrapper(object):
                 else:
                     path.unlink()
 
-    def get_all_clients_with_admin_rpc_api(self):
-        # use this method to make sure we only used the admin rpc interface with clients
-        # that accept it.
-        clients = []
-        for name, ec in self.etb_config.get("execution-clients").items():
-            if "admin" in ec.get("http-apis").lower():
-                for n in range(ec.get("num-nodes")):
-                    clients.append(f"{name}-{n}")
-        # consensus clients with execution clients using admin rpc
-        for name, cc in self.etb_config.get("consensus_clients").items():
-            if cc.has("local-execution-client") and cc.get("local-execution-client"):
-                if "admin" in cc.execution_config.get("http-apis").lower():
-                    for n in range(ec.get("num-nodes")):
-                        clients.append(f"{name}-{n}")
-
-        return clients
+    # def get_all_clients_with_admin_rpc_api(self):
+    #     # use this method to make sure we only used the admin rpc interface with clients
+    #     # that accept it.
+    #     clients = []
+    #     for name, ec in self.etb_config.get("execution-clients").items():
+    #         if "admin" in ec.get("http-apis").lower():
+    #             for n in range(ec.get("num-nodes")):
+    #                 clients.append(f"{name}-{n}")
+    #     # consensus clients with execution clients using admin rpc
+    #     for name, cc in self.etb_config.get("consensus_clients").items():
+    #         if cc.has("local-execution-client") and cc.get("local-execution-client"):
+    #             if "admin" in cc.execution_config.get("http-apis").lower():
+    #                 for n in range(ec.get("num-nodes")):
+    #                     clients.append(f"{name}-{n}")
+    #
+    #     return clients
 
     # General private helpers to keep functions short.
     def _write_docker_compose(self):
@@ -238,3 +248,41 @@ class EthereumTestnetBootstrapper(object):
         self.etb_config.config["bootstrap-genesis"] = int(time.time())
         with open(self.etb_config.get("etb-config-file"), "w") as f:
             yaml.safe_dump(self.etb_config.config, f)
+
+    def _get_all_el_enodes(self):
+        """
+        fetch the EL enodes for all clients that implement the admin RPC
+        interface.
+
+        returns: dict {client-name : enode,...}
+        """
+
+        etb_rpc = ETBExecutionRPC(self.etb_config, timeout=5)
+        clients = self.etb_config.get_clients_with_el_admin_interface()
+        node_info = etb_rpc.do_rpc_request(
+            admin_node_info_RPC(), client_nodes=clients, all_clients=False
+        )
+        enodes = {}
+        for name, info in node_info.items():
+            enodes[name] = info["result"]["enode"]
+
+        return enodes
+
+    def _pair_el_clients(self, enode_dict, optional_delay=0):
+        """
+            Given a dict of enodes, iterate through it and pair the clients via
+            the admin RPC interface.
+        """
+        etb_rpc = ETBExecutionRPC(self.etb_config, timeout=5)
+
+        # iterate through all clients and enodes and peer them together.
+        for client, enode in enode_dict.items():
+            clients_to_peer = list(enode_dict.keys())
+            # don't peer a client with itself.
+            clients_to_peer.remove(client)
+            etb_rpc.do_rpc_request(
+                admin_add_peer_RPC(enode),
+                client_nodes=clients_to_peer,
+                all_clients=False,
+            )
+            time.sleep(optional_delay)

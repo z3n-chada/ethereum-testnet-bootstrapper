@@ -18,6 +18,11 @@ class ETBExecutionBootstrapper(object):
     """
     This bootstrapper is responsible for setting up all the
     execution clients. (including consensus local execution clients)
+
+    The el_bootstrapper is able to:
+        1. create the standalone execution dirs
+        2. write all the execution genesis files.
+        3. create/write the execution jwt files.
     """
 
     def __init__(self, etb_config):
