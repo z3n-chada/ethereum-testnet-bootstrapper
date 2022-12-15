@@ -25,13 +25,11 @@ class ETBExecutionBootstrapper(object):
 
     def bootstrap_execution_clients(self):
         """
-        In order to bootstrap we must generate genesis.ssz and
-        the config files for each of the clients.
+        The execution bootstrap phase consists of writing every EL's genesis
+        json file in their respective dirs.
         """
         logger.info("ExecutionBootstrapper started.")
-
         self.write_all_execution_genesis_files()
-
         logger.info("ExecutionBootstrapper: all execution genesis files written")
 
     def create_execution_client_jwt(self):

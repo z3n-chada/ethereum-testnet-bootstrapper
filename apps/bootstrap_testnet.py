@@ -29,20 +29,14 @@ if __name__ == "__main__":
         default=False,
         help="Initialize the testnet to be bootstrapped.",
     )
-    # parser.add_argument(
-    #     "--write-docker-compose",
-    #     dest="write_docker_compose",
-    #     action="store_true",
-    #     help="Write the docker-compose.yaml file to bootstrap the network",
-    # )
 
-    # parser.add_argument(
-    #     "--bootstrap-testnet",
-    #     dest="bootstrap_testnet",
-    #     action="store_true",
-    #     default=False,
-    #     help="Start the testnet",
-    # )
+    parser.add_argument(
+        "--bootstrap-testnet",
+        dest="bootstrap_testnet",
+        action="store_true",
+        default=False,
+        help="Start the testnet",
+    )
 
     parser.add_argument(
         "--log-to-stdout",
@@ -83,8 +77,5 @@ if __name__ == "__main__":
     if args.init_testnet:
         etb.init_testnet()
 
-    # if args.write_docker_compose:
-    #     etb.write_docker_compose()
-    #
-    # if args.bootstrap_testnet:
-    #     etb.bootstrap_testnet()
+    if args.bootstrap_testnet:
+        etb.bootstrap_testnet()
