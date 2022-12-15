@@ -129,8 +129,8 @@ execution-configs:
   geth-execution-config:
     client: "geth"
     execution-log-level: "4" # detail
-    http-apis: "clique,admin,net,eth,web3,personal,engine"
-    ws-apis: "clique,admin,net,eth,web3,personal,engine"
+    http-apis: "debug,txpool,admin,net,eth,web3,personal,engine"
+    ws-apis: "admin,net,eth,engine"
     execution-http-port: 8645
     execution-ws-port: 8646
     execution-engine-http-port: 8551   # http/ws same port.
@@ -159,19 +159,6 @@ execution-configs:
     execution-ws-port: 8646
     execution-engine-http-port: 8551 # doesn't do http/ws the same.
     execution-engine-ws-port: 8552
-    execution-p2p-port: 666
-    execution-metric-port: 9001
-
-  erigon-execution-config:
-    client: "erigon"
-    # 0=silent, 1=error, 2=warn, 3=info, 4=debug, 5=detail (default: 3)
-    execution-log-level: "3" # detail
-    http-apis: "engine,net,eth,clique"
-    ws-apis: "engine,net,eth,clique"
-    execution-http-port: 8645
-    execution-ws-port: 8646
-    execution-engine-http-port: 8551   # http/ws same port.
-    execution-engine-ws-port: 8551   # include for nimbus
     execution-p2p-port: 666
     execution-metric-port: 9001
 
