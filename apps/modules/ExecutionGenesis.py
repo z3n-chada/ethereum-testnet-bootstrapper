@@ -1,6 +1,6 @@
 from web3.auto import w3
 
-from .EthDepositContract import deposit_contract_json
+from EthDepositContract import deposit_contract_json
 
 w3.eth.account.enable_unaudited_hdwallet_features()
 
@@ -9,9 +9,7 @@ class ExecutionGenesisWriter(object):
     def __init__(self, global_config):
         self.etb_config = global_config
         self.genesis = {}
-        self.execution_genesis = self.etb_config.get(
-            "bootstrap-genesis"
-        ) + self.etb_config.get("execution-genesis-delay")
+        self.execution_genesis = self.etb_config.get("bootstrap-genesis") + self.etb_config.get("execution-genesis-delay")
 
     def get_allocs(self):
         allocs = {}
@@ -270,3 +268,18 @@ class ExecutionGenesisWriter(object):
             raise Exception("ethash network not implemented")
         raise Exception("Reimplement me.")
         return self.genesis
+
+# Testing
+if __name__ == "__main__":
+    import time
+    import json
+    from ETBConfig import ETBConfig
+
+    etb_config = c = ETBConfig("configs/mainnet/geth-post-merge-genesis.yaml")
+    etb_config.set_bootstrap_genesis(int(time.time()))
+
+    egw = ExecutionGenesisWriter(etb_config)
+
+    with open("/tmp/geth-genesis.json", 'w') as f:
+        f.write(json.dumps(egw.create_geth_genesis()))
+
