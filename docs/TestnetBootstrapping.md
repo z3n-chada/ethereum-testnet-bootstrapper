@@ -71,21 +71,23 @@ when their relevant data is ready for use and their dependent docker images are
 running and ready to accept connections. The following sections are ordered in 
 terms of their checkpoint files.
 ### etb-config-checkpoint
-1. [ethereum-testnet-bootstrpper]: open the etb-config-file and set the current time
+1. ``[ethereum-testnet-bootstrpper]``: open the etb-config-file and set the current time
 write the file. 
-2. [ethereum-testnet-bootstrapper]: write the checkpoint file ``etb-config-checkpoint``
+2. ``[ethereum-testnet-bootstrapper]``: write the checkpoint file ``etb-config-checkpoint``
 to signal to the docker images that the etb-config file is ready to be opened.
 ### consensus-bootnode-checkpoint
 There are no dependencies. 
-1. [ethereum-testnet-bootstrapper]: write the checkpoint file ``consensus-bootnode-checkpoint``
+1. ``[ethereum-testnet-bootstrapper]``: write the checkpoint file ``consensus-bootnode-checkpoint``
 to signal the CL bootnode to come online.
 ### execution-checkpoint-file
-1. [ethereum-testnet-bootstrapper]: create the genesis json for all the EL clients.
-2. [ethereum-testnet-bootstrapper]: write the checkpoint file ``execution-checkpoint``
+1. ``[ethereum-testnet-bootstrapper]``: create the genesis json for all the EL clients.
+2. ``[ethereum-testnet-bootstrapper]``: write the checkpoint file ``execution-checkpoint``
 to signal all the EL clients to come online.
-## Testnet Directory Structure
-When we create a testnet to launch with docker instances we give all the clients a shared directory they can use. This
-is the testnet dir.
-## Execution Bootstrapping
-## Consensus Bootstrapping
-# Dockers
+3. ``[ethereum-testnet-boostrapper]``: after some time we also link together all the EL clients via ``admin_addPeer()`` calls.
+   4.   it was previously possible to run erigon, but as they don't implement this API interface we have dropped support to speed up development :(
+   5. support may later be added, you can see how it was previously done before the post-merge-genesis-rework branch was merged in.
+### consensus-checkpoint-file
+1. ``[ethereum-testnet-bootstrapper]``: once execution has kicked off we build the config.yaml and genesis.ssz file and then populate all of the cl client dirs with the neccessary files. (genesis.ssz, config.yaml, validator-key dirs, etc..)
+2. ``[ethereum-testnet-bootstrapper]``: write the checkpoint file ``consensus-checkpoint`` to signal all the CL clients to come up.
+
+TODO: finish this doc.
