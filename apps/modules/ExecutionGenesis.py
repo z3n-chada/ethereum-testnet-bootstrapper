@@ -29,7 +29,6 @@ class ExecutionGenesisWriter(object):
                 mnemonic, account_path=acc, passphrase=password
             )
             allocs[acct.address] = {"balance": premines[acc] + "0" * 18}
-            # genesis["alloc"][acct.address] = {"balance": premines[acc] + "0" * 18}
 
         # deposit contract
         allocs[self.etb_config.get("deposit-contract-address")] = deposit_contract_json

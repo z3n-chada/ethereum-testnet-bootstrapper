@@ -42,7 +42,6 @@ config-params:
 
   # used for configuring execution genesis
   execution-layer:
-    terminal-total-difficulty: 0
     seconds-per-eth1-block: 14
     execution-genesis-delay: 0
     shanghai-delay: 1000000
@@ -52,6 +51,11 @@ config-params:
     # the first execution node that comes alive to bootstrap the network.
     execution-bootstrapper: "geth-bootstrapper"
 
+    #TODO: remove the necessity for this, we no longer need to config this.
+
+    terminal-total-difficulty: 0
+    terminal-block-hash: "0x0000000000000000000000000000000000000000000000000000000000000000"
+    terminal-block-hash-activation-epoch: 18446744073709551615
   # used for generating the consensus config placed in /data/eth2-config.yaml
   consensus-layer:
     # cconsensus-genesis-delay: 225 # eth1-follow-distance*seconds-per-eth1-block + 1
@@ -201,21 +205,16 @@ execution-clients:
       geth-password-file: "/data/geth-account-passwords.txt"
       is-mining: True
       eth1-passphrase: "testnet-password"
+      clique-unlock-key: "51Dd070D1f6f8dB48CA5b0E47D7e899aea6b1AF5"
 
-#    additional-env:
-#      geth-password-file: "/data/geth-account-passwords.txt"
-#      is-mining: True
-#      eth1-passphrase: "testnet-password"
-#      clique-unlock-key: "51Dd070D1f6f8dB48CA5b0E47D7e899aea6b1AF5"
-#
-#      tx-fuzz-enabled: True
-#      tx-fuzz-private-keys: "0x1e48147d3eb2af708706c71188703913e3b2dead2716dbe0caa8ccf4ff1d5573,0x6cf9f64e4bdf9b5547882e276da15a590f0873d313a2a833f07f3ec9d45fdc7e,0x045b49f8c41b5562fbfc54c3d5c76df1cd7b2c340494383b2e3783de81c39184,0xa7c0262c56b2f5b9dd43c7cb544aff29e77e2b2a4ced2a34964016ff4cbf7675"
-#      tx-fuzz-public-keys: "0x51Dd070D1f6f8dB48CA5b0E47D7e899aea6b1AF5,0x6B477789219c9D5b80159652AA913A5eee39d07e,0xa03f25d5839029323Be765Fbc02E262628923338,0x60337eFAD102533d73E7c7D03736B8c4b87cdB2e"
-#      tx-fuzz-mode: "spam"
-#      launch-new-execution-client: False # don't make a new geth node
-#      http-web3-ip-addr: "10.0.20.2"  # use the geth-bootstrapper
-#      execution-http-port: 8645       # geth boostrapper arg.
-#      tx-fuzz-launcher: "/source/apps/launchers/fuzzers/launch-tx-fuzzer.sh"
+      tx-fuzz-enabled: True
+      tx-fuzz-private-keys: "0x1e48147d3eb2af708706c71188703913e3b2dead2716dbe0caa8ccf4ff1d5573,0x6cf9f64e4bdf9b5547882e276da15a590f0873d313a2a833f07f3ec9d45fdc7e,0x045b49f8c41b5562fbfc54c3d5c76df1cd7b2c340494383b2e3783de81c39184,0xa7c0262c56b2f5b9dd43c7cb544aff29e77e2b2a4ced2a34964016ff4cbf7675"
+      tx-fuzz-public-keys: "0x51Dd070D1f6f8dB48CA5b0E47D7e899aea6b1AF5,0x6B477789219c9D5b80159652AA913A5eee39d07e,0xa03f25d5839029323Be765Fbc02E262628923338,0x60337eFAD102533d73E7c7D03736B8c4b87cdB2e"
+      tx-fuzz-mode: "spam"
+      launch-new-execution-client: False # don't make a new geth node
+      http-web3-ip-addr: "10.0.20.2"  # use the geth-bootstrapper
+      execution-http-port: 8645       # geth boostrapper arg.
+      tx-fuzz-launcher: "/source/apps/launchers/fuzzers/launch-tx-fuzzer.sh"
 
 consensus-clients:
 # Consensus Client Setup:
@@ -238,7 +237,7 @@ consensus-clients:
     image: "etb-all-clients"
     tag: "latest"
     container-name: "prysm-client-geth"
-    entrypoint: "/source/apps/launchers/consensus-clients/launch-prysm.sh"
+    entrypoint: "/source/deps/launchers/cl/launch-prysm.sh"
     start-ip-addr: "10.0.20.10"
     depends: "ethereum-testnet-bootstrapper"
     # beacon/validator flags
@@ -268,7 +267,7 @@ consensus-clients:
     image: "etb-all-clients"
     tag: "latest"
     container-name: "teku-client-geth"
-    entrypoint: "/source/apps/launchers/consensus-clients/launch-teku.sh"
+    entrypoint: "/source/deps/launchers/cl/launch-teku.sh"
     start-ip-addr: "10.0.20.20"
     depends: "ethereum-testnet-bootstrapper"
 
@@ -295,7 +294,7 @@ consensus-clients:
     image: "etb-all-clients"
     tag: "latest"
     container-name: "nimbus-client-geth"
-    entrypoint: "/source/apps/launchers/consensus-clients/launch-nimbus.sh"
+    entrypoint: "/source/deps/launchers/cl/launch-nimbus.sh"
     start-ip-addr: "10.0.20.30"
     depends: "ethereum-testnet-bootstrapper"
 
@@ -322,7 +321,7 @@ consensus-clients:
     image: "etb-all-clients"
     tag: "latest"
     container-name: "lighthouse-client-geth"
-    entrypoint: "/source/apps/launchers/consensus-clients/launch-lighthouse.sh"
+    entrypoint: "/source/deps/launchers/cl/launch-lighthouse.sh"
     start-ip-addr: "10.0.20.40"
     depends: "ethereum-testnet-bootstrapper"
 
@@ -347,7 +346,7 @@ consensus-clients:
     image: "etb-all-clients"
     tag: "latest"
     container-name: "lodestar-client-geth"
-    entrypoint: "/source/apps/launchers/consensus-clients/launch-lodestar.sh"
+    entrypoint: "/source/deps/launchers/cl/launch-lodestar.sh"
     start-ip-addr: "10.0.20.50"
     depends: "ethereum-testnet-bootstrapper"
   

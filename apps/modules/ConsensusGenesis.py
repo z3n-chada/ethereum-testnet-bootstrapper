@@ -1,7 +1,11 @@
+"""
+    Contains all of the neccessary information and functionality to write the
+    consensus config.yaml and genesis.ssz.
+"""
+import logging
 import subprocess
 
 from ruamel import yaml
-import logging
 
 logger = logging.getLogger("bootstrapper_log")
 
@@ -51,27 +55,30 @@ class ConsensusGenesisWriter(object):
             "min-genesis-active-validator-count",
         ]
 
-    def create_consensus_genesis(
-        self,
-        eth1_block_hash="0000000000000000000000000000000000000000000000000000000000000000",
-        eth1_timestamp=1644722881,
-    ):
-
-        preset_base = self.etb_config.get("preset-base")
-        genesis_fork = self.etb_config.get("genesis-fork-name")
+    def create_consensus_genesis(self):
+        """
+        Create the consensus genesis.ssz file with eth2-testnet-genesis.
+        currently we only use post-merge genesis with no withdrawal.
+        """
         mnemonic = self.etb_config.get("validator-mnemonic")
         config = self.etb_config.get("consensus-config-file")
-        state_out = "/tmp/consensus-genesis.ssz"
-        # state_out = self.etb_config.get("consensus-genesis-file")
+        state_out = self.etb_config.get("consensus-genesis-file")
+        num_deposits = self.etb_config.get("min-genesis-active-validator-count")
+        eth1_config = self.etb_config.get("geth-genesis-file")
+
+        logger.debug("Creating genesis ssz using:")
+        logger.debug(f"mnemonic: {mnemonic}")
+        logger.debug(f"num_deposits {num_deposits}")
+        logger.debug(f"config {config}")
+        logger.debug(f"eth1-config {eth1_config}")
+        logger.debug(f"ssz path: {state_out}")
 
         with open("/tmp/validators.yaml", "w") as f:
             yaml.dump(
                 [
                     {
                         "mnemonic": mnemonic,
-                        "count": self.etb_config.get(
-                            "min-genesis-active-validator-count"
-                        ),
+                        "count": num_deposits,
                     }
                 ],
                 f,
@@ -79,19 +86,15 @@ class ConsensusGenesisWriter(object):
 
         cmd = [
             "eth2-testnet-genesis",
-            genesis_fork,
-            "--preset-phase0",
-            preset_base,
+            "merge",
             "--mnemonics",
             "/tmp/validators.yaml",
             "--config",
             config,
             "--state-output",
             state_out,
-            "--eth1-block",
-            eth1_block_hash,
-            "--timestamp",
-            str(eth1_timestamp),
+            "--eth1-config",
+            eth1_config
         ]
         logger.debug(f"ConsensusGenesis: running eth2-testnet-genesis:\n{cmd}")
         subprocess.run(cmd, capture_output=True)
@@ -137,7 +140,7 @@ MIN_GENESIS_ACTIVE_VALIDATOR_COUNT: {self.etb_config.get('min-genesis-active-val
 
 MIN_GENESIS_TIME: {self.etb_config.get('bootstrap-genesis')}
 GENESIS_FORK_VERSION: 0x{self.etb_config.get('genesis-fork-version'):08x}
-GENESIS_DELAY: {self.etb_config.get('consensus-genesis-delay')}
+GENESIS_DELAY: 0
 
 # Forking
 # ---------------------------------------------------------------
@@ -197,5 +200,3 @@ DEPOSIT_NETWORK_ID: {self.etb_config.get('network-id')}
 # Allocated in Execution-layer genesis
 DEPOSIT_CONTRACT_ADDRESS: {self.etb_config.get('deposit-contract-address')}
 """
-
-    # EPOCHS_PER_ETH1_VOTING_PERIOD: {pd['epochs-per-eth1-voting-period']}
