@@ -3,7 +3,7 @@
 env_vars=("EXECUTION_BOOTNODE_START_IP_ADDR" "NETRESTRICT_RANGE" "EXECUTION_BOOTNODE_DISC_PORT" "EXECUTION_BOOTNODE_PRIVATE_KEY" "EXECUTION_BOOTNODE_VERBOSITY" "EXECUTION_BOOTNODE_ENODE" "EXECUTION_BOOTNODE_ENODE_FILE" "EXECUTION_BOOTNODE_ENODE_DIR")
 
 for var in "${env_vars[@]}" ; do
-    if [[ -z "$var" ]]; then
+    if [[ -z "${!var}" ]]; then
         echo "$var not set"
         exit 1
     fi

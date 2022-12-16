@@ -38,7 +38,7 @@ env_vars=(
 
 
 for var in "${env_vars[@]}" ; do
-    if [[ -z "$var" ]]; then
+    if [[ -z "${!var}" ]]; then
         echo "$var not set"
         exit 1
     fi
