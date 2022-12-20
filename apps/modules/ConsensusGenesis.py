@@ -132,7 +132,7 @@ class ConsensusGenesisWriter(object):
             pd[k] = v
         return f"""
 PRESET_BASE: \"{self.etb_config.get('preset-base')}\"
-
+CONFIG_NAME: \"post-merge-geneis-testnet\"
 # Genesis
 # ---------------------------------------------------------------
 # [customized]
@@ -140,7 +140,7 @@ MIN_GENESIS_ACTIVE_VALIDATOR_COUNT: {self.etb_config.get('min-genesis-active-val
 
 MIN_GENESIS_TIME: {self.etb_config.get('bootstrap-genesis')}
 GENESIS_FORK_VERSION: 0x{self.etb_config.get('genesis-fork-version'):08x}
-GENESIS_DELAY: 0
+GENESIS_DELAY: 1
 
 # Forking
 # ---------------------------------------------------------------
@@ -157,8 +157,9 @@ BELLATRIX_FORK_EPOCH: {self.etb_config.get('bellatrix-fork-epoch')}
 SHARDING_FORK_VERSION: 0x{self.etb_config.get('sharding-fork-version'):08x}
 SHARDING_FORK_EPOCH: {self.etb_config.get('sharding-fork-epoch')}
 
+EIP4844_FORK_VERSION: 0x50000040
+EIP4844_FORK_EPOCH: 18446744073709551615
 # TBD, 2**32 is a placeholder. Merge transition approach is in active R&D.
-MIN_ANCHOR_POW_BLOCK_DIFFICULTY: 4294967296
 
 # Time parameters
 # ---------------------------------------------------------------
@@ -170,6 +171,7 @@ MIN_VALIDATOR_WITHDRAWABILITY_DELAY: 256
 SHARD_COMMITTEE_PERIOD: {pd['shard-committee-period']}
 ETH1_FOLLOW_DISTANCE: {pd['eth1-follow-distance']}
 
+
 # Validator cycle
 # ---------------------------------------------------------------
 # 2**2 (= 4)
@@ -180,8 +182,14 @@ INACTIVITY_SCORE_RECOVERY_RATE: 16
 EJECTION_BALANCE: 16000000000
 # 2**2 (= 4)
 MIN_PER_EPOCH_CHURN_LIMIT: 4
-# [customized] scale queue churn at much lower validator counts for testing
-CHURN_LIMIT_QUOTIENT: {pd['churn-limit-quotient']}
+# 2**16 (= 65,536)
+CHURN_LIMIT_QUOTIENT: 65536
+
+# Fork choice
+# ---------------------------------------------------------------
+# 40%
+PROPOSER_SCORE_BOOST: 40
+
 
 # Transition
 # ---------------------------------------------------------------
