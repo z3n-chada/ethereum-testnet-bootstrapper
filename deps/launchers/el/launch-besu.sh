@@ -1,50 +1,40 @@
-env_vars=( 
-    "EXECUTION_CHECKPOINT_FILE" 
-    "IP_ADDR" 
-    "EXECUTION_DATA_DIR" 
-    "EXECUTION_HTTP_PORT" 
-    "EXECUTION_WS_PORT" 
-    "EXECUTION_P2P_PORT" 
-    "NETWORK_ID" 
-    "HTTP_APIS" 
-    "WS_APIS" 
-    "END_FORK_NAME" 
-    "BESU_PRIVATE_KEY" 
-    "EXECUTION_LOG_LEVEL"
-    "BESU_GENESIS_FILE" 
+#!/bin/bash
+
+env_vars=(
+  "EXECUTION_CHECKPOINT_FILE"
+  "EXECUTION_CLIENT"
+  "EXECUTION_ENGINE_HTTP_PORT"
+  "EXECUTION_ENGINE_WS_PORT"
+  "EXECUTION_GENESIS_FILE"
+  "EXECUTION_HTTP_APIS"
+  "EXECUTION_HTTP_PORT"
+  "EXECUTION_LAUNCHER"
+  "EXECUTION_LOG_LEVEL"
+  "EXECUTION_METRIC_PORT"
+  "EXECUTION_NODE_DIR"
+  "EXECUTION_P2P_PORT"
+  "EXECUTION_WS_APIS"
+  "EXECUTION_WS_PORT"
+  "IP_ADDRESS"
+  "IP_SUBNET"
+  "JWT_SECRET_FILE"
+  "NODE_NUM"
+  "CHAIN_ID"
 )
 
-# OPTIONAL: 
-    # TERMINAL_TOTAL_DIFFICULTY
-    # EXECUTION_HTTP_ENGINE_PORT
-    # EXECUTION_WS_ENGINE_PORT
-    # EXECUTION_HTTP_AUTH_ENGINE_PORT
-    # EXECUTION_WS_AUTH_ENGINE_PORT
-    # EXECUTION_HTTP_AUTH_PORT
-    # EXECUTION_WS_AUTH__PORT
-    # JWT_SECRET_FILE
-    # TX_FUZZ_ENABLED
-    # NETRESTRICT_RANGE
-    # MAX_PEERS
-    ###For the bootstrapper###TODO
-    # CLIQUE_UNLOCK_KEY
-    # IS_MINING
-    # ETH1_PASSPHRASE
-
+# verify vars we need are set and available.
 for var in "${env_vars[@]}" ; do
-    if [[ -z "$var" ]]; then
+    if [[ -z "${!var}" ]]; then
+        echo "BESU error in geth var check."
         echo "$var not set"
         exit 1
     fi
 done
 
-echo "besu bootstrapper got a valid env-var set"
-
-ADDITIONAL_ARGS="--logging=$EXECUTION_LOG_LEVEL"
 
 while [ ! -f "$EXECUTION_CHECKPOINT_FILE" ]; do
+  echo "Waiting for execution checkpoint file: $EXECUTION_CHECKPOINT_FILE"
     sleep 1
-    echo "Waiting on exeuction genesis"
 done
 
 #--discovery-enabled=false \
