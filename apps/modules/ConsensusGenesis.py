@@ -106,7 +106,7 @@ class ConsensusGenesisWriter(object):
 
     def _get_potential_overrides(self):
         # fetch potential overrides for config-params
-        cc = self.etb_config.config["config-params"]["consensus-layer"]
+        cc = self.etb_config.global_config["config-params"]["consensus-layer"]
         overrides = {}
         for po in self.potential_overrides:
             if po in cc:
@@ -123,7 +123,7 @@ class ConsensusGenesisWriter(object):
             pd = self.mainnet_defaults
         else:
             raise Exception(
-                f"Invalid preset base for consensus config: {self.etb_config.get_preset_base()}"
+                f"Invalid preset base for consensus config: {self.etb_config.get('preset-base')}"
             )
 
         overrides = self._get_potential_overrides()

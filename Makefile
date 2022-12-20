@@ -6,7 +6,7 @@ build-bootstrapper:
 
 # build all of the docker files we currently use
 build-dockers:
-	cd etb-dockers && ./build_dockers.sh
+	cd deps/dockers && ./build_dockers.sh
 
 # init the testnet dirs and all files needed to later bootstrap the testnet.
 init-testnet:

@@ -416,7 +416,7 @@ consensus-clients:
 
     local-execution-client: true
     execution-config: "besu-execution-config"
-    execution-launcher: "/source/apps/launchers/execution-clients/launch-besu-clique.sh"
+    execution-launcher: "/source/apps/launchers/execution-clients/launch-besu.sh"
 
 
     testnet-dir: '/data/local_testnet/prysm-besu'
@@ -445,7 +445,7 @@ consensus-clients:
     consensus-bootnode-config: "eth2-bootnode-config"
     local-execution-client: true
     execution-config: "besu-execution-config"
-    execution-launcher: "/source/apps/launchers/execution-clients/launch-besu-clique.sh"
+    execution-launcher: "/source/apps/launchers/execution-clients/launch-besu.sh"
 
     testnet-dir: '/data/local_testnet/teku-besu'
     jwt-secret-file: "/data/local_testnet/teku-besu/jwt-secret"
@@ -475,7 +475,7 @@ consensus-clients:
 
     local-execution-client: true
     execution-config: "besu-execution-config"
-    execution-launcher: "/source/apps/launchers/execution-clients/launch-besu-clique.sh"
+    execution-launcher: "/source/apps/launchers/execution-clients/launch-besu.sh"
 
     validator-offset-start: 28 # so validators of different clients don't overlap
 
@@ -497,7 +497,7 @@ consensus-clients:
 
     local-execution-client: true
     execution-config: "besu-execution-config"
-    execution-launcher: "/source/apps/launchers/execution-clients/launch-besu-clique.sh"
+    execution-launcher: "/source/apps/launchers/execution-clients/launch-besu.sh"
 
     num-nodes: 1 # how many beacon nodes
     testnet-dir: '/data/local_testnet/lighthouse-besu'
@@ -523,7 +523,7 @@ consensus-clients:
   
     local-execution-client: true
     execution-config: "besu-execution-config"
-    execution-launcher: "/source/apps/launchers/execution-clients/launch-besu-clique.sh"
+    execution-launcher: "/source/apps/launchers/execution-clients/launch-besu.sh"
   
     testnet-dir: '/data/local_testnet/lodestar-besu'
     jwt-secret-file: "/data/local_testnet/lodestar-besu/jwt-secret"

@@ -5,6 +5,8 @@ import requests
 import time
 from concurrent.futures import ThreadPoolExecutor
 
+from typing import Dict, List
+
 
 def _threadpool_executor_rpc_request_proxy(bucket, execution_json_rpc, rpc):
     return bucket, execution_json_rpc.get_rpc_response(rpc)
@@ -101,7 +103,7 @@ class ETBExecutionRPC(object):
     """
 
     def __init__(
-        self, etb_config, non_error=True, timeout=5, retry_delay=1, protocol="http"
+            self, etb_config, non_error=True, timeout=5, retry_delay=1, protocol="http"
     ):
         self.etb_config = etb_config
         self.non_error = non_error
@@ -113,38 +115,23 @@ class ETBExecutionRPC(object):
             err = "non-implemented protocol for ExecutionRPC connection"
             raise Exception(err)
 
-        self._get_all_execution_endpoints()
-
-    def _get_all_execution_endpoints(self):
         self.execution_endpoints = {}
-        for name, ec in self.etb_config.get("execution-clients").items():
-            for node in range(ec.get("num-nodes")):
-                ip = ec.get("ip-addr", node)
-                port = ec.get(f"execution-{self.protocol}-port")
-                url = f"{self.protocol}://{ip}:{port}"
-                self.execution_endpoints[f"{name}-{node}"] = ExecutionJSONRPC(
-                    url, self.non_error, self.timeout
-                )
 
-        for name, cc in self.etb_config.get("consensus-clients").items():
-            if cc.has_local_exectuion_client:
-                for node in range(cc.get("num-nodes")):
-                    ip = cc.get("ip-addr", node)
-                    port = cc.get(f"execution-{self.protocol}-port")
-                    url = f"{self.protocol}://{ip}:{port}"
-                    _name = f"{name}-{node}"
-                    self.execution_endpoints[_name] = ExecutionJSONRPC(
-                        url, self.non_error, self.timeout
-                    )
+        for name, rpc_path in self.etb_config.get_execution_rpc_paths(self.protocol).items():
+            self.execution_endpoints[name] = ExecutionJSONRPC(rpc_path, self.non_error, self.timeout)
 
     def get_client_nodes(self):
         return self.execution_endpoints.keys()
 
     def do_rpc_request(
-        self, execution_rpc_method, client_nodes=[None], all_clients=False
+            self, execution_rpc_method, client_nodes: List[str] = None, all_clients=False
     ):
+        if client_nodes is None:
+            client_nodes = []
+
         if all_clients:
             ep = self.get_client_nodes()
+
         else:
             if not isinstance(client_nodes, list):
                 ep = [client_nodes]
@@ -181,17 +168,18 @@ class ETBExecutionRPC(object):
 if __name__ == "__main__":
     from ETBConfig import ETBConfig
 
-    etb_rpc = ETBExecutionRPC(ETBConfig("configs/mainnet/testing.yaml"), timeout=2)
-
-    # node_info = etb_rpc.do_rpc_request(admin_node_info_RPC(_id=2), all_clients=True)
-    # print(node_info)
-    blocks = etb_rpc.do_rpc_request(
-        eth_get_block_RPC(), ["prysm-nethermind-0", "geth-bootstrapper-0"]
-    )
-    for name, blocks in blocks.items():
-        print(f"{name}: {blocks}")
-    peers = etb_rpc.do_rpc_request(
-        admin_peers_RPC(), ["prysm-nethermind-0", "geth-bootstrapper-0"]
-    )
-    for name, peer in peers.items():
-        print(f"{name}: {peer}")
+    config = ETBConfig("../../configs")
+    # etb_rpc = ETBExecutionRPC(ETBConfig("configs/mainnet/testing.yaml"), timeout=2)
+    #
+    # # node_info = etb_rpc.do_rpc_request(admin_node_info_RPC(_id=2), all_clients=True)
+    # # print(node_info)
+    # blocks = etb_rpc.do_rpc_request(
+    #     eth_get_block_RPC(), ["prysm-nethermind-0", "geth-bootstrapper-0"]
+    # )
+    # for name, blocks in blocks.items():
+    #     print(f"{name}: {blocks}")
+    # peers = etb_rpc.do_rpc_request(
+    #     admin_peers_RPC(), ["prysm-nethermind-0", "geth-bootstrapper-0"]
+    # )
+    # for name, peer in peers.items():
+    #     print(f"{name}: {peer}")

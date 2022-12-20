@@ -20,6 +20,7 @@
         at this point should be considered errors.
 """
 import time
+from pathlib import Path
 
 from modules.BeaconAPI import BeaconAPI, ETBConsensusBeaconAPI
 from modules.ETBConfig import ETBConfig
@@ -51,25 +52,25 @@ class TestnetStatusChecker(object):
         )
         self.health_metric = UniqueConsensusHeads()
 
-        if self.etb_config.get("preset-base") == "mainnet":
-            self.secs_per_eth2_slot = 12
-        else:
-            raise Exception("No minimal support")
+        # if self.etb_config.get("preset-base") == "mainnet":
+        #     self.secs_per_eth2_slot = 12
+        # else:
+        #     raise Exception("No minimal support")
+        self.secs_per_eth2_slot = 12
 
-        consensus_delay = self.etb_config.get("consensus-genesis-delay")
-        self.genesis_time = self.now + consensus_delay
+        self.genesis_time = self.etb_config.get("bootstrap-genesis")
 
         self.phase0_time = (
-            self.now + consensus_delay + args.phase0_slot * self.secs_per_eth2_slot
+            self.now + args.phase0_slot * self.secs_per_eth2_slot
         )
         self.phase1_time = (
-            self.now + consensus_delay + args.phase1_slot * self.secs_per_eth2_slot
+            self.now + args.phase1_slot * self.secs_per_eth2_slot
         )
         self.phase2_time = (
-            self.now + consensus_delay + args.phase2_slot * self.secs_per_eth2_slot
+            self.now + args.phase2_slot * self.secs_per_eth2_slot
         )
         self.phase3_time = (
-            self.now + consensus_delay + args.phase3_slot * self.secs_per_eth2_slot
+            self.now + args.phase3_slot * self.secs_per_eth2_slot
         )
         # number of checks just in case we fall on a boundry.
         self.number_of_checks = args.num_checks
@@ -265,7 +266,10 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-    time.sleep(30)  # TODO: use a checkpoint file.
+
+    while not Path("/data/etb-config-file-ready").exists():
+        time.sleep(1)
+
     status_checker = TestnetStatusChecker(args)
     status_checker.start_status_checker()
 
