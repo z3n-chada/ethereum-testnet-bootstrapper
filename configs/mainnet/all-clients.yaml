@@ -1,829 +1,829 @@
-docker:
-    network-name: "ethereum-testnet"
-    ip-subnet: "10.0.20.0/24" 
-    volumes: ['./data:/data/', './:/source/']
-    # for writing the docker-compose.yaml
-    #
-files:
-  # all files with respect to docker path
-  testnet-root: '/data/'
-
-  # execution genesis files.
-  geth-genesis-file: "/data/geth-genesis.json"
-  besu-genesis-file: "/data/besu-genesis.json"
-  nether-mind-genesis-file: "/data/nethermind-genesis.json" # nethermind cares about envargs
-  erigon-genesis-file: "/data/erigon-genesis.json"
-
-  consensus-config-file: "/data/consensus-config.yaml"
-  consensus-genesis-file: "/data/genesis.ssz"
-
-  etb-config-file: "/data/etb-config.yaml"
-  testnet-dir: "/data/local_testnet" # where client setups occur
-    #  execution-bootstrap-dir: "/data/local_testnet/execution-bootstrapper"
-  docker-compose-file:  "/source/docker-compose.yaml" #wrt to docker config
-  # this file is created when all testnet directories have been written.
-  consensus-checkpoint-file: "/data/consensus-clients-ready"
-  #this file is written with its time for the first execution client to come up.
-  execution-checkpoint-file: "/data/execution-clients-ready"
-  # erigon gets its own due to peering limitations
-  erigon-checkpoint-file: "/data/erigon-execution-clients-ready"
-  # execution client bootnode/bootstrapper. Contains enode+\n for all bootstrap
-  consensus-bootnode-checkpoint-file: "/data/consensus-bootnodes-ready"
-  # nodes
-  execution-enode-file: "/data/execution-bootstrapper/enodes.txt"
-  # the enr for the bootnode we chose.
-
-  # all of the enodes of el clients comma seperated.
-  execution-enodes-file: "/data/execution-enodes.txt"
-
-
-config-params:
-  
-  deposit-contract-address: "0x8c594691c0e592ffa21f153a16ae41db5befcaaa"
-
-  # used for configuring execution genesis
-  execution-layer:
-    seconds-per-eth1-block: 14
-    execution-genesis-delay: 0
-    chain-id: 0x01000666
-    network-id: 0x01000666
-    merge-fork-block: 127 # consensus epoch 4 eth1_blocks + eth1-follow-distance
-    terminal-total-difficulty: 256 # mergeForkBlock*2 + a little more.
-    terminal-block-hash: "0x0000000000000000000000000000000000000000000000000000000000000000"
-    terminal-block-hash-activation-epoch: 18446744073709551615
-    # for now this always needs to be true.
-    clique:
-      clique-enabled: True
-      clique-signers: 
-        "51Dd070D1f6f8dB48CA5b0E47D7e899aea6b1AF5"
-      clique-epoch: 3000
-
-    # the first execution node that comes alive to bootstrap the network.
-    execution-bootstrapper: "geth-bootstrapper"
-
-  # used for generating the consensus config placed in /data/eth2-config.yaml
-  consensus-layer:
-    consensus-genesis-delay: 225 # eth1-follow-distance*seconds-per-eth1-block + 1
-    preset-base: 'mainnet'
-    min-genesis-active-validator-count: 80 # custom preseeded into genesis state.
-    eth1-follow-distance: 16 # allow past eth1 blocks to be processed.
-
-    forks:
-      genesis-fork-version: 0x01000666
-      genesis-fork-name: "phase0"
-      end-fork-name: "bellatrix"
-
-      phase0-fork-version: 0x01000666
-      phase0-fork-epoch: 0 # genesis
-
-      altair-fork-version: 0x02000666
-      altair-fork-epoch: 2 # slot 64
-
-      bellatrix-fork-version: 0x03000666
-      bellatrix-fork-epoch: 4 # slot 128
-
-      sharding-fork-version: 0x04000666
-      sharding-fork-epoch: 18446744073709551615
-
-accounts:
-  eth1-account-mnemonic: "cat swing flag economy stadium alone churn speed unique patch report train"
-  eth1-passphrase: "testnet-password"
-  eth1-premine:
-      "m/44'/60'/0'/0/0" : "100000000"
-      "m/44'/60'/0'/0/1" : "100000000"
-      "m/44'/60'/0'/0/2" : "100000000"
-      "m/44'/60'/0'/0/3" : "100000000"
-
-  validator-mnemonic: "ocean style run case glory clip into nature guess jacket document firm fiscal hello kite disagree symptom tide net coral envelope wink render festival" 
-  withdrawl-mnemonic: "scatter supreme field crazy unveil chronic favorite middle front umbrella mutual gentle word wild economy dress whale whip method office report eternal garment parrot"
-
-execution-bootnode-configs:
-  base-execution-bootnode:
-    execution-client: "geth-bootstrapper"
-    execution-bootnode-disc-port: 666
-    execution-bootnode-private-key: "522d5e0fd25b33b2d9a28c0376013c3704aa79c1dc5424d107531f22d54f9d58"
-    execution-bootnode-enode: "enode://d87b29dcf9ab5b2e6f36c83b0c58a3f97b049e743b0e57fa643d6fa2fc8de417307c8a94bb9e54f8ddc9bcc66ac142e241249d177872ca622981f9f8395d6449"
-
-consensus-bootnode-configs:
-  eth2-bootnode-config:
-    consensus-bootnode-start-ip-addr: "10.0.20.201"
-    consensus-bootnode-private-key: "bc971f814d7bd37f7502cc67408c4f2c5a06e1b3d48dc041e42b5478154df1a8" # private key for the bootnode to use
-    consensus-bootnode-enr-port: 9001 #port in the enr  
-    consensus-bootnode-api-port: 6000 # port for web api.
-    consensus-bootnode-enr-file: "/data/eth2-bootnode-enr.dat"
-    num-nodes: 1 # not implemented must be 1
-
-
-execution-bootnodes:
-  geth-bootnode:
-      execution-client: "geth-bootstrapper"
-      execution-bootnode-config: "base-execution-bootnode"
-
-consensus-bootnodes:
-  eth2-bootnode:
-    # args for docker-compose
-    client-name: "eth2-bootnode"
-    container-name: "eth2-bootnode"
-    image: "ethereum-testnet-bootstrapper"
-    tag: "latest"
-    start-ip-addr: "10.0.20.201"
-    entrypoint: "/source/apps/launchers/bootnodes/launch-eth2-bootnode.sh"
-    num-nodes: 1 # not implemented must be 1 and match the consensus-bootnode-config
-
-    consensus-bootnode-config: "eth2-bootnode-config"
-
-execution-configs:
-
-  geth-execution-config:
-    client: "geth"
-    execution-log-level: "4" # detail
-    http-apis: "clique,admin,net,eth,web3,personal,engine"
-    ws-apis: "clique,admin,net,eth,web3,personal,engine"
-    execution-http-port: 8645
-    execution-ws-port: 8646
-    execution-engine-http-port: 8551   # http/ws same port.
-    execution-engine-ws-port: 8551   # include for nimbus
-    execution-p2p-port: 666
-    execution-metric-port: 9001
-
-  besu-execution-config:
-    client: "besu"
-    execution-log-level: "info"
-    http-apis: "ADMIN,ETH,NET,TXPOOL,WEB3,ENGINE"
-    ws-apis: "ADMIN,ETH,NET,TXPOOL,WEB3,ENGINE"
-    execution-p2p-port: 666
-    execution-http-port: 8645
-    execution-ws-port: 8646
-    execution-engine-http-port: 8551
-    execution-engine-ws-port: 8551
-    execution-metric-port: 9001
-
-  nethermind-execution-config:
-    client: "nethermind"
-    execution-log-level: "info"
-    http-apis: "net,eth,consensus,subscribe,web3,admin"
-    ws-apis: "net,eth,consensus,subscribe,web3,admin"
-    execution-http-port: 8645
-    execution-ws-port: 8646
-    execution-engine-http-port: 8551 # doesn't do http/ws the same.
-    execution-engine-ws-port: 8552
-    execution-p2p-port: 666
-    execution-metric-port: 9001
-
-  erigon-execution-config:
-    client: "erigon"
-    # 0=silent, 1=error, 2=warn, 3=info, 4=debug, 5=detail (default: 3)
-    execution-log-level: "3" # detail
-    http-apis: "engine,net,eth,clique"
-    ws-apis: "engine,net,eth,clique"
-    execution-http-port: 8645
-    execution-ws-port: 8646
-    execution-engine-http-port: 8551   # http/ws same port.
-    execution-engine-ws-port: 8551   # include for nimbus
-    execution-p2p-port: 666
-    execution-metric-port: 9001
-
-consensus-configs:
-
-  base-consensus-client:
-    num-validators: 4       # number of validators for every client node
-    # start ports increment each time we have a node.
-
-    consensus-p2p-port: 4000    # start port used for discovery
-    beacon-api-port: 5000   # start port used for the beacon rest API
-    beacon-rpc-port: 5500
-    validator-rpc-port: 6500
-    beacon-metric-port: 8000 # start port used for beacon node metrics.
-    validator-metric-port: 9000 # start port used for validator client metrics.
-    # entrypoints placed here are used by the consensus clients
-
-    http-web3-ip-addr: "127.0.0.1"
-    ws-web3-ip-addr: "127.0.0.1"
-
-
-execution-clients:
-  # the origianl node that starts the network.
-  geth-bootstrapper:
-    client-name: "geth-bootstrapper"
-    container-name: "geth-bootstrapper"
-    start-ip-addr: "10.0.20.2"
-    image: "etb-all-clients"
-    tag: "latest"
-    depends: "ethereum-testnet-bootstrapper"
-    entrypoint: "/source/apps/launchers/execution-clients/launch-geth-clique.sh" #wrt to docker.
-
-    execution-config: "geth-execution-config"
-    num-nodes: 1
-    execution-data-dir: '/data/local_testnet/execution-bootstrapper'
-    jwt-secret-file: "/data/execution-bootstrapper-jwt-secret"  # when the bootstrapper creates this, geth hasn't come up.
-    debug: False
-
-    additional-env:
-      geth-password-file: "/data/geth-account-passwords.txt"
-      is-mining: True
-      eth1-passphrase: "testnet-password"
-      clique-unlock-key: "51Dd070D1f6f8dB48CA5b0E47D7e899aea6b1AF5"
-
-      tx-fuzz-enabled: True
-      tx-fuzz-private-keys: "0x1e48147d3eb2af708706c71188703913e3b2dead2716dbe0caa8ccf4ff1d5573,0x6cf9f64e4bdf9b5547882e276da15a590f0873d313a2a833f07f3ec9d45fdc7e,0x045b49f8c41b5562fbfc54c3d5c76df1cd7b2c340494383b2e3783de81c39184,0xa7c0262c56b2f5b9dd43c7cb544aff29e77e2b2a4ced2a34964016ff4cbf7675"
-      tx-fuzz-public-keys: "0x51Dd070D1f6f8dB48CA5b0E47D7e899aea6b1AF5,0x6B477789219c9D5b80159652AA913A5eee39d07e,0xa03f25d5839029323Be765Fbc02E262628923338,0x60337eFAD102533d73E7c7D03736B8c4b87cdB2e"
-      tx-fuzz-mode: "spam"
-      launch-new-execution-client: False # don't make a new geth node
-      http-web3-ip-addr: "10.0.20.2"  # use the geth-bootstrapper
-      execution-http-port: 8645       # geth boostrapper arg.
-      tx-fuzz-launcher: "/source/apps/launchers/fuzzers/launch-tx-fuzzer.sh"
-
-consensus-clients:
-# Consensus Client Setup:
-# Each consensus node comes with 1 validators, and 1 nodes. 
-# If one continues we know it to be a unique problem
+#docker:
+#    network-name: "ethereum-testnet"
+#    ip-subnet: "10.0.20.0/24"
+#    volumes: ['./data:/data/', './:/source/']
+#    # for writing the docker-compose.yaml
+#    #
+#files:
+#  # all files with respect to docker path
+#  testnet-root: '/data/'
 #
-# prysm-geth        num nodes: 1 node: 10.0.20.10 validator offset: 0
-# teku-geth         num nodes: 1 node: 10.0.20.20 validator offset: 4
-# nimbus-geth       num nodes: 1 node: 10.0.20.30 validator offset: 8
-# lh-geth           num nodes: 1 node: 10.0.20.40 validator offset: 12
-# ls-geth           num nodes: 1 node: 10.0.20.50 validator offset: 16
+#  # execution genesis files.
+#  geth-genesis-file: "/data/geth-genesis.json"
+#  besu-genesis-file: "/data/besu-genesis.json"
+#  nether-mind-genesis-file: "/data/nethermind-genesis.json" # nethermind cares about envargs
+#  erigon-genesis-file: "/data/erigon-genesis.json"
 #
-# prysm-besu        num nodes: 1 node: 10.0.20.12 validator offset: 20
-# teku-besu         num nodes: 1 node: 10.0.20.22 validator offset: 24
-# nimbus-besu       num nodes: 1 node: 10.0.20.32 validator offset: 28
-# lh-besu           num nodes: 1 node: 10.0.20.42 validator offset: 32
-# ls-besu           num nodes: 1 node: 10.0.20.52 validator offset: 36
+#  consensus-config-file: "/data/consensus-config.yaml"
+#  consensus-genesis-file: "/data/genesis.ssz"
 #
-# prysm-nethermind  num nodes: 1 node: 10.0.20.14 validator offset: 40
-# teku-nethermind   num nodes: 1 node: 10.0.20.24 validator offset: 44
-# nimbus-nethermind num nodes: 1 node: 10.0.20.34 validator offset: 48
-# lh-nethermind     num nodes: 1 node: 10.0.20.44 validator offset: 52
-# ls-nethermind     num nodes: 1 node: 10.0.20.54 validator offset: 56
+#  etb-config-file: "/data/etb-config.yaml"
+#  testnet-dir: "/data/local_testnet" # where client setups occur
+#    #  execution-bootstrap-dir: "/data/local_testnet/execution-bootstrapper"
+#  docker-compose-file:  "/source/docker-compose.yaml" #wrt to docker config
+#  # this file is created when all testnet directories have been written.
+#  consensus-checkpoint-file: "/data/consensus-clients-ready"
+#  #this file is written with its time for the first execution client to come up.
+#  execution-checkpoint-file: "/data/execution-clients-ready"
+#  # erigon gets its own due to peering limitations
+#  erigon-checkpoint-file: "/data/erigon-execution-clients-ready"
+#  # execution client bootnode/bootstrapper. Contains enode+\n for all bootstrap
+#  consensus-bootnode-checkpoint-file: "/data/consensus-bootnodes-ready"
+#  # nodes
+#  execution-enode-file: "/data/execution-bootstrapper/enodes.txt"
+#  # the enr for the bootnode we chose.
 #
-# prysm-erigon      num nodes: 1 node: 10.0.20.16 validator offset: 60
-# teku-erigon       num nodes: 1 node: 10.0.20.26 validator offset: 64
-# nimbus-erigon     num nodes: 1 node: 10.0.20.36 validator offset: 68
-# lh-erigon         num nodes: 1 node: 10.0.20.46 validator offset: 72
-# ls-erigon         num nodes: 1 node: 10.0.20.56 validator offset: 76
-
-###############################################################################
-####### All Consensus Clients paired with a Geth Execution Client. ############
-###############################################################################
-  prysm-geth:
-    client-name: 'prysm'
-    # docker-compose
-    image: "etb-all-clients"
-    tag: "latest"
-    container-name: "prysm-client-geth"
-    entrypoint: "/source/apps/launchers/consensus-clients/launch-prysm.sh"
-    start-ip-addr: "10.0.20.10"
-    depends: "ethereum-testnet-bootstrapper"
-    # beacon/validator flags
-    num-nodes: 1 # how many beacon nodes
-    consensus-config: "base-consensus-client"
-
-    consensus-bootnode-config: "eth2-bootnode-config"
-
-    local-execution-client: true
-    execution-config: "geth-execution-config"
-    execution-launcher: "/source/apps/launchers/execution-clients/launch-geth-clique.sh"
-
-
-    testnet-dir: '/data/local_testnet/prysm-geth'
-    jwt-secret-file: "/data/local_testnet/prysm-geth/jwt-secret"
-
-    validator-offset-start: 0 # so validators of different clients don't overlap
-    # args specific to prysm nodes, these are loaded into the dockers env at runtime.
-    additional-env:
-      prysm-debug-level: "debug"
-      wallet-path: '/data/local_testnet/prysm-geth/wallet-password.txt'
-      validator-password: "testnet-password"
-
-  teku-geth:
-    client-name: 'teku'
-    # docker-compose
-    image: "etb-all-clients"
-    tag: "latest"
-    container-name: "teku-client-geth"
-    entrypoint: "/source/apps/launchers/consensus-clients/launch-teku.sh"
-    start-ip-addr: "10.0.20.20"
-    depends: "ethereum-testnet-bootstrapper"
-
-    num-nodes: 1 # how many beacon nodes
-    consensus-config: "base-consensus-client"
-
-    consensus-bootnode-config: "eth2-bootnode-config"
-    local-execution-client: true
-    execution-config: "geth-execution-config"
-    execution-launcher: "/source/apps/launchers/execution-clients/launch-geth-clique.sh"
-
-    testnet-dir: '/data/local_testnet/teku-geth'
-    jwt-secret-file: "/data/local_testnet/teku-geth/jwt-secret"
-
-    validator-offset-start: 4 # so validators of different clients don't overlap
-
-    # args specific to teku nodes.
-    additional-env:
-      teku-debug-level: "DEBUG"
-
-  nimbus-geth:
-    client-name: 'nimbus'
-    # docker-compose
-    image: "etb-all-clients"
-    tag: "latest"
-    container-name: "nimbus-client-geth"
-    entrypoint: "/source/apps/launchers/consensus-clients/launch-nimbus.sh"
-    start-ip-addr: "10.0.20.30"
-    depends: "ethereum-testnet-bootstrapper"
-
-    num-nodes: 1 # how many beacon nodes
-    testnet-dir: '/data/local_testnet/nimbus-geth'
-    jwt-secret-file: "/data/local_testnet/nimbus-geth/jwt-secret"
-
-    consensus-config: "base-consensus-client"
-    consensus-bootnode-config: "eth2-bootnode-config"
-
-    local-execution-client: true
-    execution-config: "geth-execution-config"
-    execution-launcher: "/source/apps/launchers/execution-clients/launch-geth-clique.sh"
-
-    validator-offset-start: 8 # so validators of different clients don't overlap
-
-    additional-env:
-      nimbus-debug-level: "trace"
-
-
-  lighthouse-geth:
-    client-name: 'lighthouse'
-    # docker-compose
-    image: "etb-all-clients"
-    tag: "latest"
-    container-name: "lighthouse-client-geth"
-    entrypoint: "/source/apps/launchers/consensus-clients/launch-lighthouse.sh"
-    start-ip-addr: "10.0.20.40"
-    depends: "ethereum-testnet-bootstrapper"
-
-    consensus-config: "base-consensus-client"
-    consensus-bootnode-config: "eth2-bootnode-config"
-
-    local-execution-client: true
-    execution-config: "geth-execution-config"
-    execution-launcher: "/source/apps/launchers/execution-clients/launch-geth-clique.sh"
-
-    num-nodes: 1 # how many beacon nodes
-    testnet-dir: '/data/local_testnet/lighthouse-geth'
-    jwt-secret-file: "/data/local_testnet/lighthouse-geth/jwt-secret"
-    validator-offset-start: 12 # so validators of different clients don't overlap
-    
-    additional-env:
-      lighthouse-debug-level: "debug"
-
-  lodestar-geth:
-    client-name: 'lodestar'
-    # docker-compose
-    image: "etb-all-clients"
-    tag: "latest"
-    container-name: "lodestar-client-geth"
-    entrypoint: "/source/apps/launchers/consensus-clients/launch-lodestar.sh"
-    start-ip-addr: "10.0.20.50"
-    depends: "ethereum-testnet-bootstrapper"
-  
-    num-nodes: 1 # how many beacon nodes
-    consensus-config: "base-consensus-client"
-    consensus-bootnode-config: "eth2-bootnode-config"
-  
-    local-execution-client: true
-    execution-config: "geth-execution-config"
-    execution-launcher: "/source/apps/launchers/execution-clients/launch-geth-clique.sh"
-  
-    testnet-dir: '/data/local_testnet/lodestar-geth'
-    jwt-secret-file: "/data/local_testnet/lodestar-geth/jwt-secret"
-    validator-offset-start: 16 # so validators of different clients don't overlap
-    
-    additional-env:
-      lstar-debug-level: "debug"
-
-  prysm-besu:
-    client-name: 'prysm'
-    # docker-compose
-    image: "etb-all-clients"
-    tag: "latest"
-    container-name: "prysm-client-besu"
-    entrypoint: "/source/apps/launchers/consensus-clients/launch-prysm.sh"
-    start-ip-addr: "10.0.20.12"
-    depends: "ethereum-testnet-bootstrapper"
-    # beacon/validator flags
-    num-nodes: 1 # how many beacon nodes
-    consensus-config: "base-consensus-client"
-
-    consensus-bootnode-config: "eth2-bootnode-config"
-
-    local-execution-client: true
-    execution-config: "besu-execution-config"
-    execution-launcher: "/source/apps/launchers/execution-clients/launch-besu.sh"
-
-
-    testnet-dir: '/data/local_testnet/prysm-besu'
-    jwt-secret-file: "/data/local_testnet/prysm-besu/jwt-secret"
-
-    validator-offset-start: 20 # so validators of different clients don't overlap
-    # args specific to prysm nodes, these are loaded into the dockers env at runtime.
-    additional-env:
-      prysm-debug-level: "debug"
-      wallet-path: '/data/local_testnet/prysm-besu/wallet-password.txt'
-      validator-password: "testnet-password"
-
-  teku-besu:
-    client-name: 'teku'
-    # docker-compose
-    image: "etb-all-clients"
-    tag: "latest"
-    container-name: "teku-client-besu"
-    entrypoint: "/source/apps/launchers/consensus-clients/launch-teku.sh"
-    start-ip-addr: "10.0.20.22"
-    depends: "ethereum-testnet-bootstrapper"
-
-    num-nodes: 1 # how many beacon nodes
-    consensus-config: "base-consensus-client"
-
-    consensus-bootnode-config: "eth2-bootnode-config"
-    local-execution-client: true
-    execution-config: "besu-execution-config"
-    execution-launcher: "/source/apps/launchers/execution-clients/launch-besu.sh"
-
-    testnet-dir: '/data/local_testnet/teku-besu'
-    jwt-secret-file: "/data/local_testnet/teku-besu/jwt-secret"
-
-    validator-offset-start: 24 # so validators of different clients don't overlap
-
-    # args specific to teku nodes.
-    additional-env:
-      teku-debug-level: "DEBUG"
-
-  nimbus-besu:
-    client-name: 'nimbus'
-    # docker-compose
-    image: "etb-all-clients"
-    tag: "latest"
-    container-name: "nimbus-client-besu"
-    entrypoint: "/source/apps/launchers/consensus-clients/launch-nimbus.sh"
-    start-ip-addr: "10.0.20.32"
-    depends: "ethereum-testnet-bootstrapper"
-
-    num-nodes: 1 # how many beacon nodes
-    testnet-dir: '/data/local_testnet/nimbus-besu'
-    jwt-secret-file: "/data/local_testnet/nimbus-besu/jwt-secret"
-
-    consensus-config: "base-consensus-client"
-    consensus-bootnode-config: "eth2-bootnode-config"
-
-    local-execution-client: true
-    execution-config: "besu-execution-config"
-    execution-launcher: "/source/apps/launchers/execution-clients/launch-besu.sh"
-
-    validator-offset-start: 28 # so validators of different clients don't overlap
-
-    additional-env:
-      nimbus-debug-level: "trace"
-
-  lighthouse-besu:
-    client-name: 'lighthouse'
-    # docker-compose
-    image: "etb-all-clients"
-    tag: "latest"
-    container-name: "lighthouse-client-besu"
-    entrypoint: "/source/apps/launchers/consensus-clients/launch-lighthouse.sh"
-    start-ip-addr: "10.0.20.42"
-    depends: "ethereum-testnet-bootstrapper"
-
-    consensus-config: "base-consensus-client"
-    consensus-bootnode-config: "eth2-bootnode-config"
-
-    local-execution-client: true
-    execution-config: "besu-execution-config"
-    execution-launcher: "/source/apps/launchers/execution-clients/launch-besu.sh"
-
-    num-nodes: 1 # how many beacon nodes
-    testnet-dir: '/data/local_testnet/lighthouse-besu'
-    jwt-secret-file: "/data/local_testnet/lighthouse-besu/jwt-secret"
-    validator-offset-start: 32 # so validators of different clients don't overlap
-    
-    additional-env:
-      lighthouse-debug-level: "debug"
-
-  lodestar-besu:
-    client-name: 'lodestar'
-    # docker-compose
-    image: "etb-all-clients"
-    tag: "latest"
-    container-name: "lodestar-client-besu"
-    entrypoint: "/source/apps/launchers/consensus-clients/launch-lodestar.sh"
-    start-ip-addr: "10.0.20.52"
-    depends: "ethereum-testnet-bootstrapper"
-  
-    num-nodes: 1 # how many beacon nodes
-    consensus-config: "base-consensus-client"
-    consensus-bootnode-config: "eth2-bootnode-config"
-  
-    local-execution-client: true
-    execution-config: "besu-execution-config"
-    execution-launcher: "/source/apps/launchers/execution-clients/launch-besu.sh"
-  
-    testnet-dir: '/data/local_testnet/lodestar-besu'
-    jwt-secret-file: "/data/local_testnet/lodestar-besu/jwt-secret"
-    validator-offset-start: 36 # so validators of different clients don't overlap
-    
-    additional-env:
-      lstar-debug-level: "debug"
-
-
-  prysm-nethermind:
-    client-name: 'prysm'
-    # docker-compose
-    image: "etb-all-clients"
-    tag: "latest"
-    container-name: "prysm-client-nethermind"
-    entrypoint: "/source/apps/launchers/consensus-clients/launch-prysm.sh"
-    start-ip-addr: "10.0.20.14"
-    depends: "ethereum-testnet-bootstrapper"
-    # beacon/validator flags
-    num-nodes: 1 # how many beacon nodes
-    consensus-config: "base-consensus-client"
-
-    consensus-bootnode-config: "eth2-bootnode-config"
-
-    local-execution-client: true
-    execution-config: "nethermind-execution-config"
-    execution-launcher: "/source/apps/launchers/execution-clients/launch-nethermind-clique.sh"
-
-
-    testnet-dir: '/data/local_testnet/prysm-nethermind'
-    jwt-secret-file: "/data/local_testnet/prysm-nethermind/jwt-secret"
-
-    validator-offset-start: 40 # so validators of different clients don't overlap
-    # args specific to prysm nodes, these are loaded into the dockers env at runtime.
-    additional-env:
-      prysm-debug-level: "debug"
-      wallet-path: '/data/local_testnet/prysm-nethermind/wallet-password.txt'
-      validator-password: "testnet-password"
-
+#  # all of the enodes of el clients comma seperated.
+#  execution-enodes-file: "/data/execution-enodes.txt"
 #
-
-
-  teku-nethermind:
-    client-name: 'teku'
-    # docker-compose
-    image: "etb-all-clients"
-    tag: "latest"
-    container-name: "teku-client-nethermind"
-    entrypoint: "/source/apps/launchers/consensus-clients/launch-teku.sh"
-    start-ip-addr: "10.0.20.24"
-    depends: "ethereum-testnet-bootstrapper"
-
-    num-nodes: 1 # how many beacon nodes
-    consensus-config: "base-consensus-client"
-
-    consensus-bootnode-config: "eth2-bootnode-config"
-    local-execution-client: true
-    execution-config: "nethermind-execution-config"
-      #execution-config: "besu-execution-config"
-    execution-launcher: "/source/apps/launchers/execution-clients/launch-nethermind-clique.sh"
-
-    testnet-dir: '/data/local_testnet/teku-nethermind'
-    jwt-secret-file: "/data/local_testnet/teku-nethermind/jwt-secret"
-
-    validator-offset-start: 44 # so validators of different clients don't overlap
-
-    # args specific to teku nodes.
-    additional-env:
-      teku-debug-level: "DEBUG"
-
 #
-
-  nimbus-nethermind:
-    client-name: 'nimbus'
-    # docker-compose
-    image: "etb-all-clients"
-    tag: "latest"
-    container-name: "nimbus-client-nethermind"
-    entrypoint: "/source/apps/launchers/consensus-clients/launch-nimbus.sh"
-    start-ip-addr: "10.0.20.34"
-    depends: "ethereum-testnet-bootstrapper"
-
-    num-nodes: 1 # how many beacon nodes
-    testnet-dir: '/data/local_testnet/nimbus-nethermind'
-    jwt-secret-file: "/data/local_testnet/nimbus-nethermind/jwt-secret"
-
-    consensus-config: "base-consensus-client"
-    consensus-bootnode-config: "eth2-bootnode-config"
-
-    local-execution-client: true
-    execution-config: "nethermind-execution-config"
-    execution-launcher: "/source/apps/launchers/execution-clients/launch-nethermind-clique.sh"
-
-    validator-offset-start: 48 # so validators of different clients don't overlap
-
-    additional-env:
-      nimbus-debug-level: "trace"
-
-
-  lighthouse-nethermind:
-    client-name: 'lighthouse'
-    # docker-compose
-    image: "etb-all-clients"
-    tag: "latest"
-    container-name: "lighthouse-client-nethermind"
-    entrypoint: "/source/apps/launchers/consensus-clients/launch-lighthouse.sh"
-    start-ip-addr: "10.0.20.44"
-    depends: "ethereum-testnet-bootstrapper"
-
-    consensus-config: "base-consensus-client"
-    consensus-bootnode-config: "eth2-bootnode-config"
-
-    local-execution-client: true
-    execution-config: "nethermind-execution-config"
-    execution-launcher: "/source/apps/launchers/execution-clients/launch-nethermind-clique.sh"
-
-    num-nodes: 1 # how many beacon nodes
-    testnet-dir: '/data/local_testnet/lighthouse-nethermind'
-    jwt-secret-file: "/data/local_testnet/lighthouse-nethermind/jwt-secret"
-    validator-offset-start: 52 # so validators of different clients don't overlap
-    
-    additional-env:
-      lighthouse-debug-level: "debug"
-
-
-  lodestar-nethermind:
-    client-name: 'lodestar'
-    # docker-compose
-    image: "etb-all-clients"
-    tag: "latest"
-    container-name: "lodestar-client-nethermind"
-    entrypoint: "/source/apps/launchers/consensus-clients/launch-lodestar.sh"
-    start-ip-addr: "10.0.20.54"
-    depends: "ethereum-testnet-bootstrapper"
-  
-    num-nodes: 1 # how many beacon nodes
-    consensus-config: "base-consensus-client"
-    consensus-bootnode-config: "eth2-bootnode-config"
-  
-    local-execution-client: true
-    execution-config: "nethermind-execution-config"
-    execution-launcher: "/source/apps/launchers/execution-clients/launch-nethermind-clique.sh"
-  
-    testnet-dir: '/data/local_testnet/lodestar-nethermind'
-    jwt-secret-file: "/data/local_testnet/lodestar-nethermind/jwt-secret"
-    validator-offset-start: 56 # so validators of different clients don't overlap
-    
-    additional-env:
-      lstar-debug-level: "debug"
-
-  prysm-erigon:
-    client-name: 'prysm'
-    # docker-compose
-    image: "etb-all-clients"
-    tag: "latest"
-    container-name: "prysm-client-erigon"
-    entrypoint: "/source/apps/launchers/consensus-clients/launch-prysm.sh"
-    start-ip-addr: "10.0.20.16"
-    depends: "ethereum-testnet-bootstrapper"
-    # beacon/validator flags
-    num-nodes: 1 # how many beacon nodes
-    consensus-config: "base-consensus-client"
-
-    consensus-bootnode-config: "eth2-bootnode-config"
-
-    local-execution-client: true
-    execution-config: "erigon-execution-config"
-    execution-launcher: "/source/apps/launchers/execution-clients/launch-erigon-clique.sh"
-
-
-    testnet-dir: '/data/local_testnet/prysm-erigon'
-    jwt-secret-file: "/data/local_testnet/prysm-erigon/jwt-secret"
-
-    validator-offset-start: 60 # so validators of different clients don't overlap
-    # args specific to prysm nodes, these are loaded into the dockers env at runtime.
-    additional-env:
-      prysm-debug-level: "debug"
-      wallet-path: '/data/local_testnet/prysm-erigon/wallet-password.txt'
-      validator-password: "testnet-password"
-
-  teku-erigon:
-    client-name: 'teku'
-    # docker-compose
-    image: "etb-all-clients"
-    tag: "latest"
-    container-name: "teku-client-erigon"
-    entrypoint: "/source/apps/launchers/consensus-clients/launch-teku.sh"
-    start-ip-addr: "10.0.20.26"
-    depends: "ethereum-testnet-bootstrapper"
-
-    num-nodes: 1 # how many beacon nodes
-    consensus-config: "base-consensus-client"
-
-    consensus-bootnode-config: "eth2-bootnode-config"
-    local-execution-client: true
-    execution-config: "erigon-execution-config"
-    execution-launcher: "/source/apps/launchers/execution-clients/launch-erigon-clique.sh"
-
-    testnet-dir: '/data/local_testnet/teku-erigon'
-    jwt-secret-file: "/data/local_testnet/teku-erigon/jwt-secret"
-
-    validator-offset-start: 64 # so validators of different clients don't overlap
-
-    # args specific to teku nodes.
-    additional-env:
-      teku-debug-level: "DEBUG"
-
-  nimbus-erigon:
-    client-name: 'nimbus'
-    # docker-compose
-    image: "etb-all-clients"
-    tag: "latest"
-    container-name: "nimbus-client-erigon"
-    entrypoint: "/source/apps/launchers/consensus-clients/launch-nimbus.sh"
-    start-ip-addr: "10.0.20.36"
-    depends: "ethereum-testnet-bootstrapper"
-
-    num-nodes: 1 # how many beacon nodes
-    testnet-dir: '/data/local_testnet/nimbus-erigon'
-    jwt-secret-file: "/data/local_testnet/nimbus-erigon/jwt-secret"
-
-    consensus-config: "base-consensus-client"
-    consensus-bootnode-config: "eth2-bootnode-config"
-
-    local-execution-client: true
-    execution-config: "erigon-execution-config"
-    execution-launcher: "/source/apps/launchers/execution-clients/launch-erigon-clique.sh"
-
-    validator-offset-start: 68 # so validators of different clients don't overlap
-
-    additional-env:
-      nimbus-debug-level: "trace"
-
-  lighthouse-erigon:
-    client-name: 'lighthouse'
-    # docker-compose
-    image: "etb-all-clients"
-    tag: "latest"
-    container-name: "lighthouse-client-erigon"
-    entrypoint: "/source/apps/launchers/consensus-clients/launch-lighthouse.sh"
-    start-ip-addr: "10.0.20.46"
-    depends: "ethereum-testnet-bootstrapper"
-
-    consensus-config: "base-consensus-client"
-    consensus-bootnode-config: "eth2-bootnode-config"
-
-    local-execution-client: true
-    execution-config: "erigon-execution-config"
-    execution-launcher: "/source/apps/launchers/execution-clients/launch-erigon-clique.sh"
-
-    num-nodes: 1 # how many beacon nodes
-    testnet-dir: '/data/local_testnet/lighthouse-erigon'
-    jwt-secret-file: "/data/local_testnet/lighthouse-erigon/jwt-secret"
-    validator-offset-start: 72 # so validators of different clients don't overlap
-    
-    additional-env:
-      lighthouse-debug-level: "debug"
-
-  lodestar-erigon:
-    client-name: 'lodestar'
-    # docker-compose
-    image: "etb-all-clients"
-    tag: "latest"
-    container-name: "lodestar-client-erigon"
-    entrypoint: "/source/apps/launchers/consensus-clients/launch-lodestar.sh"
-    start-ip-addr: "10.0.20.56"
-    depends: "ethereum-testnet-bootstrapper"
-  
-    num-nodes: 1 # how many beacon nodes
-    consensus-config: "base-consensus-client"
-    consensus-bootnode-config: "eth2-bootnode-config"
-  
-    local-execution-client: true
-    execution-config: "erigon-execution-config"
-    execution-launcher: "/source/apps/launchers/execution-clients/launch-erigon-clique.sh"
-  
-    testnet-dir: '/data/local_testnet/lodestar-erigon'
-    jwt-secret-file: "/data/local_testnet/lodestar-erigon/jwt-secret"
-    validator-offset-start: 76 # so validators of different clients don't overlap
-    
-    additional-env:
-      lstar-debug-level: "debug"
-# required.
-testnet-bootstrapper:
-  ethereum-testnet-bootstrapper:
-    #docker-compose
-    image: "ethereum-testnet-bootstrapper"
-    tag: "latest"
-    container-name: "testnet-bootstrapper"
-    start-ip-addr: "10.0.20.202"
-    num-nodes: 1
-    entrypoint: "/source/entrypoint.sh --config /data/etb-config.yaml --bootstrap-testnet" 
-
-generic-modules:
-  
-  status-check:
-    client-name: "status-check"
-    image: "ethereum-testnet-bootstrapper"
-    tag: "latest"
-    container-name: "status-check"
-    start-ip-addr: "10.0.20.207"
-    num-nodes: 1
-    entrypoint: "python3 /source/apps/status-check.py --config /data/etb-config.yaml --phase0-slot 32 --phase1-slot 122 --phase2-slot 144 --phase3-slot 180 --number-of-checks 3 --log-prefix antithesis --terminate-experiment-prefix terminate"
+#config-params:
+#
+#  deposit-contract-address: "0x8c594691c0e592ffa21f153a16ae41db5befcaaa"
+#
+#  # used for configuring execution genesis
+#  execution-layer:
+#    seconds-per-eth1-block: 14
+#    execution-genesis-delay: 0
+#    chain-id: 0x01000666
+#    network-id: 0x01000666
+#    merge-fork-block: 127 # consensus epoch 4 eth1_blocks + eth1-follow-distance
+#    terminal-total-difficulty: 256 # mergeForkBlock*2 + a little more.
+#    terminal-block-hash: "0x0000000000000000000000000000000000000000000000000000000000000000"
+#    terminal-block-hash-activation-epoch: 18446744073709551615
+#    # for now this always needs to be true.
+#    clique:
+#      clique-enabled: True
+#      clique-signers:
+#        "51Dd070D1f6f8dB48CA5b0E47D7e899aea6b1AF5"
+#      clique-epoch: 3000
+#
+#    # the first execution node that comes alive to bootstrap the network.
+#    execution-bootstrapper: "geth-bootstrapper"
+#
+#  # used for generating the consensus config placed in /data/eth2-config.yaml
+#  consensus-layer:
+#    consensus-genesis-delay: 225 # eth1-follow-distance*seconds-per-eth1-block + 1
+#    preset-base: 'mainnet'
+#    min-genesis-active-validator-count: 80 # custom preseeded into genesis state.
+#    eth1-follow-distance: 16 # allow past eth1 blocks to be processed.
+#
+#    forks:
+#      genesis-fork-version: 0x01000666
+#      genesis-fork-name: "phase0"
+#      end-fork-name: "bellatrix"
+#
+#      phase0-fork-version: 0x01000666
+#      phase0-fork-epoch: 0 # genesis
+#
+#      altair-fork-version: 0x02000666
+#      altair-fork-epoch: 2 # slot 64
+#
+#      bellatrix-fork-version: 0x03000666
+#      bellatrix-fork-epoch: 4 # slot 128
+#
+#      sharding-fork-version: 0x04000666
+#      sharding-fork-epoch: 18446744073709551615
+#
+#accounts:
+#  eth1-account-mnemonic: "cat swing flag economy stadium alone churn speed unique patch report train"
+#  eth1-passphrase: "testnet-password"
+#  eth1-premine:
+#      "m/44'/60'/0'/0/0" : "100000000"
+#      "m/44'/60'/0'/0/1" : "100000000"
+#      "m/44'/60'/0'/0/2" : "100000000"
+#      "m/44'/60'/0'/0/3" : "100000000"
+#
+#  validator-mnemonic: "ocean style run case glory clip into nature guess jacket document firm fiscal hello kite disagree symptom tide net coral envelope wink render festival"
+#  withdrawl-mnemonic: "scatter supreme field crazy unveil chronic favorite middle front umbrella mutual gentle word wild economy dress whale whip method office report eternal garment parrot"
+#
+#execution-bootnode-configs:
+#  base-execution-bootnode:
+#    execution-client: "geth-bootstrapper"
+#    execution-bootnode-disc-port: 666
+#    execution-bootnode-private-key: "522d5e0fd25b33b2d9a28c0376013c3704aa79c1dc5424d107531f22d54f9d58"
+#    execution-bootnode-enode: "enode://d87b29dcf9ab5b2e6f36c83b0c58a3f97b049e743b0e57fa643d6fa2fc8de417307c8a94bb9e54f8ddc9bcc66ac142e241249d177872ca622981f9f8395d6449"
+#
+#consensus-bootnode-configs:
+#  eth2-bootnode-config:
+#    consensus-bootnode-start-ip-addr: "10.0.20.201"
+#    consensus-bootnode-private-key: "bc971f814d7bd37f7502cc67408c4f2c5a06e1b3d48dc041e42b5478154df1a8" # private key for the bootnode to use
+#    consensus-bootnode-enr-port: 9001 #port in the enr
+#    consensus-bootnode-api-port: 6000 # port for web api.
+#    consensus-bootnode-enr-file: "/data/eth2-bootnode-enr.dat"
+#    num-nodes: 1 # not implemented must be 1
+#
+#
+#execution-bootnodes:
+#  geth-bootnode:
+#      execution-client: "geth-bootstrapper"
+#      execution-bootnode-config: "base-execution-bootnode"
+#
+#consensus-bootnodes:
+#  eth2-bootnode:
+#    # args for docker-compose
+#    client-name: "eth2-bootnode"
+#    container-name: "eth2-bootnode"
+#    image: "ethereum-testnet-bootstrapper"
+#    tag: "latest"
+#    start-ip-addr: "10.0.20.201"
+#    entrypoint: "/source/apps/launchers/bootnodes/launch-eth2-bootnode.sh"
+#    num-nodes: 1 # not implemented must be 1 and match the consensus-bootnode-config
+#
+#    consensus-bootnode-config: "eth2-bootnode-config"
+#
+#execution-configs:
+#
+#  geth-execution-config:
+#    client: "geth"
+#    execution-log-level: "4" # detail
+#    http-apis: "clique,admin,net,eth,web3,personal,engine"
+#    ws-apis: "clique,admin,net,eth,web3,personal,engine"
+#    execution-http-port: 8645
+#    execution-ws-port: 8646
+#    execution-engine-http-port: 8551   # http/ws same port.
+#    execution-engine-ws-port: 8551   # include for nimbus
+#    execution-p2p-port: 666
+#    execution-metric-port: 9001
+#
+#  besu-execution-config:
+#    client: "besu"
+#    execution-log-level: "info"
+#    http-apis: "ADMIN,ETH,NET,TXPOOL,WEB3,ENGINE"
+#    ws-apis: "ADMIN,ETH,NET,TXPOOL,WEB3,ENGINE"
+#    execution-p2p-port: 666
+#    execution-http-port: 8645
+#    execution-ws-port: 8646
+#    execution-engine-http-port: 8551
+#    execution-engine-ws-port: 8551
+#    execution-metric-port: 9001
+#
+#  nethermind-execution-config:
+#    client: "nethermind"
+#    execution-log-level: "info"
+#    http-apis: "net,eth,consensus,subscribe,web3,admin"
+#    ws-apis: "net,eth,consensus,subscribe,web3,admin"
+#    execution-http-port: 8645
+#    execution-ws-port: 8646
+#    execution-engine-http-port: 8551 # doesn't do http/ws the same.
+#    execution-engine-ws-port: 8552
+#    execution-p2p-port: 666
+#    execution-metric-port: 9001
+#
+#  erigon-execution-config:
+#    client: "erigon"
+#    # 0=silent, 1=error, 2=warn, 3=info, 4=debug, 5=detail (default: 3)
+#    execution-log-level: "3" # detail
+#    http-apis: "engine,net,eth,clique"
+#    ws-apis: "engine,net,eth,clique"
+#    execution-http-port: 8645
+#    execution-ws-port: 8646
+#    execution-engine-http-port: 8551   # http/ws same port.
+#    execution-engine-ws-port: 8551   # include for nimbus
+#    execution-p2p-port: 666
+#    execution-metric-port: 9001
+#
+#consensus-configs:
+#
+#  base-consensus-client:
+#    num-validators: 4       # number of validators for every client node
+#    # start ports increment each time we have a node.
+#
+#    consensus-p2p-port: 4000    # start port used for discovery
+#    beacon-api-port: 5000   # start port used for the beacon rest API
+#    beacon-rpc-port: 5500
+#    validator-rpc-port: 6500
+#    beacon-metric-port: 8000 # start port used for beacon node metrics.
+#    validator-metric-port: 9000 # start port used for validator client metrics.
+#    # entrypoints placed here are used by the consensus clients
+#
+#    http-web3-ip-addr: "127.0.0.1"
+#    ws-web3-ip-addr: "127.0.0.1"
+#
+#
+#execution-clients:
+#  # the origianl node that starts the network.
+#  geth-bootstrapper:
+#    client-name: "geth-bootstrapper"
+#    container-name: "geth-bootstrapper"
+#    start-ip-addr: "10.0.20.2"
+#    image: "etb-all-clients"
+#    tag: "latest"
+#    depends: "ethereum-testnet-bootstrapper"
+#    entrypoint: "/source/apps/launchers/execution-clients/launch-geth-clique.sh" #wrt to docker.
+#
+#    execution-config: "geth-execution-config"
+#    num-nodes: 1
+#    execution-data-dir: '/data/local_testnet/execution-bootstrapper'
+#    jwt-secret-file: "/data/execution-bootstrapper-jwt-secret"  # when the bootstrapper creates this, geth hasn't come up.
+#    debug: False
+#
+#    additional-env:
+#      geth-password-file: "/data/geth-account-passwords.txt"
+#      is-mining: True
+#      eth1-passphrase: "testnet-password"
+#      clique-unlock-key: "51Dd070D1f6f8dB48CA5b0E47D7e899aea6b1AF5"
+#
+#      tx-fuzz-enabled: True
+#      tx-fuzz-private-keys: "0x1e48147d3eb2af708706c71188703913e3b2dead2716dbe0caa8ccf4ff1d5573,0x6cf9f64e4bdf9b5547882e276da15a590f0873d313a2a833f07f3ec9d45fdc7e,0x045b49f8c41b5562fbfc54c3d5c76df1cd7b2c340494383b2e3783de81c39184,0xa7c0262c56b2f5b9dd43c7cb544aff29e77e2b2a4ced2a34964016ff4cbf7675"
+#      tx-fuzz-public-keys: "0x51Dd070D1f6f8dB48CA5b0E47D7e899aea6b1AF5,0x6B477789219c9D5b80159652AA913A5eee39d07e,0xa03f25d5839029323Be765Fbc02E262628923338,0x60337eFAD102533d73E7c7D03736B8c4b87cdB2e"
+#      tx-fuzz-mode: "spam"
+#      launch-new-execution-client: False # don't make a new geth node
+#      http-web3-ip-addr: "10.0.20.2"  # use the geth-bootstrapper
+#      execution-http-port: 8645       # geth boostrapper arg.
+#      tx-fuzz-launcher: "/source/apps/launchers/fuzzers/launch-tx-fuzzer.sh"
+#
+#consensus-clients:
+## Consensus Client Setup:
+## Each consensus node comes with 1 validators, and 1 nodes.
+## If one continues we know it to be a unique problem
+##
+## prysm-geth        num nodes: 1 node: 10.0.20.10 validator offset: 0
+## teku-geth         num nodes: 1 node: 10.0.20.20 validator offset: 4
+## nimbus-geth       num nodes: 1 node: 10.0.20.30 validator offset: 8
+## lh-geth           num nodes: 1 node: 10.0.20.40 validator offset: 12
+## ls-geth           num nodes: 1 node: 10.0.20.50 validator offset: 16
+##
+## prysm-besu        num nodes: 1 node: 10.0.20.12 validator offset: 20
+## teku-besu         num nodes: 1 node: 10.0.20.22 validator offset: 24
+## nimbus-besu       num nodes: 1 node: 10.0.20.32 validator offset: 28
+## lh-besu           num nodes: 1 node: 10.0.20.42 validator offset: 32
+## ls-besu           num nodes: 1 node: 10.0.20.52 validator offset: 36
+##
+## prysm-nethermind  num nodes: 1 node: 10.0.20.14 validator offset: 40
+## teku-nethermind   num nodes: 1 node: 10.0.20.24 validator offset: 44
+## nimbus-nethermind num nodes: 1 node: 10.0.20.34 validator offset: 48
+## lh-nethermind     num nodes: 1 node: 10.0.20.44 validator offset: 52
+## ls-nethermind     num nodes: 1 node: 10.0.20.54 validator offset: 56
+##
+## prysm-erigon      num nodes: 1 node: 10.0.20.16 validator offset: 60
+## teku-erigon       num nodes: 1 node: 10.0.20.26 validator offset: 64
+## nimbus-erigon     num nodes: 1 node: 10.0.20.36 validator offset: 68
+## lh-erigon         num nodes: 1 node: 10.0.20.46 validator offset: 72
+## ls-erigon         num nodes: 1 node: 10.0.20.56 validator offset: 76
+#
+################################################################################
+######## All Consensus Clients paired with a Geth Execution Client. ############
+################################################################################
+#  prysm-geth:
+#    client-name: 'prysm'
+#    # docker-compose
+#    image: "etb-all-clients"
+#    tag: "latest"
+#    container-name: "prysm-client-geth"
+#    entrypoint: "/source/apps/launchers/consensus-clients/launch-prysm.sh"
+#    start-ip-addr: "10.0.20.10"
+#    depends: "ethereum-testnet-bootstrapper"
+#    # beacon/validator flags
+#    num-nodes: 1 # how many beacon nodes
+#    consensus-config: "base-consensus-client"
+#
+#    consensus-bootnode-config: "eth2-bootnode-config"
+#
+#    local-execution-client: true
+#    execution-config: "geth-execution-config"
+#    execution-launcher: "/source/apps/launchers/execution-clients/launch-geth-clique.sh"
+#
+#
+#    testnet-dir: '/data/local_testnet/prysm-geth'
+#    jwt-secret-file: "/data/local_testnet/prysm-geth/jwt-secret"
+#
+#    validator-offset-start: 0 # so validators of different clients don't overlap
+#    # args specific to prysm nodes, these are loaded into the dockers env at runtime.
+#    additional-env:
+#      prysm-debug-level: "debug"
+#      wallet-path: '/data/local_testnet/prysm-geth/wallet-password.txt'
+#      validator-password: "testnet-password"
+#
+#  teku-geth:
+#    client-name: 'teku'
+#    # docker-compose
+#    image: "etb-all-clients"
+#    tag: "latest"
+#    container-name: "teku-client-geth"
+#    entrypoint: "/source/apps/launchers/consensus-clients/launch-teku.sh"
+#    start-ip-addr: "10.0.20.20"
+#    depends: "ethereum-testnet-bootstrapper"
+#
+#    num-nodes: 1 # how many beacon nodes
+#    consensus-config: "base-consensus-client"
+#
+#    consensus-bootnode-config: "eth2-bootnode-config"
+#    local-execution-client: true
+#    execution-config: "geth-execution-config"
+#    execution-launcher: "/source/apps/launchers/execution-clients/launch-geth-clique.sh"
+#
+#    testnet-dir: '/data/local_testnet/teku-geth'
+#    jwt-secret-file: "/data/local_testnet/teku-geth/jwt-secret"
+#
+#    validator-offset-start: 4 # so validators of different clients don't overlap
+#
+#    # args specific to teku nodes.
+#    additional-env:
+#      teku-debug-level: "DEBUG"
+#
+#  nimbus-geth:
+#    client-name: 'nimbus'
+#    # docker-compose
+#    image: "etb-all-clients"
+#    tag: "latest"
+#    container-name: "nimbus-client-geth"
+#    entrypoint: "/source/apps/launchers/consensus-clients/launch-nimbus.sh"
+#    start-ip-addr: "10.0.20.30"
+#    depends: "ethereum-testnet-bootstrapper"
+#
+#    num-nodes: 1 # how many beacon nodes
+#    testnet-dir: '/data/local_testnet/nimbus-geth'
+#    jwt-secret-file: "/data/local_testnet/nimbus-geth/jwt-secret"
+#
+#    consensus-config: "base-consensus-client"
+#    consensus-bootnode-config: "eth2-bootnode-config"
+#
+#    local-execution-client: true
+#    execution-config: "geth-execution-config"
+#    execution-launcher: "/source/apps/launchers/execution-clients/launch-geth-clique.sh"
+#
+#    validator-offset-start: 8 # so validators of different clients don't overlap
+#
+#    additional-env:
+#      nimbus-debug-level: "trace"
+#
+#
+#  lighthouse-geth:
+#    client-name: 'lighthouse'
+#    # docker-compose
+#    image: "etb-all-clients"
+#    tag: "latest"
+#    container-name: "lighthouse-client-geth"
+#    entrypoint: "/source/apps/launchers/consensus-clients/launch-lighthouse.sh"
+#    start-ip-addr: "10.0.20.40"
+#    depends: "ethereum-testnet-bootstrapper"
+#
+#    consensus-config: "base-consensus-client"
+#    consensus-bootnode-config: "eth2-bootnode-config"
+#
+#    local-execution-client: true
+#    execution-config: "geth-execution-config"
+#    execution-launcher: "/source/apps/launchers/execution-clients/launch-geth-clique.sh"
+#
+#    num-nodes: 1 # how many beacon nodes
+#    testnet-dir: '/data/local_testnet/lighthouse-geth'
+#    jwt-secret-file: "/data/local_testnet/lighthouse-geth/jwt-secret"
+#    validator-offset-start: 12 # so validators of different clients don't overlap
+#
+#    additional-env:
+#      lighthouse-debug-level: "debug"
+#
+#  lodestar-geth:
+#    client-name: 'lodestar'
+#    # docker-compose
+#    image: "etb-all-clients"
+#    tag: "latest"
+#    container-name: "lodestar-client-geth"
+#    entrypoint: "/source/apps/launchers/consensus-clients/launch-lodestar.sh"
+#    start-ip-addr: "10.0.20.50"
+#    depends: "ethereum-testnet-bootstrapper"
+#
+#    num-nodes: 1 # how many beacon nodes
+#    consensus-config: "base-consensus-client"
+#    consensus-bootnode-config: "eth2-bootnode-config"
+#
+#    local-execution-client: true
+#    execution-config: "geth-execution-config"
+#    execution-launcher: "/source/apps/launchers/execution-clients/launch-geth-clique.sh"
+#
+#    testnet-dir: '/data/local_testnet/lodestar-geth'
+#    jwt-secret-file: "/data/local_testnet/lodestar-geth/jwt-secret"
+#    validator-offset-start: 16 # so validators of different clients don't overlap
+#
+#    additional-env:
+#      lstar-debug-level: "debug"
+#
+#  prysm-besu:
+#    client-name: 'prysm'
+#    # docker-compose
+#    image: "etb-all-clients"
+#    tag: "latest"
+#    container-name: "prysm-client-besu"
+#    entrypoint: "/source/apps/launchers/consensus-clients/launch-prysm.sh"
+#    start-ip-addr: "10.0.20.12"
+#    depends: "ethereum-testnet-bootstrapper"
+#    # beacon/validator flags
+#    num-nodes: 1 # how many beacon nodes
+#    consensus-config: "base-consensus-client"
+#
+#    consensus-bootnode-config: "eth2-bootnode-config"
+#
+#    local-execution-client: true
+#    execution-config: "besu-execution-config"
+#    execution-launcher: "/source/apps/launchers/execution-clients/launch-besu.sh"
+#
+#
+#    testnet-dir: '/data/local_testnet/prysm-besu'
+#    jwt-secret-file: "/data/local_testnet/prysm-besu/jwt-secret"
+#
+#    validator-offset-start: 20 # so validators of different clients don't overlap
+#    # args specific to prysm nodes, these are loaded into the dockers env at runtime.
+#    additional-env:
+#      prysm-debug-level: "debug"
+#      wallet-path: '/data/local_testnet/prysm-besu/wallet-password.txt'
+#      validator-password: "testnet-password"
+#
+#  teku-besu:
+#    client-name: 'teku'
+#    # docker-compose
+#    image: "etb-all-clients"
+#    tag: "latest"
+#    container-name: "teku-client-besu"
+#    entrypoint: "/source/apps/launchers/consensus-clients/launch-teku.sh"
+#    start-ip-addr: "10.0.20.22"
+#    depends: "ethereum-testnet-bootstrapper"
+#
+#    num-nodes: 1 # how many beacon nodes
+#    consensus-config: "base-consensus-client"
+#
+#    consensus-bootnode-config: "eth2-bootnode-config"
+#    local-execution-client: true
+#    execution-config: "besu-execution-config"
+#    execution-launcher: "/source/apps/launchers/execution-clients/launch-besu.sh"
+#
+#    testnet-dir: '/data/local_testnet/teku-besu'
+#    jwt-secret-file: "/data/local_testnet/teku-besu/jwt-secret"
+#
+#    validator-offset-start: 24 # so validators of different clients don't overlap
+#
+#    # args specific to teku nodes.
+#    additional-env:
+#      teku-debug-level: "DEBUG"
+#
+#  nimbus-besu:
+#    client-name: 'nimbus'
+#    # docker-compose
+#    image: "etb-all-clients"
+#    tag: "latest"
+#    container-name: "nimbus-client-besu"
+#    entrypoint: "/source/apps/launchers/consensus-clients/launch-nimbus.sh"
+#    start-ip-addr: "10.0.20.32"
+#    depends: "ethereum-testnet-bootstrapper"
+#
+#    num-nodes: 1 # how many beacon nodes
+#    testnet-dir: '/data/local_testnet/nimbus-besu'
+#    jwt-secret-file: "/data/local_testnet/nimbus-besu/jwt-secret"
+#
+#    consensus-config: "base-consensus-client"
+#    consensus-bootnode-config: "eth2-bootnode-config"
+#
+#    local-execution-client: true
+#    execution-config: "besu-execution-config"
+#    execution-launcher: "/source/apps/launchers/execution-clients/launch-besu.sh"
+#
+#    validator-offset-start: 28 # so validators of different clients don't overlap
+#
+#    additional-env:
+#      nimbus-debug-level: "trace"
+#
+#  lighthouse-besu:
+#    client-name: 'lighthouse'
+#    # docker-compose
+#    image: "etb-all-clients"
+#    tag: "latest"
+#    container-name: "lighthouse-client-besu"
+#    entrypoint: "/source/apps/launchers/consensus-clients/launch-lighthouse.sh"
+#    start-ip-addr: "10.0.20.42"
+#    depends: "ethereum-testnet-bootstrapper"
+#
+#    consensus-config: "base-consensus-client"
+#    consensus-bootnode-config: "eth2-bootnode-config"
+#
+#    local-execution-client: true
+#    execution-config: "besu-execution-config"
+#    execution-launcher: "/source/apps/launchers/execution-clients/launch-besu.sh"
+#
+#    num-nodes: 1 # how many beacon nodes
+#    testnet-dir: '/data/local_testnet/lighthouse-besu'
+#    jwt-secret-file: "/data/local_testnet/lighthouse-besu/jwt-secret"
+#    validator-offset-start: 32 # so validators of different clients don't overlap
+#
+#    additional-env:
+#      lighthouse-debug-level: "debug"
+#
+#  lodestar-besu:
+#    client-name: 'lodestar'
+#    # docker-compose
+#    image: "etb-all-clients"
+#    tag: "latest"
+#    container-name: "lodestar-client-besu"
+#    entrypoint: "/source/apps/launchers/consensus-clients/launch-lodestar.sh"
+#    start-ip-addr: "10.0.20.52"
+#    depends: "ethereum-testnet-bootstrapper"
+#
+#    num-nodes: 1 # how many beacon nodes
+#    consensus-config: "base-consensus-client"
+#    consensus-bootnode-config: "eth2-bootnode-config"
+#
+#    local-execution-client: true
+#    execution-config: "besu-execution-config"
+#    execution-launcher: "/source/apps/launchers/execution-clients/launch-besu.sh"
+#
+#    testnet-dir: '/data/local_testnet/lodestar-besu'
+#    jwt-secret-file: "/data/local_testnet/lodestar-besu/jwt-secret"
+#    validator-offset-start: 36 # so validators of different clients don't overlap
+#
+#    additional-env:
+#      lstar-debug-level: "debug"
+#
+#
+#  prysm-nethermind:
+#    client-name: 'prysm'
+#    # docker-compose
+#    image: "etb-all-clients"
+#    tag: "latest"
+#    container-name: "prysm-client-nethermind"
+#    entrypoint: "/source/apps/launchers/consensus-clients/launch-prysm.sh"
+#    start-ip-addr: "10.0.20.14"
+#    depends: "ethereum-testnet-bootstrapper"
+#    # beacon/validator flags
+#    num-nodes: 1 # how many beacon nodes
+#    consensus-config: "base-consensus-client"
+#
+#    consensus-bootnode-config: "eth2-bootnode-config"
+#
+#    local-execution-client: true
+#    execution-config: "nethermind-execution-config"
+#    execution-launcher: "/source/apps/launchers/execution-clients/launch-nethermind-clique.sh"
+#
+#
+#    testnet-dir: '/data/local_testnet/prysm-nethermind'
+#    jwt-secret-file: "/data/local_testnet/prysm-nethermind/jwt-secret"
+#
+#    validator-offset-start: 40 # so validators of different clients don't overlap
+#    # args specific to prysm nodes, these are loaded into the dockers env at runtime.
+#    additional-env:
+#      prysm-debug-level: "debug"
+#      wallet-path: '/data/local_testnet/prysm-nethermind/wallet-password.txt'
+#      validator-password: "testnet-password"
+#
+##
+#
+#
+#  teku-nethermind:
+#    client-name: 'teku'
+#    # docker-compose
+#    image: "etb-all-clients"
+#    tag: "latest"
+#    container-name: "teku-client-nethermind"
+#    entrypoint: "/source/apps/launchers/consensus-clients/launch-teku.sh"
+#    start-ip-addr: "10.0.20.24"
+#    depends: "ethereum-testnet-bootstrapper"
+#
+#    num-nodes: 1 # how many beacon nodes
+#    consensus-config: "base-consensus-client"
+#
+#    consensus-bootnode-config: "eth2-bootnode-config"
+#    local-execution-client: true
+#    execution-config: "nethermind-execution-config"
+#      #execution-config: "besu-execution-config"
+#    execution-launcher: "/source/apps/launchers/execution-clients/launch-nethermind-clique.sh"
+#
+#    testnet-dir: '/data/local_testnet/teku-nethermind'
+#    jwt-secret-file: "/data/local_testnet/teku-nethermind/jwt-secret"
+#
+#    validator-offset-start: 44 # so validators of different clients don't overlap
+#
+#    # args specific to teku nodes.
+#    additional-env:
+#      teku-debug-level: "DEBUG"
+#
+##
+#
+#  nimbus-nethermind:
+#    client-name: 'nimbus'
+#    # docker-compose
+#    image: "etb-all-clients"
+#    tag: "latest"
+#    container-name: "nimbus-client-nethermind"
+#    entrypoint: "/source/apps/launchers/consensus-clients/launch-nimbus.sh"
+#    start-ip-addr: "10.0.20.34"
+#    depends: "ethereum-testnet-bootstrapper"
+#
+#    num-nodes: 1 # how many beacon nodes
+#    testnet-dir: '/data/local_testnet/nimbus-nethermind'
+#    jwt-secret-file: "/data/local_testnet/nimbus-nethermind/jwt-secret"
+#
+#    consensus-config: "base-consensus-client"
+#    consensus-bootnode-config: "eth2-bootnode-config"
+#
+#    local-execution-client: true
+#    execution-config: "nethermind-execution-config"
+#    execution-launcher: "/source/apps/launchers/execution-clients/launch-nethermind-clique.sh"
+#
+#    validator-offset-start: 48 # so validators of different clients don't overlap
+#
+#    additional-env:
+#      nimbus-debug-level: "trace"
+#
+#
+#  lighthouse-nethermind:
+#    client-name: 'lighthouse'
+#    # docker-compose
+#    image: "etb-all-clients"
+#    tag: "latest"
+#    container-name: "lighthouse-client-nethermind"
+#    entrypoint: "/source/apps/launchers/consensus-clients/launch-lighthouse.sh"
+#    start-ip-addr: "10.0.20.44"
+#    depends: "ethereum-testnet-bootstrapper"
+#
+#    consensus-config: "base-consensus-client"
+#    consensus-bootnode-config: "eth2-bootnode-config"
+#
+#    local-execution-client: true
+#    execution-config: "nethermind-execution-config"
+#    execution-launcher: "/source/apps/launchers/execution-clients/launch-nethermind-clique.sh"
+#
+#    num-nodes: 1 # how many beacon nodes
+#    testnet-dir: '/data/local_testnet/lighthouse-nethermind'
+#    jwt-secret-file: "/data/local_testnet/lighthouse-nethermind/jwt-secret"
+#    validator-offset-start: 52 # so validators of different clients don't overlap
+#
+#    additional-env:
+#      lighthouse-debug-level: "debug"
+#
+#
+#  lodestar-nethermind:
+#    client-name: 'lodestar'
+#    # docker-compose
+#    image: "etb-all-clients"
+#    tag: "latest"
+#    container-name: "lodestar-client-nethermind"
+#    entrypoint: "/source/apps/launchers/consensus-clients/launch-lodestar.sh"
+#    start-ip-addr: "10.0.20.54"
+#    depends: "ethereum-testnet-bootstrapper"
+#
+#    num-nodes: 1 # how many beacon nodes
+#    consensus-config: "base-consensus-client"
+#    consensus-bootnode-config: "eth2-bootnode-config"
+#
+#    local-execution-client: true
+#    execution-config: "nethermind-execution-config"
+#    execution-launcher: "/source/apps/launchers/execution-clients/launch-nethermind-clique.sh"
+#
+#    testnet-dir: '/data/local_testnet/lodestar-nethermind'
+#    jwt-secret-file: "/data/local_testnet/lodestar-nethermind/jwt-secret"
+#    validator-offset-start: 56 # so validators of different clients don't overlap
+#
+#    additional-env:
+#      lstar-debug-level: "debug"
+#
+#  prysm-erigon:
+#    client-name: 'prysm'
+#    # docker-compose
+#    image: "etb-all-clients"
+#    tag: "latest"
+#    container-name: "prysm-client-erigon"
+#    entrypoint: "/source/apps/launchers/consensus-clients/launch-prysm.sh"
+#    start-ip-addr: "10.0.20.16"
+#    depends: "ethereum-testnet-bootstrapper"
+#    # beacon/validator flags
+#    num-nodes: 1 # how many beacon nodes
+#    consensus-config: "base-consensus-client"
+#
+#    consensus-bootnode-config: "eth2-bootnode-config"
+#
+#    local-execution-client: true
+#    execution-config: "erigon-execution-config"
+#    execution-launcher: "/source/apps/launchers/execution-clients/launch-erigon-clique.sh"
+#
+#
+#    testnet-dir: '/data/local_testnet/prysm-erigon'
+#    jwt-secret-file: "/data/local_testnet/prysm-erigon/jwt-secret"
+#
+#    validator-offset-start: 60 # so validators of different clients don't overlap
+#    # args specific to prysm nodes, these are loaded into the dockers env at runtime.
+#    additional-env:
+#      prysm-debug-level: "debug"
+#      wallet-path: '/data/local_testnet/prysm-erigon/wallet-password.txt'
+#      validator-password: "testnet-password"
+#
+#  teku-erigon:
+#    client-name: 'teku'
+#    # docker-compose
+#    image: "etb-all-clients"
+#    tag: "latest"
+#    container-name: "teku-client-erigon"
+#    entrypoint: "/source/apps/launchers/consensus-clients/launch-teku.sh"
+#    start-ip-addr: "10.0.20.26"
+#    depends: "ethereum-testnet-bootstrapper"
+#
+#    num-nodes: 1 # how many beacon nodes
+#    consensus-config: "base-consensus-client"
+#
+#    consensus-bootnode-config: "eth2-bootnode-config"
+#    local-execution-client: true
+#    execution-config: "erigon-execution-config"
+#    execution-launcher: "/source/apps/launchers/execution-clients/launch-erigon-clique.sh"
+#
+#    testnet-dir: '/data/local_testnet/teku-erigon'
+#    jwt-secret-file: "/data/local_testnet/teku-erigon/jwt-secret"
+#
+#    validator-offset-start: 64 # so validators of different clients don't overlap
+#
+#    # args specific to teku nodes.
+#    additional-env:
+#      teku-debug-level: "DEBUG"
+#
+#  nimbus-erigon:
+#    client-name: 'nimbus'
+#    # docker-compose
+#    image: "etb-all-clients"
+#    tag: "latest"
+#    container-name: "nimbus-client-erigon"
+#    entrypoint: "/source/apps/launchers/consensus-clients/launch-nimbus.sh"
+#    start-ip-addr: "10.0.20.36"
+#    depends: "ethereum-testnet-bootstrapper"
+#
+#    num-nodes: 1 # how many beacon nodes
+#    testnet-dir: '/data/local_testnet/nimbus-erigon'
+#    jwt-secret-file: "/data/local_testnet/nimbus-erigon/jwt-secret"
+#
+#    consensus-config: "base-consensus-client"
+#    consensus-bootnode-config: "eth2-bootnode-config"
+#
+#    local-execution-client: true
+#    execution-config: "erigon-execution-config"
+#    execution-launcher: "/source/apps/launchers/execution-clients/launch-erigon-clique.sh"
+#
+#    validator-offset-start: 68 # so validators of different clients don't overlap
+#
+#    additional-env:
+#      nimbus-debug-level: "trace"
+#
+#  lighthouse-erigon:
+#    client-name: 'lighthouse'
+#    # docker-compose
+#    image: "etb-all-clients"
+#    tag: "latest"
+#    container-name: "lighthouse-client-erigon"
+#    entrypoint: "/source/apps/launchers/consensus-clients/launch-lighthouse.sh"
+#    start-ip-addr: "10.0.20.46"
+#    depends: "ethereum-testnet-bootstrapper"
+#
+#    consensus-config: "base-consensus-client"
+#    consensus-bootnode-config: "eth2-bootnode-config"
+#
+#    local-execution-client: true
+#    execution-config: "erigon-execution-config"
+#    execution-launcher: "/source/apps/launchers/execution-clients/launch-erigon-clique.sh"
+#
+#    num-nodes: 1 # how many beacon nodes
+#    testnet-dir: '/data/local_testnet/lighthouse-erigon'
+#    jwt-secret-file: "/data/local_testnet/lighthouse-erigon/jwt-secret"
+#    validator-offset-start: 72 # so validators of different clients don't overlap
+#
+#    additional-env:
+#      lighthouse-debug-level: "debug"
+#
+#  lodestar-erigon:
+#    client-name: 'lodestar'
+#    # docker-compose
+#    image: "etb-all-clients"
+#    tag: "latest"
+#    container-name: "lodestar-client-erigon"
+#    entrypoint: "/source/apps/launchers/consensus-clients/launch-lodestar.sh"
+#    start-ip-addr: "10.0.20.56"
+#    depends: "ethereum-testnet-bootstrapper"
+#
+#    num-nodes: 1 # how many beacon nodes
+#    consensus-config: "base-consensus-client"
+#    consensus-bootnode-config: "eth2-bootnode-config"
+#
+#    local-execution-client: true
+#    execution-config: "erigon-execution-config"
+#    execution-launcher: "/source/apps/launchers/execution-clients/launch-erigon-clique.sh"
+#
+#    testnet-dir: '/data/local_testnet/lodestar-erigon'
+#    jwt-secret-file: "/data/local_testnet/lodestar-erigon/jwt-secret"
+#    validator-offset-start: 76 # so validators of different clients don't overlap
+#
+#    additional-env:
+#      lstar-debug-level: "debug"
+## required.
+#testnet-bootstrapper:
+#  ethereum-testnet-bootstrapper:
+#    #docker-compose
+#    image: "ethereum-testnet-bootstrapper"
+#    tag: "latest"
+#    container-name: "testnet-bootstrapper"
+#    start-ip-addr: "10.0.20.202"
+#    num-nodes: 1
+#    entrypoint: "/source/entrypoint.sh --config /data/etb-config.yaml --bootstrap-testnet"
+#
+#generic-modules:
+#
+#  status-check:
+#    client-name: "status-check"
+#    image: "ethereum-testnet-bootstrapper"
+#    tag: "latest"
+#    container-name: "status-check"
+#    start-ip-addr: "10.0.20.207"
+#    num-nodes: 1
+#    entrypoint: "python3 /source/apps/status-check.py --config /data/etb-config.yaml --phase0-slot 32 --phase1-slot 122 --phase2-slot 144 --phase3-slot 180 --number-of-checks 3 --log-prefix antithesis --terminate-experiment-prefix terminate"
