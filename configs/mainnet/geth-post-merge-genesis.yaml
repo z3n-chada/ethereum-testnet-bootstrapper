@@ -328,8 +328,8 @@ generic-modules:
     image: "ethereum-testnet-bootstrapper"
     tag: "latest"
     start-ip-addr: "10.0.20.201"
-    entrypoint: "/source/apps/launchers/bootnodes/launch-eth2-bootnode.sh"
-    num-nodes: 1 # not implemented must be 1 and match the consensus-bootnode-config
+    entrypoint: "/source/deps/launchers/bootnodes/launch-eth2-bootnode.sh"
+    num-nodes: 1 #should always be 1.
 
     additional-env:
       consensus-bootnode-start-ip-addr: "10.0.20.201"
