@@ -2,11 +2,15 @@ from enum import Enum
 
 from ruamel import yaml
 from typing import List, Dict, Union, Optional, Any
-
 """
     Performs the heavy lifting of parsing and consuming configs for ETB.
 """
 
+class GenesisForkVersion(Enum):
+    Phase0 = 0
+    Altair = 1
+    Bellatrix = 2
+    Capella = 3
 
 class ConfigEntry(object):
     """
@@ -572,6 +576,27 @@ class ETBConfig(object):
             num_nodes += client_module.get('num-nodes')
         return num_nodes
 
+    def get_genesis_fork_name(self) -> GenesisForkVersion:
+        fork_version = GenesisForkVersion.Phase0
+        if self.get('capella-fork-epoch') == 0:
+            return GenesisForkVersion.Capella
+
+        if self.get('bellatrix-fork-epoch') == 0:
+            return GenesisForkVersion.Bellatrix
+
+        if self.get('altair-fork-epoch') == 0:
+            return GenesisForkVersion.Altair
+
+        return GenesisForkVersion.Phase0
+
+    def get_genesis_fork_version(self) -> int:
+        lookup_dict = {
+            GenesisForkVersion.Phase0 : self.get('phase0-fork-version'),
+            GenesisForkVersion.Altair : self.get('altair-fork-version'),
+            GenesisForkVersion.Bellatrix : self.get('bellatrix-fork-version'),
+            GenesisForkVersion.Capella : self.get('capella-fork-version'),
+        }
+        return lookup_dict[self.get_genesis_fork_name()]
     def set_genesis_time(self, t: int) -> None:
         """Set the genesis time in the etb-config"""
         self.global_config["bootstrap-genesis"] = t
@@ -723,6 +748,6 @@ if __name__ == "__main__":
     prysm_module = config.get_clients()['prysm-geth']
     # print(prysm_module.get('validator-password'))
     print(prysm_module.config.config['additional-env']['validator-password'])
-
+    print(config.get_genesis_fork_version())
 
 
