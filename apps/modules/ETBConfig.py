@@ -6,7 +6,7 @@ from typing import List, Dict, Union, Optional, Any
     Performs the heavy lifting of parsing and consuming configs for ETB.
 """
 
-class GenesisForkVersion(Enum):
+class ForkVersion(Enum):
     Phase0 = 0
     Altair = 1
     Bellatrix = 2
@@ -576,27 +576,69 @@ class ETBConfig(object):
             num_nodes += client_module.get('num-nodes')
         return num_nodes
 
-    def get_genesis_fork_name(self) -> GenesisForkVersion:
-        fork_version = GenesisForkVersion.Phase0
+    def get_genesis_fork(self) -> ForkVersion:
         if self.get('capella-fork-epoch') == 0:
-            return GenesisForkVersion.Capella
+            return ForkVersion.Capella
 
         if self.get('bellatrix-fork-epoch') == 0:
-            return GenesisForkVersion.Bellatrix
+            return ForkVersion.Bellatrix
 
         if self.get('altair-fork-epoch') == 0:
-            return GenesisForkVersion.Altair
+            return ForkVersion.Altair
 
-        return GenesisForkVersion.Phase0
+        return ForkVersion.Phase0
 
     def get_genesis_fork_version(self) -> int:
         lookup_dict = {
-            GenesisForkVersion.Phase0 : self.get('phase0-fork-version'),
-            GenesisForkVersion.Altair : self.get('altair-fork-version'),
-            GenesisForkVersion.Bellatrix : self.get('bellatrix-fork-version'),
-            GenesisForkVersion.Capella : self.get('capella-fork-version'),
+            ForkVersion.Phase0 : self.get('phase0-fork-version'),
+            ForkVersion.Altair : self.get('altair-fork-version'),
+            ForkVersion.Bellatrix : self.get('bellatrix-fork-version'),
+            ForkVersion.Capella : self.get('capella-fork-version'),
         }
-        return lookup_dict[self.get_genesis_fork_name()]
+        return lookup_dict[self.get_genesis_fork()]
+
+    def get_final_fork(self) -> ForkVersion:
+        '''The last fork in the config that is not in far-future'''
+        far_future_epoch = 18446744073709551615
+        if self.get('capella-fork-epoch') != far_future_epoch:
+            return ForkVersion.Capella
+
+        if self.get('bellatrix-fork-epoch') != far_future_epoch:
+            return ForkVersion.Bellatrix
+
+        if self.get('altair-fork-epoch') != far_future_epoch:
+            return ForkVersion.Altair
+
+        return ForkVersion.Phase0
+
+    def get_seconds_per_cl_block(self) -> int:
+        return 12
+
+    def get_consensus_blocks_per_epoch(self) -> int:
+        return 32
+    def get_consensus_genesis_delay(self) -> int:
+        # how long before testnet genesis that cl genesis occurs in seconds
+        return self.get('eth1-follow-distance') * self.get('seconds-per-eth1-block') + self.get('execution-genesis'
+                                                                                                '-delay')
+
+    def get_clique_signers(self, num_signers=1) -> List[str]:
+        """
+        In order of premines we allocate those to signers
+        :param num_signers:
+        :return: List[signer1,signer2,...]
+        """
+        from web3.auto import w3
+        w3.eth.account.enable_unaudited_hdwallet_features()
+
+        pub_keys = []
+        premines = [x for x in self.global_config['accounts']['eth1-premine']]
+
+        for x in range(num_signers):
+            acct = w3.eth.account.from_mnemonic(self.get("eth1-account-mnemonic"), account_path=premines[x], passphrase=self.get("eth1-passphrase"))
+            pub_keys.append(acct.address)
+
+        return pub_keys
+
     def set_genesis_time(self, t: int) -> None:
         """Set the genesis time in the etb-config"""
         self.global_config["bootstrap-genesis"] = t
@@ -748,6 +790,8 @@ if __name__ == "__main__":
     prysm_module = config.get_clients()['prysm-geth']
     # print(prysm_module.get('validator-password'))
     print(prysm_module.config.config['additional-env']['validator-password'])
-    print(config.get_genesis_fork_version())
+
+    print(config.get_clique_signers())
+
 
 
