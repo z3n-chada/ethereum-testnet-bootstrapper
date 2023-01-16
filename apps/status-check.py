@@ -44,6 +44,8 @@ class TestnetStatusChecker(object):
         self.etb_config = ETBConfig(args.config)
         self.now = self.etb_config.get("bootstrap-genesis")
 
+        self.consensus_genesis_delay = self.etb_config.get_consensus_genesis_delay()
+
         self.etb_beacon_api = ETBConsensusBeaconAPI(
             self.etb_config,
             non_error=True,
@@ -52,25 +54,21 @@ class TestnetStatusChecker(object):
         )
         self.health_metric = UniqueConsensusHeads()
 
-        # if self.etb_config.get("preset-base") == "mainnet":
-        #     self.secs_per_eth2_slot = 12
-        # else:
-        #     raise Exception("No minimal support")
         self.secs_per_eth2_slot = 12
 
-        self.genesis_time = self.etb_config.get("bootstrap-genesis")
+        self.genesis_time = self.etb_config.get("bootstrap-genesis") + self.consensus_genesis_delay
 
         self.phase0_time = (
-            self.now + args.phase0_slot * self.secs_per_eth2_slot
+            self.genesis_time + args.phase0_slot * self.secs_per_eth2_slot
         )
         self.phase1_time = (
-            self.now + args.phase1_slot * self.secs_per_eth2_slot
+            self.genesis_time + args.phase1_slot * self.secs_per_eth2_slot
         )
         self.phase2_time = (
-            self.now + args.phase2_slot * self.secs_per_eth2_slot
+            self.genesis_time + args.phase2_slot * self.secs_per_eth2_slot
         )
         self.phase3_time = (
-            self.now + args.phase3_slot * self.secs_per_eth2_slot
+            self.genesis_time + args.phase3_slot * self.secs_per_eth2_slot
         )
         # number of checks just in case we fall on a boundry.
         self.number_of_checks = args.num_checks
@@ -131,7 +129,7 @@ class TestnetStatusChecker(object):
                 if do_check_heads:
                     self.update_health_metric()
                     print(self.health_metric.__repr__(), flush=True)
-                    # accomodate the time it took to run metric.
+                    # accommodate the time it took to run metric.
                     skew = int(time.time()) - now
                     skew_wait = self.secs_per_eth2_slot - skew
                     if skew_wait > 0:
@@ -143,7 +141,7 @@ class TestnetStatusChecker(object):
                 time.sleep(1)
 
     def start_status_checker(self):
-
+        print(f"starting the status checker, delaying {int(time.time()) - self.genesis_time} seconds for consensus genesis.")
         self.wait_until("genesis", int(self.genesis_time))
         print(f"{self.log_prefix}: Consensus Genesis Occured", flush=True)
 

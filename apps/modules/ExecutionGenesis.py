@@ -1,5 +1,5 @@
 from web3.auto import w3
-from ETBConfig import ETBConfig, ForkVersion
+from .ETBConfig import ETBConfig, ForkVersion
 import logging
 
 w3.eth.account.enable_unaudited_hdwallet_features()
@@ -12,9 +12,7 @@ class ExecutionGenesisWriter(object):
         self.genesis = {}
         self.execution_genesis = self.etb_config.get("bootstrap-genesis") + self.etb_config.get(
             "execution-genesis-delay")
-        self.use_clique = self.etb_config.get_genesis_fork() >= ForkVersion.Bellatrix
-        if self.use_clique:
-            logger.info("ExecutionGenesisWriter using clique mode.")
+
 
     def get_allocs(self) -> dict:
         allocs = {}
@@ -38,40 +36,6 @@ class ExecutionGenesisWriter(object):
         allocs[self.etb_config.get("deposit-contract-address")] = deposit_contract_json
 
         return allocs
-
-    def calculate_merge_fork_block(self) -> int:
-        '''
-            The merge fork block for ELs is the block that occurs during the CL fork
-            bellatrix for bellatrix.
-
-            This can be zero if we are doing a post-merge genesis.
-        '''
-        # post-merge genesis
-        if self.etb_config.get_genesis_fork() >= ForkVersion.Bellatrix:
-            return 0
-        # no merge in testnet
-        if self.etb_config.get_final_fork() < ForkVersion.Bellatrix:
-            return 18446744073709551615  # a large enough number to not care.
-
-        consensus_merge_epoch = self.etb_config.get('bellatrix-fork-epoch')
-        consensus_genesis_delay = self.etb_config.get('consensus-genesis-delay')
-        cl_blocks_per_second = self.etb_config.get('seconds-per-cl-block')
-        cl_blocks_per_epoch = self.etb_config.get('consensus-blocks-per-epoch')
-
-        consensus_merge_time = consensus_merge_epoch * cl_blocks_per_epoch * cl_blocks_per_second + \
-                               consensus_genesis_delay
-
-        return consensus_merge_time / self.etb_config.get('seconds-per-eth1-block')
-
-    def calculate_terminal_total_difficulty(self) -> int:
-        if self.etb_config.get_genesis_fork() >= ForkVersion.Bellatrix:
-            return 0
-        # no merge in testnet
-        if self.etb_config.get_final_fork() < ForkVersion.Bellatrix:
-            return 18446744073709551615  # a large enough number to not care.
-
-        # we use clique to each block is 2 difficulty.
-        return self.calculate_merge_fork_block() * 2 + 3
 
     def create_geth_genesis(self) -> dict:
 
@@ -99,17 +63,17 @@ class ExecutionGenesisWriter(object):
             "istanbulBlock": 0,
             "berlinBlock": 0,
             "londonBlock": 0,
-            "mergeForkBlock": self.calculate_merge_fork_block(),
-            "arrowGlacierBlock": self.calculate_merge_fork_block(),
-            "grayGlacierBlock": self.calculate_merge_fork_block(),
+            "mergeForkBlock": self.etb_config.get_el_merge_fork_block(),
+            "arrowGlacierBlock": self.etb_config.get_el_merge_fork_block(),
+            "grayGlacierBlock": self.etb_config.get_el_merge_fork_block(),
             "shanghaiTime": self.execution_genesis + self.etb_config.get("shanghai-delay"),
-            "terminalTotalDifficulty": self.calculate_terminal_total_difficulty(),
+            "terminalTotalDifficulty": self.etb_config.get_terminal_total_difficulty(),
         }
         self.genesis["config"] = config
 
-        if self.use_clique:
-            signers = "".join(s for s in self.etb_config.get('clique-signers'))
-            self.genesis["extraData"] = f"0x{'0' * 64}{signers}{'0' * 130}"
+        if self.etb_config.is_clique_genesis():
+            signer = self.etb_config.get('clique-signer')
+            self.genesis["extraData"] = f"0x{'0' * 64}{signer[2:]}{'0' * 130}"
             self.genesis["config"]["clique"] = {
                 "period": self.etb_config.get("seconds-per-eth1-block"),
                 "epoch": 3000,

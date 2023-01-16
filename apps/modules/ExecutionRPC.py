@@ -68,6 +68,15 @@ class admin_peers_RPC(RPCMethod):
         super().__init__("admin_peers", [], _id, timeout)
 
 
+class personal_unlock_account_RPC(RPCMethod):
+    def __init__(self, address, passphrase, duration, _id=1, timeout=5):
+        super().__init__("personal_unlockAccount", [address, passphrase, duration], _id, timeout)
+
+
+class miner_start_RPC(RPCMethod):
+    def __init__(self, num_threads=1):
+        super().__init__("miner_start", [num_threads], _id=1, timeout=5)
+
 class ExecutionJSONRPC(object):
     """
     A client that represents a single execution endpoint to interact with.
@@ -168,7 +177,7 @@ class ETBExecutionRPC(object):
 if __name__ == "__main__":
     from ETBConfig import ETBConfig
 
-    config = ETBConfig("../../configs")
+    config = ETBConfig("../../configs/mainnet/phase0-merge-geth.yaml")
     # etb_rpc = ETBExecutionRPC(ETBConfig("configs/mainnet/testing.yaml"), timeout=2)
     #
     # # node_info = etb_rpc.do_rpc_request(admin_node_info_RPC(_id=2), all_clients=True)

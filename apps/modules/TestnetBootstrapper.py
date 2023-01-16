@@ -15,11 +15,11 @@ from typing import Dict
 
 from ruamel import yaml
 
-from .ConsensusGenesis import ConsensusGenesisWriter
-from .ETBConfig import ETBConfig, ConsensusClient, ETBClient
+from .ConsensusGenesis import ConsensusConfigurationWriter, ConsensusGenesisWriter
+from .ETBConfig import ETBConfig, ConsensusClient, ETBClient, ForkVersion
 from .ExecutionGenesis import ExecutionGenesisWriter
 from .ExecutionRPC import (ETBExecutionRPC, admin_add_peer_RPC,
-                           admin_node_info_RPC)
+                           admin_node_info_RPC, personal_unlock_account_RPC, miner_start_RPC)
 
 logger = logging.getLogger("bootstrapper_log")
 
@@ -69,6 +69,10 @@ class EthereumTestnetBootstrapper(object):
         2. signal the consensus bootnode to come online.
         3. create the execution genesis files and then signal those clients to
            come online.
+        4. pair all the el clients.
+        5. create the consensus genesis files and then signal those clients to
+            come online
+
         """
         # set the bootstrap time and update the file. Then signal dockers via
         # checkpoint.
@@ -86,6 +90,10 @@ class EthereumTestnetBootstrapper(object):
 
         # pair all the EL clients together.
         self._pair_el_clients(self._get_all_el_enodes())
+
+        # if needed we start the clique miners
+        if self.etb_config.get_genesis_fork() < ForkVersion.Bellatrix:
+            self._start_clique_miners()
 
         # bootstrap all the consensus clients.
         self._write_consensus_genesis_files()
@@ -106,6 +114,36 @@ class EthereumTestnetBootstrapper(object):
                     path.unlink()
 
     # General private helpers to keep functions short.
+
+    def _start_clique_miners(self) -> None:
+        """
+        When using clique (pre-merge) we must unlock the signing account
+        on one of the EL clients and begin mining. By default, we only use
+        one signer, and that signer is the key used in the first premine.
+
+        The instance that starts mining is the first entry of the first client
+        that implements the api. By default, we use alphabetical order.
+        :return: None
+        """
+        possible_el_clients = self.etb_config.get_execution_rpc_paths(protocol='http', apis=['personal','miner','clique'])
+        if len(possible_el_clients) == 0:
+            raise Exception("Error: Couldn't start clique miners as no EL client implements personal and miner")
+        logger.debug(f"Found possible clique miners: {possible_el_clients}")
+        names = list(possible_el_clients.keys())
+        names.sort()
+
+        miner_name = names[0]
+        logger.info(f"Starting clique miner for: {miner_name} : {possible_el_clients[miner_name]}")
+
+        address = self.etb_config.get_clique_signer()
+        passphrase = self.etb_config.get('eth1-passphrase')
+
+        unlock_rpc = personal_unlock_account_RPC(address=address, passphrase=passphrase, duration=100000)
+        miner_rpc = miner_start_RPC(1)
+
+        etb_rpc = ETBExecutionRPC(self.etb_config, timeout=5)
+        etb_rpc.do_rpc_request(unlock_rpc, client_nodes=[miner_name], all_clients=False)
+        etb_rpc.do_rpc_request(miner_rpc, client_nodes=[miner_name], all_clients=False)
 
     def _create_consensus_bootnode_dir(self):
         """
@@ -210,9 +248,10 @@ class EthereumTestnetBootstrapper(object):
         Create the consensus config.yaml file and the genesis.ssz file.
         """
         logger.info("ConsensusBootstrapper bootstrapping consensus..")
+        ccw = ConsensusConfigurationWriter(self.etb_config)
         cgw = ConsensusGenesisWriter(self.etb_config)
         with open(self.etb_config.get("consensus-config-file"), "w") as f:
-            f.write(cgw.create_consensus_config())
+            f.write(ccw.get_old_version_yaml())
         logger.debug("ConsensusBootstrapper wrote config.yaml")
         with open(self.etb_config.get("consensus-genesis-file"), "wb") as f:
             f.write(cgw.create_consensus_genesis())
@@ -384,7 +423,7 @@ class NimbusTestnetGenerator(ConsensusDirectoryGenerator):
         # just in case set a deposit deploy block.
         with open(f"{str(self.testnet_dir)}/deposit_contract_block.txt", "w") as f:
             f.write(
-                "0x0000000000000000000000000000000000000000000000000000000000000000"
+                "0"
             )
 
 
