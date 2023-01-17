@@ -1,6 +1,6 @@
 FROM etb-client-builder:latest as base
 
-from base as builder
+FROM base as builder
 
 RUN mkdir -p /go/src/github.com/ethereum/ 
 WORKDIR /go/src/github.com/ethereum/
