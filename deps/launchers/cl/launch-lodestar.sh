@@ -46,46 +46,35 @@ done
 
 echo "Launching Lodestar."
 
-##lodestar beacon \
-##    --rootDir="$NODE_DIR" \
-##    --configFile="$TESTNET_DIR/config.yaml" \
-##    --paramsFile="$TESTNET_DIR/config.yaml" \
-##    --genesisStateFile="$TESTNET_DIR/genesis.ssz" \
-##    --network.discv5.bootEnrs="$bootnode_enr" \
-##    --network.connectToDiscv5Bootnodes \
-##    --network.discv5.enabled=true \
-##    --network.subscribeAllSubnets \
-##    --eth1.enabled=true \
-##    --api.rest.port="$BEACON_API_PORT" \
-##    --eth1.providerUrls="http://$HTTP_WEB3_IP_ADDR:$EXECUTION_HTTP_PORT" \
-##    --api.rest.enabled=true \
-##    --api.rest.host=0.0.0.0 \
-##    --api.rest.api="*" \
-##    --logLevel="$LSTAR_DEBUG_LEVEL" \
-##    --logLevelFile=debug \
-##    --logFile="$NODE_DIR/beacon.log" \
-##    --logRotate \
-##    --logMaxFiles=5 \
-##    --enr.ip="$IP_ADDR" \
-##    --metrics.enabled \
-##    --metrics.serverPort="$BEACON_METRIC_PORT" \
-##    --terminal-total-difficulty-override="$TERMINAL_TOTAL_DIFFICULTY" \
-##    --execution.urls="http://$HTTP_WEB3_IP_ADDR:$EXECUTION_ENGINE_HTTP_PORT" \
-##    --jwt-secret="$JWT_SECRET_FILE" \
-##    --eth1.depositContractDeployBlock=0 &
-##
-##sleep 10
-##
-##lodestar validator \
-##    --rootDir="$NODE_DIR" \
-##    --paramsFile="$TESTNET_DIR/config.yaml" \
-##    --keystoresDir="$NODE_DIR/keys/" \
-##    --secretsDir="$NODE_DIR/secrets/" \
-##    --server="http://127.0.0.1:$BEACON_API_PORT" \
-##    --validatorsDbDir="$NODE_DIR/validatorsdb" \
-##    --logFile="$NODE_DIR/validatordb/validator.log" \
-##    --logLevelFile="$LSTAR_DEBUG_LEVEL" \
-##    --logRotate \
-##    --logMaxFiles=5 \
-##    --terminal-total-difficulty-override="$TERMINAL_TOTAL_DIFFICULTY" \
-##    --graffiti="$GRAFFITI"
+lodestar beacon \
+    --rootDir="$NODE_DIR" \
+    --configFile="$TESTNET_DIR/config.yaml" \
+    --paramsFile="$TESTNET_DIR/config.yaml" \
+    --genesisStateFile="$TESTNET_DIR/genesis.ssz" \
+    --execution.urls="http://127.0.0.1:$EXECUTION_ENGINE_HTTP_PORT" \
+    --jwt-secret="$JWT_SECRET_FILE" \
+    --network.discv5.bootEnrs="$bootnode_enr" \
+    --api.rest.enabled=true \
+    --api.rest.host=0.0.0.0 \
+    --api.rest.port="$CONSENSUS_BEACON_API_PORT" \
+    --api.rest.api="*" \
+    --logLevel="$LSTAR_DEBUG_LEVEL" \
+    --logLevelFile=debug \
+    --logFile="$CONSENSUS_NODE_DIR/beacon.log" \
+    --logRotate \
+    --chain.defaultFeeRecipient=0x00000000219ab540356cbb839cbe05303d7705fa &
+
+sleep 10
+
+lodestar validator \
+    --rootDir="$CONSENSUS_NODE_DIR" \
+    --paramsFile="$TESTNET_DIR/config.yaml" \
+    --keystoresDir="$CONSENSUS_NODE_DIR/keys/" \
+    --secretsDir="$CONSENSUS_NODE_DIR/secrets/" \
+    --server="http://127.0.0.1:$CONSENSUS_BEACON_API_PORT" \
+    --validatorsDbDir="$CONSENSUS_NODE_DIR/validatorsdb" \
+    --logFile="$CONSENSUS_NODE_DIR/validatordb/validator.log" \
+    --logLevelFile="$LSTAR_DEBUG_LEVEL" \
+    --logRotate \
+    --logMaxFiles=5 \
+    --graffiti="$CONSENSUS_GRAFFITI"

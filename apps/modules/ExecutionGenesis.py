@@ -1,14 +1,18 @@
 from web3.auto import w3
+from .ETBConfig import ETBConfig, ForkVersion
+import logging
 
 w3.eth.account.enable_unaudited_hdwallet_features()
+logger = logging.getLogger("bootstrapper_log")
 
 
 class ExecutionGenesisWriter(object):
     def __init__(self, global_config):
-        self.etb_config = global_config
+        self.etb_config: ETBConfig = global_config
         self.genesis = {}
         self.execution_genesis = self.etb_config.get("bootstrap-genesis") + self.etb_config.get(
             "execution-genesis-delay")
+
 
     def get_allocs(self) -> dict:
         allocs = {}
@@ -59,13 +63,21 @@ class ExecutionGenesisWriter(object):
             "istanbulBlock": 0,
             "berlinBlock": 0,
             "londonBlock": 0,
-            "mergeForkBlock": 0,
-            "arrowGlacierBlock": 0,
-            "grayGlacierBlock": 0,
+            "mergeForkBlock": self.etb_config.get_el_merge_fork_block(),
+            "arrowGlacierBlock": self.etb_config.get_el_merge_fork_block(),
+            "grayGlacierBlock": self.etb_config.get_el_merge_fork_block(),
             "shanghaiTime": self.execution_genesis + self.etb_config.get("shanghai-delay"),
-            "terminalTotalDifficulty": 0,
+            "terminalTotalDifficulty": self.etb_config.get_terminal_total_difficulty(),
         }
         self.genesis["config"] = config
+
+        if self.etb_config.is_clique_genesis():
+            signer = self.etb_config.get('clique-signer')
+            self.genesis["extraData"] = f"0x{'0' * 64}{signer[2:]}{'0' * 130}"
+            self.genesis["config"]["clique"] = {
+                "period": self.etb_config.get("seconds-per-eth1-block"),
+                "epoch": 3000,
+            }
 
         return self.genesis
 
@@ -187,6 +199,7 @@ class ExecutionGenesisWriter(object):
             }
         }
         return self.genesis
+
 
 deposit_contract_json = {
     "balance": "0",

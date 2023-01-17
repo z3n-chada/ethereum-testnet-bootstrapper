@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import IntEnum
 
 from ruamel import yaml
 from typing import List, Dict, Union, Optional, Any
@@ -6,6 +6,13 @@ from typing import List, Dict, Union, Optional, Any
 """
     Performs the heavy lifting of parsing and consuming configs for ETB.
 """
+
+
+class ForkVersion(IntEnum):
+    Phase0 = 0
+    Altair = 1
+    Bellatrix = 2
+    Capella = 3
 
 
 class ConfigEntry(object):
@@ -191,6 +198,7 @@ class ETBClient(ModuledConfigEntry):
         for x in range(self.get('num-nodes')):
             yield Client(self, x)
 
+
 class Client(Module, ETBClient):
     """
     An ETB client is a single client, inherit from this for either a CL or EL
@@ -279,7 +287,7 @@ class ExecutionClient(Client):
         for env_var in execution_derived_env_vars:
             self.defined_env_vars.append(env_var)
 
-    def has(self, key:str) -> bool:
+    def has(self, key: str) -> bool:
         if hasattr(self, f"get_{key.replace('-', '_')}"):
             return True
 
@@ -288,6 +296,7 @@ class ExecutionClient(Client):
 
         if self.execution_config.has(key):
             return True
+
     def get(self, key: str):
 
         if hasattr(self, f"get_{key.replace('-', '_')}"):
@@ -321,6 +330,15 @@ class ExecutionClient(Client):
 
         protocol_port = self.get(f"execution-{protocol}-port")
         return f"{protocol}://{self.get('ip-address')}:{protocol_port}"
+
+    def get_implemented_apis(self, protocol: str = 'http') -> List[str]:
+        """
+        get all implemented apis for a given protocol (lowercase)
+        :param protocol: optional, defaults to http
+        :return: list[(lower)apis]
+        """
+        return [x.lower() for x in self.get(f"execution-{protocol}-apis").split(',')]
+
 
 class ConsensusClient(Client):
     """
@@ -396,6 +414,7 @@ class ConsensusClient(Client):
 
     def get_beacon_api_path(self) -> str:
         return f"http://{self.get('ip-address')}:{self.get('consensus-beacon-api-port')}"
+
     def _fetch_config_entry(self) -> ConfigEntry:
         return self.parent_module.config
 
@@ -515,24 +534,36 @@ class ETBConfig(object):
             env_vars[var.replace('-', '_').upper()] = self.get(var)
         return env_vars
 
+    """
+        The following functions are for getting and interacting with EL/CL views
+        of the clients listed in the configuration file.
+    """
+
     def get_clients(self) -> Dict[str, ETBClient]:
         return self.clients
 
     def get_generic_modules(self) -> Dict[str, ModuledConfigEntry]:
         return self.generic_modules
 
-    def get_execution_rpc_paths(self, protocol='http') -> Dict[str, str]:
+    def get_execution_rpc_paths(self, protocol='http', apis: List[str] = []) -> Dict[str, str]:
         """
-            Return the rpc path in str form of all the execution clients
-            listed in the config.
+        :param protocol:
+        :param apis: optional. only return views that support the provided apis
+        :return:
+        """
+        if len(apis) > 0:
+            apis_to_filter = [x.lower() for x in apis]
+        else:
+            apis_to_filter = None
 
-            protocol: defaults to http.
-            returns: Dict[name, rpc_path]
-        """
         named_rpc_dict = {}
         for client_module in self.get_clients().values():
             for client_instance in client_module:
-                el_view = client_instance.get_execution_client_view()
+                el_view: ExecutionClient = client_instance.get_execution_client_view()
+                if apis_to_filter is not None:
+                    impl_apis = el_view.get_implemented_apis()
+                    if not all(x in impl_apis for x in apis_to_filter):
+                        continue
                 rpc_path = el_view.get_rpc_path(protocol)
                 named_rpc_dict[client_instance.name] = rpc_path
 
@@ -572,6 +603,135 @@ class ETBConfig(object):
             num_nodes += client_module.get('num-nodes')
         return num_nodes
 
+    """
+        The following functions help with obtaining information about network
+        forks and values related to forking.
+    """
+
+    def get_genesis_fork(self) -> ForkVersion:
+        if self.get('capella-fork-epoch') == 0:
+            return ForkVersion.Capella
+
+        if self.get('bellatrix-fork-epoch') == 0:
+            return ForkVersion.Bellatrix
+
+        if self.get('altair-fork-epoch') == 0:
+            return ForkVersion.Altair
+
+        return ForkVersion.Phase0
+
+    def is_clique_genesis(self) -> bool:
+        """
+        Is the EL genesis is a clique network.
+        :return: bool
+        """
+        return self.get_genesis_fork() < ForkVersion.Bellatrix
+
+    def get_genesis_fork_version(self) -> int:
+        lookup_dict = {
+            ForkVersion.Phase0: self.get('phase0-fork-version'),
+            ForkVersion.Altair: self.get('altair-fork-version'),
+            ForkVersion.Bellatrix: self.get('bellatrix-fork-version'),
+            ForkVersion.Capella: self.get('capella-fork-version'),
+        }
+        return lookup_dict[self.get_genesis_fork()]
+
+    def get_final_fork(self) -> ForkVersion:
+        '''The last fork in the config that is not in far-future'''
+        far_future_epoch = 18446744073709551615
+        if self.get('capella-fork-epoch') != far_future_epoch:
+            return ForkVersion.Capella
+
+        if self.get('bellatrix-fork-epoch') != far_future_epoch:
+            return ForkVersion.Bellatrix
+
+        if self.get('altair-fork-epoch') != far_future_epoch:
+            return ForkVersion.Altair
+
+        return ForkVersion.Phase0
+
+    def get_el_merge_fork_block(self) -> int:
+        """
+        Based on the configuration parameters for fork version epochs
+        calculate the merge fork block height for the execution layer
+        :return: block height as int.
+        """
+        # post-merge genesis
+        if self.get_genesis_fork() >= ForkVersion.Bellatrix:
+            return 0
+        # no merge in testnet
+        if self.get_final_fork() < ForkVersion.Bellatrix:
+            return 18446744073709551615  # a large enough number to not care.
+
+        consensus_merge_epoch = self.get('bellatrix-fork-epoch')
+        consensus_genesis_delay = self.get('consensus-genesis-delay')
+        cl_blocks_per_second = self.get('seconds-per-cl-block')
+        cl_blocks_per_epoch = self.get('consensus-blocks-per-epoch')
+
+        consensus_merge_time = consensus_merge_epoch * cl_blocks_per_epoch * cl_blocks_per_second + \
+                               consensus_genesis_delay
+
+        return int(consensus_merge_time / self.get('seconds-per-eth1-block'))
+
+    def get_terminal_total_difficulty(self) -> int:
+        """
+            Based on the configuration parameters for fork version epochs
+            calculate the ttd for EL clients.
+        :return: ttd as int.
+        """
+        if self.get_genesis_fork() >= ForkVersion.Bellatrix:
+            return 0
+
+        if self.get_final_fork() < ForkVersion.Bellatrix:
+            return 18446744073709551615
+
+        # we use clique to each block is 2 difficulty.
+        return int(self.get_el_merge_fork_block() * 2 + 3)
+
+    def get_terminal_block_hash(self) -> str:
+        return "0x0000000000000000000000000000000000000000000000000000000000000000"
+
+    def get_terminal_block_hash_activation_epoch(self) -> int:
+        return 18446744073709551615
+
+    """
+        The following functions define paramets that are not exposed to the 
+        user to change.
+    """
+
+    def get_seconds_per_cl_block(self) -> int:
+        return 12
+
+    def get_consensus_blocks_per_epoch(self) -> int:
+        return 32
+
+    def get_consensus_genesis_delay(self) -> int:
+        # how long before testnet genesis that cl genesis occurs in seconds
+        return self.get('eth1-follow-distance') * self.get('seconds-per-eth1-block') + self.get('execution-genesis'
+                                                                                                '-delay')
+
+    def get_clique_signer(self) -> str:
+        """
+        In order of premines we allocate those to signers
+        :param num_signers:
+        :return: List[signer1,signer2,...]
+        """
+        from web3.auto import w3
+        w3.eth.account.enable_unaudited_hdwallet_features()
+
+        pub_keys = []
+        if not self.has('eth1-premine'):
+            raise Exception("Expected accounts->eth1-premine section in config")
+
+        premines = list(self.global_config['accounts']['eth1-premine'].keys())
+        premines.sort()
+
+        acct = w3.eth.account.from_mnemonic(self.get("eth1-account-mnemonic"),
+                                            account_path=premines[0],
+                                            passphrase=self.get("eth1-passphrase"))
+
+        return acct.address
+
     def set_genesis_time(self, t: int) -> None:
         """Set the genesis time in the etb-config"""
         self.global_config["bootstrap-genesis"] = t
@@ -595,7 +755,7 @@ class ETBConfig(object):
         with open(self.files.get(checkpoint), "w") as checkpoint_file:
             checkpoint_file.write("1")
 
-    def write_to_docker_compose(self, path: str=None):
+    def write_to_docker_compose(self, path: str = None):
         """
             Write a docker-compose with all the clients and generic modules
             from the config to the specified path. It defaults to whats given
@@ -693,36 +853,5 @@ class DockerEntry(object):
 
 
 if __name__ == "__main__":
-    config = ETBConfig("../../configs/mainnet/geth-post-merge-genesis.yaml")
-    # for k, v in config.get_all_execution_clients_and_apis().items():
-    #     if 'admin' in v:
-    #         print(k)
-    # for multi_clients in config.get_clients().values():
-    #     for client in multi_clients:
-    #         print(type(client))
-    #         print(client)
-    #         print(client.consensus_config)
-    #         print(client.docker_entry.serialize_docker_entry())
-
-    # print(config._get_docker_repr())
-    # print(config._get_env_vars())
-    # for generic_module in config.generic_modules.values():
-    #     for instance in generic_module:
-    #         print(instance.get_env_vars())
-    # for client_modules in config.clients.values():
-    #     for instance in client_modules:
-    #         print(instance.get_env_vars())
-    #         el_view = instance.get('execution-client-view')
-    #         print(el_view.get_env_vars())
-    #         cl_view = instance.get('consensus-client-view')
-    #         print(cl_view)
-    #         print(cl_view.get_env_vars())
-    #         print(cli)
-    # config.write_to_docker_template("../../docker-compose.yaml")
-    # print(config._get_docker_repr())
-    prysm_module = config.get_clients()['prysm-geth']
-    # print(prysm_module.get('validator-password'))
-    print(prysm_module.config.config['additional-env']['validator-password'])
-
-
-
+    config = ETBConfig("../../configs/mainnet/phase0-merge-geth.yaml")
+    # testing code.
