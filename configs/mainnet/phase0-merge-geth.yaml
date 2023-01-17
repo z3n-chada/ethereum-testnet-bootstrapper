@@ -61,7 +61,8 @@ config-params:
   consensus-layer:
     # cconsensus-genesis-delay: 225 # eth1-follow-distance*seconds-per-eth1-block + 1
     preset-base: 'mainnet'
-    min-genesis-active-validator-count: 16 # custom preseeded into genesis state.
+    config-name: "local-testnet0"
+    min-genesis-active-validator-count: 20 # custom preseeded into genesis state.
     eth1-follow-distance: 16 # allow past eth1 blocks to be processed.
 
     forks:
@@ -80,7 +81,10 @@ config-params:
       capella-fork-version: 0x04000666
       capella-fork-epoch: 18446744073709551615 # far future
 
-      sharding-fork-version: 0x04000666
+      eip4844-fork-version: 0x05000666
+      eip4844-fork-epoch: 18446744073709551615 # far future
+
+      sharding-fork-version: 0x06000666
       sharding-fork-epoch: 18446744073709551615 # far future
 
 accounts:
@@ -101,7 +105,7 @@ execution-configs:
   geth-execution-config:
     execution-client: "geth"
     execution-log-level: "4" # detail
-    execution-http-apis: "debug,txpool,admin,net,eth,web3,personal,engine"
+    execution-http-apis: "debug,txpool,admin,net,eth,web3,personal,engine,clique,miner"
     execution-ws-apis: "admin,net,eth,engine"
     execution-http-port: 8645
     execution-ws-port: 8646
@@ -223,31 +227,31 @@ client-modules:
     additional-env:
       teku-debug-level: "DEBUG"
 
-#  nimbus-geth:
-#    # docker-compose
-#    image: "etb-all-clients"
-#    tag: "latest"
-#    container-name: "nimbus-client-geth"
-#    start-ip-addr: "10.0.20.30"
-#    num-nodes: 1
-#
-#    # consensus-info
-#    consensus-client: "nimbus"
-#    consensus-config: "base-consensus-client"
-#    consensus-launcher: "/source/deps/launchers/cl/launch-nimbus.sh"
-#    validator-offset-start: 8
-#    testnet-dir: '/data/local_testnet/nimbus-geth'
-#
-#    # execution-info
-#    execution-client: "geth"
-#    execution-config: "geth-execution-config"
-#    execution-launcher: "/source/deps/launchers/el/launch-geth.sh"
-#
-#    # shared-info
-#    jwt-secret-file: "/data/local_testnet/nimbus-geth/jwt-secret"
-#
-#    additional-env:
-#      nimbus-debug-level: "trace"
+  nimbus-geth:
+    # docker-compose
+    image: "etb-all-clients"
+    tag: "latest"
+    container-name: "nimbus-client-geth"
+    start-ip-addr: "10.0.20.30"
+    num-nodes: 1
+
+    # consensus-info
+    consensus-client: "nimbus"
+    consensus-config: "base-consensus-client"
+    consensus-launcher: "/source/deps/launchers/cl/launch-nimbus.sh"
+    validator-offset-start: 8
+    testnet-dir: '/data/local_testnet/nimbus-geth'
+
+    # execution-info
+    execution-client: "geth"
+    execution-config: "geth-execution-config"
+    execution-launcher: "/source/deps/launchers/el/launch-geth.sh"
+
+    # shared-info
+    jwt-secret-file: "/data/local_testnet/nimbus-geth/jwt-secret"
+
+    additional-env:
+      nimbus-debug-level: "TRACE"
 
 
   lighthouse-geth:
@@ -262,8 +266,7 @@ client-modules:
     consensus-client: "lighthouse"
     consensus-config: "base-consensus-client"
     consensus-launcher: "/source/deps/launchers/cl/launch-lighthouse.sh"
-#    validator-offset-start: 12
-    validator-offset-start: 8
+    validator-offset-start: 12
     testnet-dir: '/data/local_testnet/lighthouse-geth'
 
     # execution-info
@@ -289,8 +292,7 @@ client-modules:
     consensus-client: "lodestar"
     consensus-config: "base-consensus-client"
     consensus-launcher: "/source/deps/launchers/cl/launch-lodestar.sh"
-#    validator-offset-start: 16
-    validator-offset-start: 12
+    validator-offset-start: 16
     testnet-dir: '/data/local_testnet/lodestar-geth'
 
     # execution-info

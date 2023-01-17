@@ -46,15 +46,36 @@ done
 
 echo "Launching lighthouse."
 
+lighthouse \
+      --testnet-dir="$TESTNET_DIR" \
+      bn \
+      --datadir="$CONSENSUS_NODE_DIR" \
+      --staking \
+      --http-address=0.0.0.0 \
+      --http-port="$CONSENSUS_BEACON_API_PORT" \
+      --http-allow-origin="*" \
+      --http-allow-sync-stalled \
+      --listen-address=0.0.0.0 \
+      --execution-endpoints="http://127.0.0.1:$EXECUTION_ENGINE_HTTP_PORT" \
+      --enable-private-discovery \
+      --enr-address "$IP_ADDRESS" \
+      --enr-udp-port "$CONSENSUS_P2P_PORT" \
+      --enr-tcp-port "$CONSENSUS_P2P_PORT" \
+      --discovery-port "$CONSENSUS_P2P_PORT" \
+      --jwt-secrets="$JWT_SECRET_FILE" \
+      --boot-nodes="$bootnode_enr" \
+      --target-peers="$NUM_CLIENT_NODES" \
+      --suggested-fee-recipient=0x00000000219ab540356cbb839cbe05303d7705fa &
+
 #lighthouse \
-#  --logfile="$NODE_DIR/beacon.log" \
+#  --logfile="$CONSENSUS_NODE_DIR/beacon.log" \
 #  --logfile-debug-level="$LIGHTHOUSE_DEBUG_LEVEL" \
 #	--debug-level="$LIGHTHOUSE_DEBUG_LEVEL" \
-#	--datadir="$NODE_DIR" \
+#	--datadir="$CONSENSUS_NODE_DIR" \
 #	--testnet-dir="$TESTNET_DIR" \
 #	bn \
 #  --disable-enr-auto-update \
-#	--enr-address "$IP_ADDR" \
+#	--enr-address "$IP_ADDRESS" \
 #	--enr-udp-port "$CONSENSUS_P2P_PORT" \
 #	--enr-tcp-port "$CONSENSUS_P2P_PORT" \
 #	--port="$CONSENSUS_P2P_PORT" \
@@ -62,36 +83,33 @@ echo "Launching lighthouse."
 #  --eth1 \
 #	--http \
 #	--http-address=0.0.0.0 \
-#	--http-port="$BEACON_API_PORT" \
+#	--http-port="$CONSENSUS_BEACON_API_PORT" \
 #  --http-allow-origin="*" \
 #  --metrics \
 #  --metrics-address=0.0.0.0 \
-#  --metrics-port="$BEACON_METRIC_PORT" \
+#  --metrics-port="$CONSENSUS_BEACON_METRIC_PORT" \
 #  --metrics-allow-origin="*" \
 #  --listen-address=0.0.0.0 \
-#  --graffiti="$GRAFFITI" \
+#  --graffiti="$CONSENSUS_GRAFFITI" \
 #  --target-peers="$CONSENSUS_TARGET_PEERS" \
 #  --http-allow-sync-stalled \
 #  --disable-packet-filter \
 #  --validator-monitor-auto \
 #  --enable-private-discovery \
-#  --execution-endpoints="http://$HTTP_WEB3_IP_ADDR:$EXECUTION_ENGINE_HTTP_PORT" \
+#  --execution-endpoints="http://127.0.0.1:$EXECUTION_ENGINE_HTTP_PORT" \
 #  --jwt-secrets="$JWT_SECRET_FILE" \
 #  --suggested-fee-recipient=0x00000000219ab540356cbb839cbe05303d7705fa \
 #  --subscribe-all-subnets &
-#
-#sleep 10
-#lighthouse \
-#    --testnet-dir="$TESTNET_DIR" \
-#	vc \
-#    --validators-dir "$NODE_DIR/keys" \
-#    --secrets-dir "$NODE_DIR/secrets" \
-#	--init-slashing-protection \
-#    --server="http://127.0.0.1:$BEACON_API_PORT" \
-#    --graffiti="$GRAFFITI" \
-#    --http --http-port="$VALIDATOR_RPC_PORT" \
-#    --metrics \
-#    --metrics-address=0.0.0.0 \
-#    --metrics-port="$VALIDATOR_METRIC_PORT" \
-#    --suggested-fee-recipient=0x00000000219ab540356cbb839cbe05303d7705fa \
-#    --logfile="$NODE_DIR/validator.log" --logfile-debug-level="$LIGHTHOUSE_DEBUG_LEVEL"
+
+sleep 10
+lighthouse \
+      --testnet-dir="$TESTNET_DIR" \
+      vc \
+      --validators-dir "$CONSENSUS_NODE_DIR/keys" \
+      --secrets-dir "$CONSENSUS_NODE_DIR/secrets" \
+      --init-slashing-protection \
+      --beacon-nodes="http://127.0.0.1:$CONSENSUS_BEACON_API_PORT" \
+      --graffiti="$CONSENSUS_GRAFFITI" \
+      --http --http-port="$CONSENSUS_VALIDATOR_RPC_PORT" \
+      --suggested-fee-recipient=0x00000000219ab540356cbb839cbe05303d7705fa \
+      --logfile="$CONSENSUS_NODE_DIR/validator.log" --logfile-debug-level="$LIGHTHOUSE_DEBUG_LEVEL"

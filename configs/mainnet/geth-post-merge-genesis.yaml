@@ -65,7 +65,8 @@ config-params:
     eth1-follow-distance: 16 # allow past eth1 blocks to be processed.
 
     forks:
-      genesis-fork-version: 0x03000666
+      # forks that aren't in far-future will be considered as possible end forks for experiments.
+#      genesis-fork-version: 0x03000666
 
       phase0-fork-version: 0x01000666
       phase0-fork-epoch: 0 # genesis

@@ -37,16 +37,11 @@ while [ ! -f "$CONSENSUS_BOOTNODE_FILE" ]; do
   sleep 1
 done
 
-bootnode_enr=`cat $CONSENSUS_BOOTNODE_FILE`
-
 while [ ! -f "$CONSENSUS_CHECKPOINT_FILE" ]; do
   echo "Waiting for consensus checkpoint file: $CONSENSUS_CHECKPOINT_FILE"
     sleep 1
 done
 
-
-#
-#  #--execution-provider="http://$HTTP_WEB3_IP_ADDR:$EXECUTION_ENGINE_HTTP_PORT" \
 beacon-chain \
   --log-file="$CONSENSUS_NODE_DIR/beacon.log" \
   --accept-terms-of-use=true \
@@ -71,11 +66,6 @@ beacon-chain \
   --execution-endpoint="http://127.0.0.1:$EXECUTION_ENGINE_HTTP_PORT" \
   --min-sync-peers 1 &
 
-# --disable-staking-contract-check \
-#  --enable-forkchoice-doubly-linked-tree \
-#  --enable-vectorized-htr &
-# --contract-deployment-block=0 \
-#
 sleep 10
 
 validator \
@@ -88,4 +78,5 @@ validator \
   --graffiti="$CONSENSUS_GRAFFITI" \
   --wallet-dir="$CONSENSUS_NODE_DIR" \
   --wallet-password-file="$TESTNET_DIR/wallet-password.txt" \
+  --suggested-fee-recipient=0x00000000219ab540356cbb839cbe05303d7705fa \
   --verbosity=debug
