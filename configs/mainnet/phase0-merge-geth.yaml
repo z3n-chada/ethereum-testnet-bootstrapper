@@ -341,3 +341,12 @@ generic-modules:
       consensus-bootnode-enr-port: 9001 #port in the enr
       consensus-bootnode-api-port: 6000 # port for web api.
       consensus-bootnode-enr-file: "/data/eth2-bootnode-enr.dat" # this must match the file at the top.
+  tx-fuzzer:
+    # launch the transaction spammer
+    client-name: "tx-fuzzer"
+    container-name: "tx-fuzzer"
+    image: "etb-all-clients"
+    tag: "latest"
+    start-ip-addr: "10.0.20.205"
+    entrypoint: "python3 /source/apps/tx-fuzz.py --config /data/etb-config.yaml --fuzz-mode spam --target-ip 10.0.20.10 --target-port 8645 --tx-fuzz-delay 30 --tx-fuzz-path /usr/local/bin/tx-fuzz"
+    num-nodes: 1 #should always be 1.

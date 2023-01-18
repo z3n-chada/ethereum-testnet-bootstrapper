@@ -6,7 +6,7 @@ RUN git clone https://github.com/edwards-antithesis/go-ethereum \
     && git checkout ant-merge-bad-block-creator \
     && make geth
 
-FROM etb-client-runner
+FROM scratch
 
 COPY --from=builder /git/go-ethereum/build/bin/geth /usr/local/bin/geth-bad-block
 

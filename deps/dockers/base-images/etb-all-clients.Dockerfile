@@ -25,9 +25,8 @@ COPY --from=nethermind_builder /nethermind.version /nethermind.version
 RUN ln -s /nethermind/Nethermind.Runner /usr/local/bin/nethermind
 # Grab the geth bad block fuzzer
 COPY --from=geth_bb_builder /usr/local/bin/geth-bad-block /usr/local/bin/geth-bad-block
-
-#COPY --from=txfuzzer_builder /run/tx-fuzz.bin /usr/local/bin/tx-fuzz
-#COPY --from=geth_bad_block_builder /usr/local/bin/geth-bad-block /usr/local/bin/geth-bad-block-creator
+# tx-fuzzer
+COPY --from=txfuzzer_builder /run/tx-fuzz.bin /usr/local/bin/tx-fuzz
 #COPY --from=erigon_builder /usr/local/bin/erigon /usr/local/bin/erigon
 ##COPY --from=erigon_builder /erigon.version /erigon.version
 

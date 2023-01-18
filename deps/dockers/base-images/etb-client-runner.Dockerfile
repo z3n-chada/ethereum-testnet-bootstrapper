@@ -32,6 +32,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     dotnet-runtime-7.0 \
     aspnetcore-runtime-7.0
 
+RUN apt-get install -y --no-install-recommends \
+    python3-dev \
+    python3-pip
+
+RUN pip3 install ruamel.yaml web3
 
 RUN mkdir -p /opt/antithesis/
 COPY --from=rocks_builder /rocksdb/lib/ /usr/local/rocksdb/lib/
