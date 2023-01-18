@@ -14,16 +14,7 @@ RUN cd teku && git log -n 1 --format=format:"%H" > /teku.version
 RUN cd teku \
     && ./gradlew distTar installDist
 
-FROM debian:bullseye-slim
-
-RUN apt update && apt install -y --no-install-recommends \
-    openjdk-17-jre 
-
-RUN mkdir -p /opt/teku
+FROM scratch
 
 COPY --from=builder /git/teku/build/install/teku/. /opt/teku/
 COPY --from=builder /teku.version /teku.version
-
-RUN ln -s /opt/teku/bin/teku /usr/local/bin/teku
-
-ENTRYPOINT ["/bin/bash"]

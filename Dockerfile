@@ -2,8 +2,8 @@ FROM golang:1.18 as builder
 
 WORKDIR /git
 
-RUN git clone https://github.com/skylenet/eth2-testnet-genesis.git \
-    && cd eth2-testnet-genesis && git checkout faster-validator-creation \
+RUN git clone https://github.com/protolambda/eth2-testnet-genesis.git \
+    && cd eth2-testnet-genesis \
     && go install . \
     && go install github.com/wealdtech/ethereal/v2@latest \
     && go install github.com/protolambda/eth2-bootnode@latest 
@@ -37,7 +37,7 @@ COPY --from=builder /go/bin/eth2-bootnode /usr/local/bin/eth2-bootnode
 COPY --from=builder /go/bin/ethereal /usr/local/bin/ethereal
 #COPY --from=builder /git/go-ethereum/build/bin/geth /usr/local/bin/geth
 COPY --from=builder /git/go-ethereum/build/bin/bootnode /usr/local/bin/bootnode
-run chmod +x /usr/local/bin/bootnode
+RUN chmod +x /usr/local/bin/bootnode
 RUN mkdir /configs
 
 COPY ./ /source

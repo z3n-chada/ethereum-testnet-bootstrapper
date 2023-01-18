@@ -19,9 +19,7 @@ RUN apt remove git wget ca-certificates make g++ -y \
     && apt clean \
     && rm -rf /var/lib/apt/lists/*
 
+FROM scratch
+
 COPY --from=builder /git/nethermind/out /nethermind/
 COPY --from=builder /nethermind.version /nethermind.version
-
-RUN chmod +x /nethermind/Nethermind.Runner
-
-entrypoint ["/bin/bash"]

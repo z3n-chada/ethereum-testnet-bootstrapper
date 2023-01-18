@@ -39,9 +39,7 @@ RUN cd /git/src/github.com/prysmaticlabs/prysm && go get -t -d ./...
 RUN cd /git/src/github.com/prysmaticlabs/prysm && CGO_CFLAGS="-I/opt/antithesis/go_instrumentation/include" CGO_LDFLAGS="-L/opt/antithesis/go_instrumentation/lib" go build -o /build ./...
 RUN go env GOPATH
 
-FROM etb-client-runner
-
-ENV LD_LIBRARY_PATH=/usr/lib/
+FROM scratch
 
 COPY --from=builder /build/beacon-chain /usr/local/bin/
 COPY --from=builder /build/validator /usr/local/bin/
@@ -49,6 +47,4 @@ COPY --from=builder /build/client-stats /usr/local/bin/
 COPY --from=builder /git/src/github.com/prysmaticlabs/prysm_instrumented/symbols/* /opt/antithesis/symbols/
 COPY --from=builder /prysm.version /prysm.version
 COPY --from=builder /git/src/github.com/prysmaticlabs/* /git/src/github.com/prysmaticlabs/
-
-ENTRYPOINT ["/bin/bash"]
 

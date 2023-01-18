@@ -12,13 +12,8 @@ RUN git clone --progress https://github.com/hyperledger/besu.git && cd besu && g
 
 RUN cd besu && git log -n 1 --format=format:"%H" > /besu.version
 
-from debian:bullseye-slim
-
-RUN apt update && apt install -y --no-install-recommends \
-    openjdk-17-jre
+FROM scratch
 
 COPY --from=builder /usr/src/besu/build/install/besu/. /opt/besu/
 COPY --from=builder /besu.version /besu.version
-run ln -s /opt/besu/bin/besu /usr/local/bin/besu
 
-ENTRYPOINT ["/bin/bash"]
