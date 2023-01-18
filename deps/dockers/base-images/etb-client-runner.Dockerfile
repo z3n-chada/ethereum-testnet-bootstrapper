@@ -3,7 +3,6 @@ FROM etb-client-builder:latest as rocks_builder
 WORKDIR /git
 
 RUN cd rocksdb && make clean && make -j32 shared_lib
-
 RUN mkdir -p /rocksdb/lib && cd rocksdb && cp librocksdb.so* /rocksdb/lib/
 
 
@@ -33,23 +32,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     dotnet-runtime-7.0 \
     aspnetcore-runtime-7.0
 
+
+RUN mkdir -p /opt/antithesis/
 COPY --from=rocks_builder /rocksdb/lib/ /usr/local/rocksdb/lib/
+# Antithesis instrumentation resources
+COPY --from=rocks_builder /usr/lib/libvoidstar.so /usr/lib/libvoidstar.so
+COPY --from=rocks_builder /opt/antithesis/go_instrumentation /opt/antithesis/go_instrumentation
 
 RUN cp /usr/local/rocksdb/lib/librocksdb.so* /usr/lib
 
-# Antithesis instrumentation resources
-COPY lib/libvoidstar.so /usr/lib/libvoidstar.so
-RUN mkdir -p /opt/antithesis/
-COPY go_instrumentation /opt/antithesis/go_instrumentation
-
+# for coverage artifacts and runtime libraries.
 RUN wget --no-check-certificate https://apt.llvm.org/llvm.sh && \
     chmod +x llvm.sh && \
     ./llvm.sh 14
 
 ENV LLVM_CONFIG=llvm-config-14
-
-RUN rm -rf /git
-
-RUN mkdir -p /git
 
 ENTRYPOINT ["/bin/bash"]

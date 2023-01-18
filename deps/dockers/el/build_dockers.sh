@@ -1,10 +1,5 @@
 #!/bin/bash
 
-for df in $(ls | grep Dockerfile); do
-    echo $df
-    i=`echo $df | tr '_' ':'`
-    image=`echo "${i::-11}"`
-    BUILDKIT=1 docker build --no-cache -f "$df" -t "$image" .
-done
-
-
+BUILDKIT=1 docker build -t geth:etb -f geth.Dockerfile .
+BUILDKIT=1 docker build -t besu:etb -f besu.Dockerfile .
+BUILDKIT=1 docker build -t nethermind:etb -f nethermind.Dockerfile .

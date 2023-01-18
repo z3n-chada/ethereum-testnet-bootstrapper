@@ -5,12 +5,13 @@ FROM nimbus:etb as nimbus_builder
 FROM teku:etb as teku_builder
 FROM prysm:etb as prysm_builder
 # built EL images
-FROM besu:develop as besu_builder
+FROM besu:etb as besu_builder
 FROM geth:etb as geth_builder
-FROM nethermind:master as nethermind_builder
+FROM nethermind:etb as nethermind_builder
 # built fuzzers
 FROM tx-fuzzer:latest as txfuzzer_builder
-# FROM geth:bad_block_creator as <- maybe not.
+FROM geth:bad-block-creator as geth_bb_builder
+
 FROM etb-client-runner:latest as base
 
 COPY --from=geth_builder /usr/local/bin/geth /usr/local/bin/geth
@@ -22,6 +23,8 @@ RUN ln -s /opt/besu/bin/besu /usr/local/bin/besu
 COPY --from=nethermind_builder /nethermind/ /nethermind/
 COPY --from=nethermind_builder /nethermind.version /nethermind.version
 RUN ln -s /nethermind/Nethermind.Runner /usr/local/bin/nethermind
+# Grab the geth bad block fuzzer
+COPY --from=geth_bb_builder /usr/local/bin/geth-bad-block /usr/local/bin/geth-bad-block
 
 #COPY --from=txfuzzer_builder /run/tx-fuzz.bin /usr/local/bin/tx-fuzz
 #COPY --from=geth_bad_block_builder /usr/local/bin/geth-bad-block /usr/local/bin/geth-bad-block-creator
@@ -32,7 +35,7 @@ RUN ln -s /nethermind/Nethermind.Runner /usr/local/bin/nethermind
 COPY --from=lh_builder /usr/local/bin/lighthouse /usr/local/bin/lighthouse
 COPY --from=lh_builder /lighthouse.version /lighthouse.version
 COPY --from=nimbus_builder /usr/local/bin/nimbus_beacon_node /usr/local/bin/nimbus_beacon_node
-COPY --from=nimbus_builder /usr/local/bin/nimbus_validator_client /usr/local/bin/nimbus_validator_client
+#COPY --from=nimbus_builder /usr/local/bin/nimbus_validator_client /usr/local/bin/nimbus_validator_client
 COPY --from=nimbus_builder /nimbus.version /nimbus.version
 COPY --from=prysm_builder /usr/local/bin/beacon-chain /usr/local/bin/beacon-chain
 COPY --from=prysm_builder /usr/local/bin/validator /usr/local/bin/validator
