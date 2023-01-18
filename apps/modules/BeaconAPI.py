@@ -98,19 +98,14 @@ class ETBConsensusBeaconAPI(object):
         self.retry_delay = retry_delay
         self.non_error = non_error
         self.client_nodes = {}
-        self._get_client_beacon_apis()
 
-    def _get_client_beacon_apis(self):
-        for name, cc in self.etb_config.get("consensus-clients").items():
-            for node in range(cc.get("num-nodes")):
-                ip = cc.get("ip-addr", node)
-                port = cc.get("beacon-api-port")
-                self.client_nodes[f"{name}-{node}"] = BeaconAPI(
-                    f"http://{ip}:{port}",
-                    non_error=self.non_error,
-                    timeout=self.timeout,
-                    retry_delay=self.retry_delay,
-                )
+        for name, api_path in self.etb_config.get_all_consensus_client_beacon_api_paths().items():
+            self.client_nodes[name] = BeaconAPI(
+                api_path,
+                non_error=self.non_error,
+                timeout=self.timeout,
+                retry_delay=self.retry_delay
+            )
 
     def get_client_nodes(self):
         return self.client_nodes.keys()
