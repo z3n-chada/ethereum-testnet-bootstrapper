@@ -7,11 +7,6 @@ for var in "${env_vars[@]}" ; do
     fi
 done
 
-if "$LAUNCH_NEW_EXECUTION_CLIENT"; then
-    echo "tx-fuzzer launching execution client: $EXECUTION_LAUNCHER"
-    "$EXECUTION_LAUNCHER" &
-fi
-
 sleep 30
 
 tx-fuzz "http://$HTTP_WEB3_IP_ADDR:$EXECUTION_HTTP_PORT" "$TX_FUZZ_MODE" "$TX_FUZZ_PRIVATE_KEYS" "$TX_FUZZ_PUBLIC_KEYS"
