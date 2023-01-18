@@ -694,6 +694,24 @@ class ETBConfig(object):
     def get_terminal_block_hash_activation_epoch(self) -> int:
         return 18446744073709551615
 
+    def get_cl_slots_per_epoch(self) -> int:
+        return 32
+
+    def get_bootstrap_genesis_time(self) -> int:
+        if "bootstrap-genesis" in self.global_config:
+            return self.global_config["bootstrap-genesis"]
+        else:
+            raise Exception("ETBConfig tried getting bootstrap genesis time before bootstrapping.")
+    def get_shanghai_time(self) -> int:
+        """
+        the ELs have shangaiTime which should coorespond with CAPELLA_FORK_EPOCH
+        :return: shanghaiTime
+        """
+        if self.get_final_fork() < ForkVersion.Capella:
+            return self.get_bootstrap_genesis_time() + 1000000 # sufficiently long enough delay to not hit
+        else:
+            return self.get('capella-fork-epoch') * self.get_cl_slots_per_epoch() * self.get_seconds_per_cl_block() + self.get_bootstrap_genesis_time()
+
     """
         The following functions define paramets that are not exposed to the 
         user to change.
@@ -707,8 +725,11 @@ class ETBConfig(object):
 
     def get_consensus_genesis_delay(self) -> int:
         # how long before testnet genesis that cl genesis occurs in seconds
-        return self.get('eth1-follow-distance') * self.get('seconds-per-eth1-block') + self.get('execution-genesis'
+        if self.get_genesis_fork() < ForkVersion.Bellatrix:
+            return self.get('eth1-follow-distance') * self.get('seconds-per-eth1-block') + self.get('execution-genesis'
                                                                                                 '-delay')
+        else:
+            return 0
 
     def get_clique_signer(self) -> str:
         """

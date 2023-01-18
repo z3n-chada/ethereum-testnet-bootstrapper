@@ -22,3 +22,4 @@ echo "building fuzzers."
 cd ../base-images/ || exit
 echo "Merging all clients."
 BUILDKIT=1 docker build --no-cache -t etb-all-clients:lastest -f etb-all-clients.Dockerfile .
+BUILDKIT=1 docker build --no-cache -t etb-all-clients:capella -f etb-all-clients_capella.Dockerfile .

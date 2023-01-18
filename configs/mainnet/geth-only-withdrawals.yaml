@@ -61,8 +61,8 @@ config-params:
     # cconsensus-genesis-delay: 225 # eth1-follow-distance*seconds-per-eth1-block + 1
     preset-base: 'mainnet'
     config-name: "local-testnet0"
-    min-genesis-active-validator-count: 20 # custom preseeded into genesis state.
-    eth1-follow-distance: 16 # allow past eth1 blocks to be processed.
+    min-genesis-active-validator-count: 8 # custom preseeded into genesis state.
+    eth1-follow-distance: 0 # allow past eth1 blocks to be processed.
 
     forks:
       # forks that aren't in far-future will be considered as possible end forks for experiments.
@@ -72,13 +72,13 @@ config-params:
       phase0-fork-epoch: 0 # genesis
 
       altair-fork-version: 0x02000666
-      altair-fork-epoch: 2
+      altair-fork-epoch: 0
 
       bellatrix-fork-version: 0x03000666
-      bellatrix-fork-epoch: 4
+      bellatrix-fork-epoch: 0
 
       capella-fork-version: 0x04000666
-      capella-fork-epoch: 18446744073709551615 # far future
+      capella-fork-epoch: 4 # testing capella
 
       eip4844-fork-version: 0x05000666
       eip4844-fork-epoch: 18446744073709551615 # far future
@@ -168,40 +168,40 @@ client-modules:
 ###############################################################################
 ####### All Consensus Clients paired with a Geth Execution Client. ############
 ###############################################################################
-  prysm-geth:
-    # docker-compose
-    image: "etb-all-clients"
-    tag: "latest"
-    container-name: "prysm-client-geth"
-    start-ip-addr: "10.0.20.10"
-    depends: "ethereum-testnet-bootstrapper"
-    num-nodes: 1
-
-    # consensus-info
-    consensus-client: "prysm"
-    consensus-config: "base-consensus-client"
-    consensus-launcher: "/source/deps/launchers/cl/launch-prysm.sh"
-    validator-offset-start: 0
-    testnet-dir: '/data/local_testnet/prysm-geth'
-
-    # execution-info
-    execution-client: "geth"
-    execution-config: "geth-execution-config"
-    execution-launcher: "/source/deps/launchers/el/launch-geth.sh"
-
-    # shared-info
-    jwt-secret-file: "/data/local_testnet/prysm-geth/jwt-secret"
-
-    # args specific to prysm nodes, these are loaded into the dockers env at runtime.
-    additional-env:
-      prysm-debug-level: "debug"
-      wallet-path: '/data/local_testnet/prysm-geth/wallet-password.txt'
-      validator-password: "testnet-password"
+#  prysm-geth:
+#    # docker-compose
+#    image: "etb-all-clients"
+#    tag: "capella"
+#    container-name: "prysm-client-geth"
+#    start-ip-addr: "10.0.20.10"
+#    depends: "ethereum-testnet-bootstrapper"
+#    num-nodes: 1
+#
+#    # consensus-info
+#    consensus-client: "prysm"
+#    consensus-config: "base-consensus-client"
+#    consensus-launcher: "/source/deps/launchers/cl/launch-prysm.sh"
+#    validator-offset-start: 0
+#    testnet-dir: '/data/local_testnet/prysm-geth'
+#
+#    # execution-info
+#    execution-client: "geth"
+#    execution-config: "geth-execution-config"
+#    execution-launcher: "/source/deps/launchers/el/launch-geth.sh"
+#
+#    # shared-info
+#    jwt-secret-file: "/data/local_testnet/prysm-geth/jwt-secret"
+#
+#    # args specific to prysm nodes, these are loaded into the dockers env at runtime.
+#    additional-env:
+#      prysm-debug-level: "debug"
+#      wallet-path: '/data/local_testnet/prysm-geth/wallet-password.txt'
+#      validator-password: "testnet-password"
 
   teku-geth:
     # docker-compose
     image: "etb-all-clients"
-    tag: "latest"
+    tag: "capella"
     container-name: "teku-client-geth"
     start-ip-addr: "10.0.20.20"
     depends: "ethereum-testnet-bootstrapper"
@@ -211,7 +211,7 @@ client-modules:
     consensus-client: "teku"
     consensus-config: "base-consensus-client"
     consensus-launcher: "/source/deps/launchers/cl/launch-teku.sh"
-    validator-offset-start: 4
+    validator-offset-start: 0
     testnet-dir: '/data/local_testnet/teku-geth'
 
     # execution-info
@@ -226,37 +226,37 @@ client-modules:
     additional-env:
       teku-debug-level: "DEBUG"
 
-  nimbus-geth:
-    # docker-compose
-    image: "etb-all-clients"
-    tag: "latest"
-    container-name: "nimbus-client-geth"
-    start-ip-addr: "10.0.20.30"
-    num-nodes: 1
-
-    # consensus-info
-    consensus-client: "nimbus"
-    consensus-config: "base-consensus-client"
-    consensus-launcher: "/source/deps/launchers/cl/launch-nimbus.sh"
-    validator-offset-start: 8
-    testnet-dir: '/data/local_testnet/nimbus-geth'
-
-    # execution-info
-    execution-client: "geth"
-    execution-config: "geth-execution-config"
-    execution-launcher: "/source/deps/launchers/el/launch-geth.sh"
-
-    # shared-info
-    jwt-secret-file: "/data/local_testnet/nimbus-geth/jwt-secret"
-
-    additional-env:
-      nimbus-debug-level: "TRACE"
+#  nimbus-geth:
+#    # docker-compose
+#    image: "etb-all-clients"
+#    tag: "capella"
+#    container-name: "nimbus-client-geth"
+#    start-ip-addr: "10.0.20.30"
+#    num-nodes: 1
+#
+#    # consensus-info
+#    consensus-client: "nimbus"
+#    consensus-config: "base-consensus-client"
+#    consensus-launcher: "/source/deps/launchers/cl/launch-nimbus.sh"
+#    validator-offset-start: 8
+#    testnet-dir: '/data/local_testnet/nimbus-geth'
+#
+#    # execution-info
+#    execution-client: "geth"
+#    execution-config: "geth-execution-config"
+#    execution-launcher: "/source/deps/launchers/el/launch-geth.sh"
+#
+#    # shared-info
+#    jwt-secret-file: "/data/local_testnet/nimbus-geth/jwt-secret"
+#
+#    additional-env:
+#      nimbus-debug-level: "TRACE"
 
 
   lighthouse-geth:
     # docker-compose
     image: "etb-all-clients"
-    tag: "latest"
+    tag: "capella"
     container-name: "lighthouse-client-geth"
     start-ip-addr: "10.0.20.40"
     num-nodes: 1
@@ -265,7 +265,7 @@ client-modules:
     consensus-client: "lighthouse"
     consensus-config: "base-consensus-client"
     consensus-launcher: "/source/deps/launchers/cl/launch-lighthouse.sh"
-    validator-offset-start: 12
+    validator-offset-start: 4
     testnet-dir: '/data/local_testnet/lighthouse-geth'
 
     # execution-info
@@ -279,31 +279,31 @@ client-modules:
     additional-env:
       lighthouse-debug-level: "debug"
 
-  lodestar-geth:
-    # docker-compose
-    image: "etb-all-clients"
-    tag: "latest"
-    container-name: "lodestar-client-geth"
-    start-ip-addr: "10.0.20.50"
-    num-nodes: 1
-
-    # consensus-info
-    consensus-client: "lodestar"
-    consensus-config: "base-consensus-client"
-    consensus-launcher: "/source/deps/launchers/cl/launch-lodestar.sh"
-    validator-offset-start: 16
-    testnet-dir: '/data/local_testnet/lodestar-geth'
-
-    # execution-info
-    execution-client: "geth"
-    execution-config: "geth-execution-config"
-    execution-launcher: "/source/deps/launchers/el/launch-geth.sh"
-
-    # shared-info
-    jwt-secret-file: "/data/local_testnet/lodestar-geth/jwt-secret"
-
-    additional-env:
-      lstar-debug-level: "debug"
+#  lodestar-geth:
+#    # docker-compose
+#    image: "etb-all-clients"
+#    tag: "capella"
+#    container-name: "lodestar-client-geth"
+#    start-ip-addr: "10.0.20.50"
+#    num-nodes: 1
+#
+#    # consensus-info
+#    consensus-client: "lodestar"
+#    consensus-config: "base-consensus-client"
+#    consensus-launcher: "/source/deps/launchers/cl/launch-lodestar.sh"
+#    validator-offset-start: 16
+#    testnet-dir: '/data/local_testnet/lodestar-geth'
+#
+#    # execution-info
+#    execution-client: "geth"
+#    execution-config: "geth-execution-config"
+#    execution-launcher: "/source/deps/launchers/el/launch-geth.sh"
+#
+#    # shared-info
+#    jwt-secret-file: "/data/local_testnet/lodestar-geth/jwt-secret"
+#
+#    additional-env:
+#      lstar-debug-level: "debug"
 
 generic-modules:
 
@@ -345,7 +345,7 @@ generic-modules:
     client-name: "tx-fuzzer"
     container-name: "tx-fuzzer"
     image: "etb-all-clients"
-    tag: "latest"
+    tag: "capella"
     start-ip-addr: "10.0.20.205"
     entrypoint: "python3 /source/apps/tx-fuzz.py --config /data/etb-config.yaml --fuzz-mode spam --target-ip 10.0.20.10 --target-port 8645 --tx-fuzz-delay 30 --tx-fuzz-path /usr/local/bin/tx-fuzz"
     num-nodes: 1 #should always be 1.

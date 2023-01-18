@@ -426,7 +426,6 @@ class NimbusTestnetGenerator(ConsensusDirectoryGenerator):
                 "0"
             )
 
-
 class LodestarTestnetGenerator(ConsensusDirectoryGenerator):
     def __init__(self, consensus_client):
         super().__init__(consensus_client)
