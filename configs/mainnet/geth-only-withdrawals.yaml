@@ -61,8 +61,8 @@ config-params:
     # cconsensus-genesis-delay: 225 # eth1-follow-distance*seconds-per-eth1-block + 1
     preset-base: 'mainnet'
     config-name: "local-testnet0"
-    min-genesis-active-validator-count: 8 # custom preseeded into genesis state.
-    eth1-follow-distance: 0 # allow past eth1 blocks to be processed.
+    min-genesis-active-validator-count: 12 # custom preseeded into genesis state.
+    eth1-follow-distance: 16 # allow past eth1 blocks to be processed.
 
     forks:
       # forks that aren't in far-future will be considered as possible end forks for experiments.
@@ -78,7 +78,7 @@ config-params:
       bellatrix-fork-epoch: 0
 
       capella-fork-version: 0x04000666
-      capella-fork-epoch: 4 # testing capella
+      capella-fork-epoch: 2 # testing capella
 
       eip4844-fork-version: 0x05000666
       eip4844-fork-epoch: 18446744073709551615 # far future
@@ -279,31 +279,31 @@ client-modules:
     additional-env:
       lighthouse-debug-level: "debug"
 
-#  lodestar-geth:
-#    # docker-compose
-#    image: "etb-all-clients"
-#    tag: "capella"
-#    container-name: "lodestar-client-geth"
-#    start-ip-addr: "10.0.20.50"
-#    num-nodes: 1
-#
-#    # consensus-info
-#    consensus-client: "lodestar"
-#    consensus-config: "base-consensus-client"
-#    consensus-launcher: "/source/deps/launchers/cl/launch-lodestar.sh"
-#    validator-offset-start: 16
-#    testnet-dir: '/data/local_testnet/lodestar-geth'
-#
-#    # execution-info
-#    execution-client: "geth"
-#    execution-config: "geth-execution-config"
-#    execution-launcher: "/source/deps/launchers/el/launch-geth.sh"
-#
-#    # shared-info
-#    jwt-secret-file: "/data/local_testnet/lodestar-geth/jwt-secret"
-#
-#    additional-env:
-#      lstar-debug-level: "debug"
+  lodestar-geth:
+    # docker-compose
+    image: "etb-all-clients"
+    tag: "capella"
+    container-name: "lodestar-client-geth"
+    start-ip-addr: "10.0.20.50"
+    num-nodes: 1
+
+    # consensus-info
+    consensus-client: "lodestar"
+    consensus-config: "base-consensus-client"
+    consensus-launcher: "/source/deps/launchers/cl/launch-lodestar.sh"
+    validator-offset-start: 8
+    testnet-dir: '/data/local_testnet/lodestar-geth'
+
+    # execution-info
+    execution-client: "geth"
+    execution-config: "geth-execution-config"
+    execution-launcher: "/source/deps/launchers/el/launch-geth.sh"
+
+    # shared-info
+    jwt-secret-file: "/data/local_testnet/lodestar-geth/jwt-secret"
+
+    additional-env:
+      lstar-debug-level: "debug"
 
 generic-modules:
 
@@ -322,7 +322,7 @@ generic-modules:
     container-name: "status-check"
     start-ip-addr: "10.0.20.207"
     num-nodes: 1
-    entrypoint: "python3 /source/apps/status-check.py --config /data/etb-config.yaml --phase0-slot 12 --phase1-slot 32 --phase2-slot 64 --phase3-slot 96 --number-of-checks 3 --log-prefix antithesis --terminate-experiment-prefix terminate"
+    entrypoint: "python3 /source/apps/status-check.py --config /data/etb-config.yaml --phase0-slot 48 --phase1-slot 64 --phase2-slot 96 --phase3-slot 128 --number-of-checks 3 --log-prefix antithesis --terminate-experiment-prefix terminate"
 
   eth2-bootnode:
     # args for docker-compose

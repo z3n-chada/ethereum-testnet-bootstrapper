@@ -1,7 +1,15 @@
-FROM chainsafe/lodestar@sha256:f9f741bbccd1b4720ab75390d69f08b717d1ad86abf141edb48bc5dccfd1f170 AS builder
+FROM etb-client-builder AS builder
+
+WORKDIR /usr/app
+RUN apt install -y --no-install-recommends python3-dev make g++
+RUN ln -s /usr/local/bin/python3 /usr/local/bin/python
+ARG VERSION=next
+ENV VERSION=$VERSION
+RUN npm install -g npm@8.8.0
+RUN npm install @chainsafe/lodestar-cli@$VERSION
 
 FROM scratch
 
+ENV VERSION=$VERSION
 COPY --from=builder /usr/app /usr/app
-COPY --from=builder /git /git
 
