@@ -152,13 +152,11 @@ class ConsensusConfigurationWriter(object):
             'min-genesis-active-validator-count')
         config_entries['MIN_GENESIS_TIME'] = self.etb_config.get('bootstrap-genesis')
         config_entries['GENESIS_DELAY'] = self.etb_config.get('consensus-genesis-delay')
-        config_entries['GENESIS_FORK_VERSION'] = f'0x{self.etb_config.get("genesis-fork-version"):08x}'
+        config_entries['GENESIS_FORK_VERSION'] = f'0x{self.etb_config.get("phase0-fork-version"):08x}'
         return config_entries
 
     def get_forking_config_values(self) -> OrderedDict:
         config_entries = OrderedDict()
-        config_entries['PHASE0_FORK_VERSION'] = f'0x{self.etb_config.get("phase0-fork-version"):08x}'
-        config_entries['PHASE0_FORK_EPOCH'] = self.etb_config.get('phase0-fork-epoch')
         config_entries['ALTAIR_FORK_VERSION'] = f'0x{self.etb_config.get("altair-fork-version"):08x}'
         config_entries['ALTAIR_FORK_EPOCH'] = self.etb_config.get('altair-fork-epoch')
         config_entries['BELLATRIX_FORK_VERSION'] = f'0x{self.etb_config.get("bellatrix-fork-version"):08x}'
@@ -295,9 +293,6 @@ GENESIS_DELAY: {config['GENESIS_DELAY']}
 #  - These may be re-assigned to another fork-version later
 #  - Temporarily set to max uint64 value: 2**64 - 1
 
-# Phase0
-# PHASE0_FORK_VERSION: {config['PHASE0_FORK_VERSION']}
-# PHASE0_FORK_EPOCH: {config['PHASE0_FORK_EPOCH']}
 # Altair
 ALTAIR_FORK_VERSION: {config['ALTAIR_FORK_VERSION']}
 ALTAIR_FORK_EPOCH: {config['ALTAIR_FORK_EPOCH']}

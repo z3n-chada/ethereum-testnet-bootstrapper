@@ -62,6 +62,8 @@ lodestar beacon \
     --logLevelFile=debug \
     --logFile="$CONSENSUS_NODE_DIR/beacon.log" \
     --logRotate \
+    --network.subscribeAllSubnets=true \
+    --eth1.depositContractDeployBlock=0 \
     --chain.defaultFeeRecipient=0x00000000219ab540356cbb839cbe05303d7705fa &
 
 sleep 10

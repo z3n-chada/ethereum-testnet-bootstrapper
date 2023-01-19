@@ -27,6 +27,10 @@ files:
   execution-checkpoint-file: "/data/execution-clients-ready"
   # execution client bootnode/bootstrapper. Contains enode+\n for all bootstrap
   consensus-bootnode-checkpoint-file: "/data/consensus-bootnodes-ready"
+  # contract deployment block hash
+  deposit-contract-deployment-block-hash-file: "/data/deposit_contract_block_hash.txt"
+  # contract deployment block number
+  deposit-contract-deployment-block-number-file: "/data/deposit_contract_block.txt"
   # nodes
 #  execution-enode-file: "/data/execution-bootstrapper/enodes.txt"
 #  # the enr for the bootnode we chose.

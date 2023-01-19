@@ -65,41 +65,8 @@ lighthouse \
       --jwt-secrets="$JWT_SECRET_FILE" \
       --boot-nodes="$bootnode_enr" \
       --target-peers="$NUM_CLIENT_NODES" \
+      --subscribe-all-subnets \
       --suggested-fee-recipient=0x00000000219ab540356cbb839cbe05303d7705fa &
-
-#lighthouse \
-#  --logfile="$CONSENSUS_NODE_DIR/beacon.log" \
-#  --logfile-debug-level="$LIGHTHOUSE_DEBUG_LEVEL" \
-#	--debug-level="$LIGHTHOUSE_DEBUG_LEVEL" \
-#	--datadir="$CONSENSUS_NODE_DIR" \
-#	--testnet-dir="$TESTNET_DIR" \
-#	bn \
-#  --disable-enr-auto-update \
-#	--enr-address "$IP_ADDRESS" \
-#	--enr-udp-port "$CONSENSUS_P2P_PORT" \
-#	--enr-tcp-port "$CONSENSUS_P2P_PORT" \
-#	--port="$CONSENSUS_P2P_PORT" \
-#	--discovery-port "$CONSENSUS_P2P_PORT" \
-#  --eth1 \
-#	--http \
-#	--http-address=0.0.0.0 \
-#	--http-port="$CONSENSUS_BEACON_API_PORT" \
-#  --http-allow-origin="*" \
-#  --metrics \
-#  --metrics-address=0.0.0.0 \
-#  --metrics-port="$CONSENSUS_BEACON_METRIC_PORT" \
-#  --metrics-allow-origin="*" \
-#  --listen-address=0.0.0.0 \
-#  --graffiti="$CONSENSUS_GRAFFITI" \
-#  --target-peers="$CONSENSUS_TARGET_PEERS" \
-#  --http-allow-sync-stalled \
-#  --disable-packet-filter \
-#  --validator-monitor-auto \
-#  --enable-private-discovery \
-#  --execution-endpoints="http://127.0.0.1:$EXECUTION_ENGINE_HTTP_PORT" \
-#  --jwt-secrets="$JWT_SECRET_FILE" \
-#  --suggested-fee-recipient=0x00000000219ab540356cbb839cbe05303d7705fa \
-#  --subscribe-all-subnets &
 
 sleep 10
 lighthouse \

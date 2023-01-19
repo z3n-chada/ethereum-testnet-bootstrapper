@@ -19,7 +19,7 @@ from .ConsensusGenesis import ConsensusConfigurationWriter, ConsensusGenesisWrit
 from .ETBConfig import ETBConfig, ConsensusClient, ETBClient, ForkVersion
 from .ExecutionGenesis import ExecutionGenesisWriter
 from .ExecutionRPC import (ETBExecutionRPC, admin_add_peer_RPC,
-                           admin_node_info_RPC, personal_unlock_account_RPC, miner_start_RPC)
+                          admin_node_info_RPC, personal_unlock_account_RPC, miner_start_RPC, eth_get_block_RPC)
 
 logger = logging.getLogger("bootstrapper_log")
 
@@ -94,6 +94,9 @@ class EthereumTestnetBootstrapper(object):
         # if needed we start the clique miners
         if self.etb_config.get_genesis_fork() < ForkVersion.Bellatrix:
             self._start_clique_miners()
+
+        # nimbus requires a contract_deposit_block_hash so fetch it.
+        self._write_contract_deployment_block_files()
 
         # bootstrap all the consensus clients.
         self._write_consensus_genesis_files()
@@ -194,6 +197,34 @@ class EthereumTestnetBootstrapper(object):
             )
             time.sleep(optional_delay)
 
+    def _get_contract_deployment_block(self) -> tuple[str, int]:
+        """
+            Fetch a random EL client that implements the eth http api and get
+            the 0th block for the contract deployment.
+        :return: (block_number, block_hash)
+        """
+        possible_el_clients = self.etb_config.get_execution_rpc_paths(protocol='http', apis=['eth'])
+        el_client_name = list(possible_el_clients.keys())[0]
+        logger.debug(f"fetching block 0x0 from {el_client_name}")
+        get_block_rpc = eth_get_block_RPC("0x0")
+        etb_rpc = ETBExecutionRPC(self.etb_config, timeout=5)
+        block_resp = etb_rpc.do_rpc_request(get_block_rpc, client_nodes=[el_client_name],all_clients=False)
+        response = block_resp[el_client_name]["result"]
+        logger.debug(f"{el_client_name} returned genesis block: {response}")
+        block_hash = response["hash"]
+        block_number = response["number"]
+        return block_hash, int(block_number,16)
+
+    def _write_contract_deployment_block_files(self):
+        """
+        Nimbus requires this to start up.
+        :return: None
+        """
+        block_hash, block_number = self._get_contract_deployment_block()
+        with open(self.etb_config.get('deposit-contract-deployment-block-hash-file'), 'w') as f:
+            f.write(block_hash)
+        with open(self.etb_config.get('deposit-contract-deployment-block-number-file'), 'w') as f:
+            f.write(str(block_number))
     def _create_client_testnet_directories(self):
         """
         Create the testnet directory structure of the testnet for init purposes
@@ -420,11 +451,10 @@ class NimbusTestnetGenerator(ConsensusDirectoryGenerator):
         # done now clean up..
         shutil.rmtree(str(self.testnet_dir) + "/validators/")
 
-        # just in case set a deposit deploy block.
-        with open(f"{str(self.testnet_dir)}/deposit_contract_block.txt", "w") as f:
-            f.write(
-                "0"
-            )
+        # nimbus required goodies.
+        shutil.copy(src="/data/deposit_contract_block_hash.txt", dst=str(self.testnet_dir) + "/deposit_contract_block_hash.txt")
+        shutil.copy(src="/data/deposit_contract_block.txt", dst=str(self.testnet_dir) + "/deposit_contract_block.txt")
+
 
 class LodestarTestnetGenerator(ConsensusDirectoryGenerator):
     def __init__(self, consensus_client):
