@@ -65,7 +65,7 @@ config-params:
     # cconsensus-genesis-delay: 225 # eth1-follow-distance*seconds-per-eth1-block + 1
     preset-base: 'mainnet'
     config-name: "local-testnet0"
-    min-genesis-active-validator-count: 20 # custom preseeded into genesis state.
+    min-genesis-active-validator-count: 16 # custom preseeded into genesis state.
     eth1-follow-distance: 16 # allow past eth1 blocks to be processed.
 
     forks:
@@ -283,20 +283,24 @@ client-modules:
     additional-env:
       lighthouse-debug-level: "debug"
 
-  lodestar-geth:
+###############################################################################
+################### All Consensus Clients Without Deposits ####################
+###############################################################################
+  prysm-geth-no-deposit:
     # docker-compose
     image: "etb-all-clients"
     tag: "capella"
-    container-name: "lodestar-client-geth"
+    container-name: "prysm-client-geth-no-deposit"
     start-ip-addr: "10.0.20.50"
+    depends: "ethereum-testnet-bootstrapper"
     num-nodes: 1
 
     # consensus-info
-    consensus-client: "lodestar"
+    consensus-client: "prysm"
     consensus-config: "base-consensus-client"
-    consensus-launcher: "/source/deps/launchers/cl/launch-lodestar.sh"
+    consensus-launcher: "/source/deps/launchers/cl/launch-prysm.sh"
     validator-offset-start: 16
-    testnet-dir: '/data/local_testnet/lodestar-geth'
+    testnet-dir: '/data/local_testnet/prysm-geth-no-deposit'
 
     # execution-info
     execution-client: "geth"
@@ -304,10 +308,95 @@ client-modules:
     execution-launcher: "/source/deps/launchers/el/launch-geth.sh"
 
     # shared-info
-    jwt-secret-file: "/data/local_testnet/lodestar-geth/jwt-secret"
+    jwt-secret-file: "/data/local_testnet/prysm-geth-no-deposit/jwt-secret"
+
+    # args specific to prysm nodes, these are loaded into the dockers env at runtime.
+    additional-env:
+      prysm-debug-level: "debug"
+      wallet-path: '/data/local_testnet/prysm-geth-no-deposit/wallet-password.txt'
+      validator-password: "testnet-password"
+
+  teku-geth-no-deposit:
+    # docker-compose
+    image: "etb-all-clients"
+    tag: "capella"
+    container-name: "teku-client-geth-no-deposit"
+    start-ip-addr: "10.0.20.60"
+    depends: "ethereum-testnet-bootstrapper"
+    num-nodes: 1
+
+    # consensus-info
+    consensus-client: "teku"
+    consensus-config: "base-consensus-client"
+    consensus-launcher: "/source/deps/launchers/cl/launch-teku.sh"
+    validator-offset-start: 20
+    testnet-dir: '/data/local_testnet/teku-geth-no-deposit'
+
+    # execution-info
+    execution-client: "geth"
+    execution-config: "geth-execution-config"
+    execution-launcher: "/source/deps/launchers/el/launch-geth.sh"
+
+    # shared-info
+    jwt-secret-file: "/data/local_testnet/teku-geth-no-deposit/jwt-secret"
+
+    # args specific to teku nodes.
+    additional-env:
+      teku-debug-level: "DEBUG"
+
+  nimbus-geth-no-deposit:
+    # docker-compose
+    image: "etb-all-clients"
+    tag: "capella"
+    container-name: "nimbus-client-geth-no-deposit"
+    start-ip-addr: "10.0.20.70"
+    num-nodes: 1
+
+    # consensus-info
+    consensus-client: "nimbus"
+    consensus-config: "base-consensus-client"
+    consensus-launcher: "/source/deps/launchers/cl/launch-nimbus.sh"
+    validator-offset-start: 24
+    testnet-dir: '/data/local_testnet/nimbus-geth-no-deposit'
+
+    # execution-info
+    execution-client: "geth"
+    execution-config: "geth-execution-config"
+    execution-launcher: "/source/deps/launchers/el/launch-geth.sh"
+
+    # shared-info
+    jwt-secret-file: "/data/local_testnet/nimbus-geth-no-deposit/jwt-secret"
 
     additional-env:
-      lstar-debug-level: "debug"
+      nimbus-debug-level: "TRACE"
+
+
+  lighthouse-geth-no-deposit:
+    # docker-compose
+    image: "etb-all-clients"
+    tag: "capella"
+    container-name: "lighthouse-client-geth-no-deposit"
+    start-ip-addr: "10.0.20.80"
+    num-nodes: 1
+
+    # consensus-info
+    consensus-client: "lighthouse"
+    consensus-config: "base-consensus-client"
+    consensus-launcher: "/source/deps/launchers/cl/launch-lighthouse.sh"
+    validator-offset-start: 28
+    testnet-dir: '/data/local_testnet/lighthouse-geth-no-deposit'
+
+    # execution-info
+    execution-client: "geth"
+    execution-config: "geth-execution-config"
+    execution-launcher: "/source/deps/launchers/el/launch-geth.sh"
+
+    # shared-info
+    jwt-secret-file: "/data/local_testnet/lighthouse-geth-no-deposit/jwt-secret"
+
+    additional-env:
+      lighthouse-debug-level: "debug"
+
 
 generic-modules:
 
