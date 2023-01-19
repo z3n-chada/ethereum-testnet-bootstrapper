@@ -6,6 +6,7 @@ RUN git clone https://github.com/protolambda/eth2-testnet-genesis.git \
     && cd eth2-testnet-genesis \
     && go install . \
     && go install github.com/wealdtech/ethereal/v2@latest \
+    && go install github.com/wealdtech/ethdo@latest \
     && go install github.com/protolambda/eth2-bootnode@latest 
 
 RUN git clone https://github.com/z3n-chada/eth2-val-tools.git \
