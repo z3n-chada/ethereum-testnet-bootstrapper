@@ -1,9 +1,9 @@
 FROM etb-client-builder as builder
 
-# RUN git clone https://github.com/MariusVanDerWijden/go-ethereum.git \
-RUN git clone https://github.com/edwards-antithesis/go-ethereum \
+# RUN git clone https://github.com/edwards-antithesis/go-ethereum \
+RUN git clone https://github.com/MariusVanDerWijden/go-ethereum.git \
     && cd go-ethereum \
-    && git checkout ant-merge-bad-block-creator \
+    && git checkout bad-block-generator \
     && make geth
 
 FROM scratch
