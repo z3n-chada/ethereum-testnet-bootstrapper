@@ -109,6 +109,9 @@ class ConsensusGenesisWriter(object):
         if fork_version >= ForkVersion.Bellatrix:
             cmd.append("--eth1-config")
             cmd.append(eth1_config)
+            #TODO
+            # cmd.append('--eth1-withdrawal-address')
+            # cmd.append()
         logger.debug(f"ConsensusGenesis: running eth2-testnet-genesis:\n{cmd}")
         subprocess.run(cmd, capture_output=True)
 
@@ -180,9 +183,8 @@ class ConsensusConfigurationWriter(object):
         config_entries = OrderedDict()
         config_entries['SECONDS_PER_SLOT'] = mainnet_config_defaults['SECONDS_PER_SLOT']
         config_entries['SECONDS_PER_ETH1_BLOCK'] = self.etb_config.get('seconds-per-eth1-block')
-        config_entries['MIN_VALIDATOR_WITHDRAWABILITY_DELAY'] = mainnet_config_defaults[
-            'MIN_VALIDATOR_WITHDRAWABILITY_DELAY']
-        config_entries['SHARD_COMMITTEE_PERIOD'] = mainnet_config_defaults['SHARD_COMMITTEE_PERIOD']
+        config_entries['MIN_VALIDATOR_WITHDRAWABILITY_DELAY'] = self.etb_config.get('min-validator-withdrawability-delay')
+        config_entries['SHARD_COMMITTEE_PERIOD'] = self.etb_config.get('shard-committee-period')
         config_entries['ETH1_FOLLOW_DISTANCE'] = self.etb_config.get('eth1-follow-distance')
         return config_entries
 

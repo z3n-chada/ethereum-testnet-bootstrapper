@@ -38,6 +38,7 @@ COPY --from=builder /go/bin/eth2-bootnode /usr/local/bin/eth2-bootnode
 COPY --from=builder /go/bin/ethereal /usr/local/bin/ethereal
 #COPY --from=builder /git/go-ethereum/build/bin/geth /usr/local/bin/geth
 COPY --from=builder /git/go-ethereum/build/bin/bootnode /usr/local/bin/bootnode
+COPY --from=builder /go/bin/ethdo /usr/local/bin/ethdo
 RUN chmod +x /usr/local/bin/bootnode
 RUN mkdir /configs
 
