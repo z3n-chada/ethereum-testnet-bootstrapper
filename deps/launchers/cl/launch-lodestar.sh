@@ -47,36 +47,36 @@ done
 echo "Launching Lodestar."
 
 lodestar beacon \
-    --rootDir="$NODE_DIR" \
-    --configFile="$TESTNET_DIR/config.yaml" \
+    --dataDir="$NODE_DIR" \
     --paramsFile="$TESTNET_DIR/config.yaml" \
     --genesisStateFile="$TESTNET_DIR/genesis.ssz" \
     --execution.urls="http://127.0.0.1:$EXECUTION_ENGINE_HTTP_PORT" \
     --jwt-secret="$JWT_SECRET_FILE" \
-    --network.discv5.bootEnrs="$bootnode_enr" \
-    --api.rest.enabled=true \
-    --api.rest.host=0.0.0.0 \
-    --api.rest.port="$CONSENSUS_BEACON_API_PORT" \
-    --api.rest.api="*" \
+    --bootnodes="$bootnode_enr" \
+    --network.connectToDiscv5Bootnodes=true \
+    --discv5 \
+    --rest \
+    --rest.address=0.0.0.0 \
+    --rest.port="$CONSENSUS_BEACON_API_PORT" \
+    --rest.namespace="*" \
     --logLevel="$LSTAR_DEBUG_LEVEL" \
-    --logLevelFile=debug \
     --logFile="$CONSENSUS_NODE_DIR/beacon.log" \
-    --logRotate \
-    --network.subscribeAllSubnets=true \
+    --enr.ip="$IP_ADDRESS" \
+    --enr.tcp="$CONSENSUS_P2P_PORT" \
+    --enr.udp="$CONSENSUS_CONSENSUS_P2P_PORT" \
+    --subscribeAllSubnets=true \
     --eth1.depositContractDeployBlock=0 \
-    --chain.defaultFeeRecipient=0x00000000219ab540356cbb839cbe05303d7705fa &
+    --suggestedFeeRecipient=0x00000000219ab540356cbb839cbe05303d7705fa &
 
 sleep 10
 
 lodestar validator \
-    --rootDir="$CONSENSUS_NODE_DIR" \
+    --dataDir="$CONSENSUS_NODE_DIR" \
     --paramsFile="$TESTNET_DIR/config.yaml" \
     --keystoresDir="$CONSENSUS_NODE_DIR/keys/" \
     --secretsDir="$CONSENSUS_NODE_DIR/secrets/" \
-    --server="http://127.0.0.1:$CONSENSUS_BEACON_API_PORT" \
+    --beaconNodes="http://127.0.0.1:$CONSENSUS_BEACON_API_PORT" \
     --validatorsDbDir="$CONSENSUS_NODE_DIR/validatorsdb" \
     --logFile="$CONSENSUS_NODE_DIR/validatordb/validator.log" \
-    --logLevelFile="$LSTAR_DEBUG_LEVEL" \
-    --logRotate \
-    --logMaxFiles=5 \
+    --logLevel="$LSTAR_DEBUG_LEVEL" \
     --graffiti="$CONSENSUS_GRAFFITI"

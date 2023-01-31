@@ -1,8 +1,48 @@
-FROM gcr.io/prysmaticlabs/prysm/beacon-chain@sha256:21cdade7443414964eb9089bb9318d0db58940bdcc7e7167f6663277c7072186 AS beacon_builder
-FROM gcr.io/prysmaticlabs/prysm/validator@sha256:2081fab4789ab6eeb4e53ff9553bf6db2ec1063bf7c7009b0ce7089be904af0f AS validator_builder
+FROM etb-client-builder:latest as base
+
+FROM base as builder
+
+WORKDIR /git
+
+ARG GIT_BRANCH="develop"
+
+RUN mkdir -p /git/src/github.com/prysmaticlabs/
+RUN mkdir -p /build
+
+RUN cd /git/src/github.com/prysmaticlabs/ && \
+    git clone --branch "$GIT_BRANCH" \
+    --recurse-submodules \
+    --depth 1 \
+    https://github.com/prysmaticlabs/prysm
+
+WORKDIR /git/src/github.com/prysmaticlabs/prysm
+RUN git log -n 1 --format=format:"%H" > /prysm.version
+
+#Antithesis Instrumentation
+
+# add items to this exclusions list to exclude them from instrumentation
+RUN touch /opt/antithesis/go_instrumentation/exclusions.txt
+# Ignore files with special `// go:` comments due to this issue: https://trello.com/c/Wmaxylu9
+RUN grep -l -r go: | grep \.go$ >> /opt/antithesis/go_instrumentation/exclusions.txt
+RUN grep -l -r snappy | grep \.go$ >> /opt/antithesis/go_instrumentation/exclusions.txt
+
+# Antithesis -------------------------------------------------
+WORKDIR /git/src/github.com/prysmaticlabs
+RUN mkdir -p prysm_instrumented && LD_LIBRARY_PATH=/opt/antithesis/go_instrumentation/lib /opt/antithesis/go_instrumentation/bin/goinstrumentor -antithesis=/opt/antithesis/go_instrumentation/instrumentation/go/wrappers/ -exclude=/opt/antithesis/go_instrumentation/exclusions.txt -stderrthreshold=INFO prysm prysm_instrumented
+RUN cp -r prysm_instrumented/customer/* prysm/
+RUN cd prysm && go mod edit -require=antithesis.com/instrumentation/wrappers@v1.0.0 -replace antithesis.com/instrumentation/wrappers=/opt/antithesis/go_instrumentation/instrumentation/go/wrappers
+# Antithesis -------------------------------------------------
+# Get dependencies
+RUN cd /git/src/github.com/prysmaticlabs/prysm && go get -t -d ./...
+
+#Build with instrumentation
+RUN cd /git/src/github.com/prysmaticlabs/prysm && CGO_CFLAGS="-I/opt/antithesis/go_instrumentation/include" CGO_LDFLAGS="-L/opt/antithesis/go_instrumentation/lib" go build -o /build ./...
+RUN go env GOPATH
 
 FROM scratch
 
-COPY --from=beacon_builder /app/cmd/beacon-chain/beacon-chain /usr/local/bin/beacon-chain
-COPY --from=validator_builder /app/cmd/validator/validator /usr/local/bin/validator
-
+COPY --from=builder /build/beacon-chain /usr/local/bin/
+COPY --from=builder /build/validator /usr/local/bin/
+COPY --from=builder /git/src/github.com/prysmaticlabs/prysm_instrumented/symbols/* /opt/antithesis/symbols/
+COPY --from=builder /prysm.version /prysm.version
+COPY --from=builder /git/src/github.com/prysmaticlabs/* /git/src/github.com/prysmaticlabs/

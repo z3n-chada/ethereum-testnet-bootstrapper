@@ -18,7 +18,7 @@ COPY --from=geth_builder /usr/local/bin/geth /usr/local/bin/geth
 #COPY --from=geth_builder /geth.version /geth.version
 
 COPY --from=besu_builder /opt/besu /opt/besu
-COPY --from=besu_builder /besu.version /besu.version
+# COPY --from=besu_builder /besu.version /besu.version
 RUN ln -s /opt/besu/bin/besu /usr/local/bin/besu
 #COPY --from=nethermind_builder /nethermind/ /nethermind/
 #COPY --from=nethermind_builder /nethermind.version /nethermind.version
@@ -45,7 +45,7 @@ COPY --from=teku_builder /opt/teku /opt/teku
 #COPY --from=teku_builder /teku.version /teku.version
 RUN ln -s /opt/teku/bin/teku /usr/local/bin/teku
 
-COPY --from=ls_builder /usr/app/ /usr/app/
-RUN ln -s /usr/app/node_modules/.bin/lodestar /usr/local/bin/lodestar
+COPY --from=ls_builder /git/lodestar /git/lodestar
+RUN ln -s /git/lodestar/node_modules/.bin/lodestar /usr/local/bin/lodestar
 
 ENTRYPOINT ["/bin/bash"]

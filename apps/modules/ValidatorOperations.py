@@ -44,9 +44,27 @@ class EthdoWallet(object):
         else:
             self._get_accounts_from_wallet_dir()
 
-    def refresh(self):
-        self._remove_wallet()
-        self.create_wallet()
+    def _get_accounts_from_wallet_dir(self):
+        cmd = [
+            'ethdo',
+            'wallet',
+            'accounts',
+            '--wallet',
+            self.wallet_name,
+            '--base-dir',
+            self.wallet_path,
+            '--wallet-passphrase',
+            f'"{self.wallet_passphrase}"',
+        ]
+        out = subprocess.run(cmd, capture_output=True)
+        if len(out.stderr) > 0:
+            raise Exception(f"Exception on account list {out.stderr}")
+        accounts = (out.stdout.decode('utf-8').split('\n'))
+        accounts.remove('')
+
+        for account_name in accounts:
+            ndx = account_name_regex.search(account_name).group()
+            self.accounts.append(int(ndx, 10))
 
     def _wallet_exists(self):
         return pathlib.Path(self.wallet_path).exists()
@@ -91,7 +109,7 @@ class EthdoWallet(object):
         """
         if ndx in self.accounts:
             return
-        self._get_accounts_from_wallet_dir()
+        # self._get_accounts_from_wallet_dir()
         cmd = [
             'ethdo',
             'account',
@@ -115,27 +133,9 @@ class EthdoWallet(object):
 
         return out.stdout
 
-    def _get_accounts_from_wallet_dir(self):
-        cmd = [
-            'ethdo',
-            'wallet',
-            'accounts',
-            '--wallet',
-            self.wallet_name,
-            '--base-dir',
-            self.wallet_path,
-            '--wallet-passphrase',
-            f'"{self.wallet_passphrase}"',
-        ]
-        out = subprocess.run(cmd, capture_output=True)
-        if len(out.stderr) > 0:
-            raise Exception(f"Exception on account list {out.stderr}")
-        accounts = (out.stdout.decode('utf-8').split('\n'))
-        accounts.remove('')
-
-        for account_name in accounts:
-            ndx = account_name_regex.search(account_name).group()
-            self.accounts.append(int(ndx, 10))
+    def refresh(self):
+        self._remove_wallet()
+        self.create_wallet()
 
 
 class Ethdo(object):
@@ -144,6 +144,7 @@ class Ethdo(object):
         self.mnemonic = self.config.get('validator-mnemonic')
         self.offline_data_path = pathlib.Path(offline_data_path)
         self.wallet: EthdoWallet = EthdoWallet(etb_config)
+        self.add_genesis_accounts()
 
         if refresh or not self.offline_data_path.exists():
             self._prepare_offline_data()
@@ -183,6 +184,7 @@ class Ethdo(object):
         for x in range(self.config.get('min-genesis-active-validator-count')):
             self.wallet.add_account(x)
 
+
     def get_withdrawal_keys(self, ndx) -> tuple[str, str]:
         path = f"m/12381/3600/{ndx}/0"
         cmd = [
@@ -202,6 +204,9 @@ class Ethdo(object):
         return pubkey, privkey
 
     def send_bls_to_execution_change(self, ndx, address, mnemonic=None, client: ConsensusClient = None):
+        if ndx not in self.wallet.accounts:
+            self.wallet.add_account(ndx)
+
         if mnemonic is None:
             mnemonic = self.mnemonic
 
@@ -229,7 +234,10 @@ class Ethdo(object):
         if len(out.stderr) > 0:
             raise Exception(f"Exception on bls exchange {out.stderr}")
 
-    def send_validator_exit(self, ndx, mnemonic=None, client: ConsensusClient=None):
+    def send_validator_exit(self, ndx, mnemonic=None, client: ConsensusClient = None):
+        if ndx not in self.wallet.accounts:
+            self.wallet.add_account(ndx)
+
         if mnemonic is None:
             mnemonic = self.mnemonic
 
@@ -305,6 +313,22 @@ class Ethdo(object):
 
         return addr, hex_regex.search(address).group()
 
+    def get_block_info(self, block_num):
+        connection = self.config.get_random_consensus_client().get_beacon_api_path()
+        cmd = [
+            'ethdo',
+            'block',
+            'info',
+            '--blockid',
+            f'{block_num}',
+            '--connection',
+            connection,
+        ]
+        out = subprocess.run(cmd, capture_output=True)
+        if len(out.stderr) > 0:
+            raise Exception(f"Failed to get block info: {out.stderr}")
+
+        return out.stdout.decode('utf-8')
 
 class ValidatorKeyStore(object):
     def __init__(self, etb_config, validator_ndx: int):

@@ -37,7 +37,8 @@ files:
 
 config-params:
   
-  deposit-contract-address: "0x8c594691c0e592ffa21f153a16ae41db5befcaaa"
+#  deposit-contract-address: "0x8c594691c0e592ffa21f153a16ae41db5befcaaa"
+  deposit-contract-address: "0x1111111111111111111111111111111111111111"
 
   # used for configuring execution genesis
   execution-layer:
@@ -56,9 +57,9 @@ config-params:
     # cconsensus-genesis-delay: 225 # eth1-follow-distance*seconds-per-eth1-block + 1
     preset-base: 'mainnet'
     config-name: "local-testnet0"
-    min-genesis-active-validator-count: 40 # custom preseeded into genesis state.
-    min-validator-withdrawability-delay: 2 # how soon we can process withdrawals
-    shard-committee-period: 2
+    min-genesis-active-validator-count: 50 # custom preseeded into genesis state.
+    min-validator-withdrawability-delay: 1 # how soon we can process withdrawals
+    shard-committee-period: 1 # how soon we can process withdrawals
     eth1-follow-distance: 16 # allow past eth1 blocks to be processed.
 
     forks:
@@ -135,7 +136,7 @@ execution-configs:
 
 consensus-configs:
   base-consensus-client:
-    num-validators: 4       # number of validators for every client node
+    num-validators: 10       # number of validators for every client node
     # start ports increment each time we have a node.
 
     consensus-p2p-port: 4000    # start port used for discovery
@@ -207,7 +208,7 @@ client-modules:
     consensus-client: "teku"
     consensus-config: "base-consensus-client"
     consensus-launcher: "/source/deps/launchers/cl/launch-teku.sh"
-    validator-offset-start: 4
+    validator-offset-start: 10
     testnet-dir: '/data/local_testnet/teku-geth'
 
     # execution-info
@@ -234,7 +235,7 @@ client-modules:
     consensus-client: "nimbus"
     consensus-config: "base-consensus-client"
     consensus-launcher: "/source/deps/launchers/cl/launch-nimbus.sh"
-    validator-offset-start: 8
+    validator-offset-start: 20
     testnet-dir: '/data/local_testnet/nimbus-geth'
 
     # execution-info
@@ -261,7 +262,7 @@ client-modules:
     consensus-client: "lighthouse"
     consensus-config: "base-consensus-client"
     consensus-launcher: "/source/deps/launchers/cl/launch-lighthouse.sh"
-    validator-offset-start: 12
+    validator-offset-start: 30
     testnet-dir: '/data/local_testnet/lighthouse-geth'
 
     # execution-info
@@ -287,7 +288,7 @@ client-modules:
     consensus-client: "lodestar"
     consensus-config: "base-consensus-client"
     consensus-launcher: "/source/deps/launchers/cl/launch-lodestar.sh"
-    validator-offset-start: 16
+    validator-offset-start: 40
     testnet-dir: '/data/local_testnet/lodestar-geth'
 
     # execution-info
@@ -300,258 +301,6 @@ client-modules:
 
     additional-env:
       lstar-debug-level: "debug"
-
-  prysm-besu:
-    # docker-compose
-    image: "etb-all-clients"
-    tag: "capella"
-    container-name: "prysm-client-besu"
-    start-ip-addr: "10.0.20.60"
-    depends: "ethereum-testnet-bootstrapper"
-    num-nodes: 1
-
-    # consensus-info
-    consensus-client: "prysm"
-    consensus-config: "base-consensus-client"
-    consensus-launcher: "/source/deps/launchers/cl/launch-prysm.sh"
-    validator-offset-start: 20
-    testnet-dir: '/data/local_testnet/prysm-besu'
-
-    # execution-info
-    execution-client: "besu"
-    execution-config: "besu-execution-config"
-    execution-launcher: "/source/deps/launchers/el/launch-besu.sh"
-
-    # shared-info
-    jwt-secret-file: "/data/local_testnet/prysm-besu/jwt-secret"
-
-    # args specific to prysm nodes, these are loaded into the dockers env at runtime.
-    additional-env:
-      prysm-debug-level: "debug"
-      wallet-path: '/data/local_testnet/prysm-besu/wallet-password.txt'
-      validator-password: "testnet-password"
-
-  teku-besu:
-    # docker-compose
-    image: "etb-all-clients"
-    tag: "capella"
-    container-name: "teku-client-besu"
-    start-ip-addr: "10.0.20.70"
-    depends: "ethereum-testnet-bootstrapper"
-    num-nodes: 1
-
-    # consensus-info
-    consensus-client: "teku"
-    consensus-config: "base-consensus-client"
-    consensus-launcher: "/source/deps/launchers/cl/launch-teku.sh"
-    validator-offset-start: 24
-    testnet-dir: '/data/local_testnet/teku-besu'
-
-    # execution-info
-    execution-client: "besu"
-    execution-config: "besu-execution-config"
-    execution-launcher: "/source/deps/launchers/el/launch-besu.sh"
-
-    # shared-info
-    jwt-secret-file: "/data/local_testnet/teku-besu/jwt-secret"
-
-    # args specific to teku nodes.
-    additional-env:
-      teku-debug-level: "DEBUG"
-
-  nimbus-besu:
-    # docker-compose
-    image: "etb-all-clients"
-    tag: "capella"
-    container-name: "nimbus-client-besu"
-    start-ip-addr: "10.0.20.80"
-    num-nodes: 1
-
-    # consensus-info
-    consensus-client: "nimbus"
-    consensus-config: "base-consensus-client"
-    consensus-launcher: "/source/deps/launchers/cl/launch-nimbus.sh"
-    validator-offset-start: 28
-    testnet-dir: '/data/local_testnet/nimbus-besu'
-
-    # execution-info
-    execution-client: "besu"
-    execution-config: "besu-execution-config"
-    execution-launcher: "/source/deps/launchers/el/launch-besu.sh"
-
-    # shared-info
-    jwt-secret-file: "/data/local_testnet/nimbus-besu/jwt-secret"
-
-    additional-env:
-      nimbus-debug-level: "TRACE"
-
-
-  lighthouse-besu:
-    # docker-compose
-    image: "etb-all-clients"
-    tag: "capella"
-    container-name: "lighthouse-client-besu"
-    start-ip-addr: "10.0.20.90"
-    num-nodes: 1
-
-    # consensus-info
-    consensus-client: "lighthouse"
-    consensus-config: "base-consensus-client"
-    consensus-launcher: "/source/deps/launchers/cl/launch-lighthouse.sh"
-    validator-offset-start: 32
-    testnet-dir: '/data/local_testnet/lighthouse-besu'
-
-    # execution-info
-    execution-client: "besu"
-    execution-config: "besu-execution-config"
-    execution-launcher: "/source/deps/launchers/el/launch-besu.sh"
-
-    # shared-info
-    jwt-secret-file: "/data/local_testnet/lighthouse-besu/jwt-secret"
-
-    additional-env:
-      lighthouse-debug-level: "debug"
-
-  lodestar-besu:
-    # docker-compose
-    image: "etb-all-clients"
-    tag: "capella"
-    container-name: "lodestar-client-besu"
-    start-ip-addr: "10.0.20.100"
-    num-nodes: 1
-
-    # consensus-info
-    consensus-client: "lodestar"
-    consensus-config: "base-consensus-client"
-    consensus-launcher: "/source/deps/launchers/cl/launch-lodestar.sh"
-    validator-offset-start: 36
-    testnet-dir: '/data/local_testnet/lodestar-besu'
-
-    # execution-info
-    execution-client: "besu"
-    execution-config: "besu-execution-config"
-    execution-launcher: "/source/deps/launchers/el/launch-besu.sh"
-
-    # shared-info
-    jwt-secret-file: "/data/local_testnet/lodestar-besu/jwt-secret"
-
-    additional-env:
-      lstar-debug-level: "debug"
-
-################################################################################
-#################### All Consensus Clients Without Deposits ####################
-################################################################################
-  prysm-geth-no-deposit:
-    # docker-compose
-    image: "etb-all-clients"
-    tag: "capella"
-    container-name: "prysm-client-geth-no-deposit"
-    start-ip-addr: "10.0.20.110"
-    depends: "ethereum-testnet-bootstrapper"
-    num-nodes: 1
-
-    # consensus-info
-    consensus-client: "prysm"
-    consensus-config: "base-consensus-client"
-    consensus-launcher: "/source/deps/launchers/cl/launch-prysm.sh"
-    validator-offset-start: 40
-    testnet-dir: '/data/local_testnet/prysm-geth-no-deposit'
-
-    # execution-info
-    execution-client: "geth"
-    execution-config: "geth-execution-config"
-    execution-launcher: "/source/deps/launchers/el/launch-geth.sh"
-
-    # shared-info
-    jwt-secret-file: "/data/local_testnet/prysm-geth-no-deposit/jwt-secret"
-
-    # args specific to prysm nodes, these are loaded into the dockers env at runtime.
-    additional-env:
-      prysm-debug-level: "debug"
-      wallet-path: '/data/local_testnet/prysm-geth-no-deposit/wallet-password.txt'
-      validator-password: "testnet-password"
-#
-#  teku-geth-no-deposit:
-#    # docker-compose
-#    image: "etb-all-clients"
-#    tag: "capella"
-#    container-name: "teku-client-geth-no-deposit"
-#    start-ip-addr: "10.0.20.60"
-#    depends: "ethereum-testnet-bootstrapper"
-#    num-nodes: 1
-#
-#    # consensus-info
-#    consensus-client: "teku"
-#    consensus-config: "base-consensus-client"
-#    consensus-launcher: "/source/deps/launchers/cl/launch-teku.sh"
-#    validator-offset-start: 20
-#    testnet-dir: '/data/local_testnet/teku-geth-no-deposit'
-#
-#    # execution-info
-#    execution-client: "geth"
-#    execution-config: "geth-execution-config"
-#    execution-launcher: "/source/deps/launchers/el/launch-geth.sh"
-#
-#    # shared-info
-#    jwt-secret-file: "/data/local_testnet/teku-geth-no-deposit/jwt-secret"
-#
-#    # args specific to teku nodes.
-#    additional-env:
-#      teku-debug-level: "DEBUG"
-#
-#  nimbus-geth-no-deposit:
-#    # docker-compose
-#    image: "etb-all-clients"
-#    tag: "capella"
-#    container-name: "nimbus-client-geth-no-deposit"
-#    start-ip-addr: "10.0.20.70"
-#    num-nodes: 1
-#
-#    # consensus-info
-#    consensus-client: "nimbus"
-#    consensus-config: "base-consensus-client"
-#    consensus-launcher: "/source/deps/launchers/cl/launch-nimbus.sh"
-#    validator-offset-start: 24
-#    testnet-dir: '/data/local_testnet/nimbus-geth-no-deposit'
-#
-#    # execution-info
-#    execution-client: "geth"
-#    execution-config: "geth-execution-config"
-#    execution-launcher: "/source/deps/launchers/el/launch-geth.sh"
-#
-#    # shared-info
-#    jwt-secret-file: "/data/local_testnet/nimbus-geth-no-deposit/jwt-secret"
-#
-#    additional-env:
-#      nimbus-debug-level: "TRACE"
-#
-#
-#  lighthouse-geth-no-deposit:
-#    # docker-compose
-#    image: "etb-all-clients"
-#    tag: "capella"
-#    container-name: "lighthouse-client-geth-no-deposit"
-#    start-ip-addr: "10.0.20.80"
-#    num-nodes: 1
-#
-#    # consensus-info
-#    consensus-client: "lighthouse"
-#    consensus-config: "base-consensus-client"
-#    consensus-launcher: "/source/deps/launchers/cl/launch-lighthouse.sh"
-#    validator-offset-start: 28
-#    testnet-dir: '/data/local_testnet/lighthouse-geth-no-deposit'
-#
-#    # execution-info
-#    execution-client: "geth"
-#    execution-config: "geth-execution-config"
-#    execution-launcher: "/source/deps/launchers/el/launch-geth.sh"
-#
-#    # shared-info
-#    jwt-secret-file: "/data/local_testnet/lighthouse-geth-no-deposit/jwt-secret"
-#
-#    additional-env:
-#      lighthouse-debug-level: "debug"
-
 
 generic-modules:
 
@@ -570,8 +319,8 @@ generic-modules:
     container-name: "status-check"
     start-ip-addr: "10.0.20.207"
     num-nodes: 1
-#    entrypoint: "python3 /source/apps/status-check.py --config /data/etb-config.yaml --phase0-slot 48 --phase1-slot 64 --phase2-slot 96 --phase3-slot 128 --number-of-checks 3 --log-prefix antithesis --terminate-experiment-prefix terminate"
-    entrypoint: "python3 /source/apps/status-check.py --config /data/etb-config.yaml --no-terminate --number-of-checks 3"
+    entrypoint: "python3 /source/apps/status-check.py --config /data/etb-config.yaml --phase0-slot 58 --phase1-slot 60 --phase2-slot 96 --phase3-slot 128 --number-of-checks 3 --log-prefix antithesis --terminate-experiment-prefix terminate"
+#    entrypoint: "python3 /source/apps/status-check.py --config /data/etb-config.yaml --no-terminate --number-of-checks 3"
 
   eth2-bootnode:
     # args for docker-compose
@@ -590,12 +339,21 @@ generic-modules:
       consensus-bootnode-api-port: 6000 # port for web api.
       consensus-bootnode-enr-file: "/data/eth2-bootnode-enr.dat" # this must match the file at the top.
 
-#  tx-fuzzer:
-#    # launch the transaction spammer
-#    client-name: "tx-fuzzer"
-#    container-name: "tx-fuzzer"
-#    image: "etb-all-clients"
-#    tag: "capella"
-#    start-ip-addr: "10.0.20.205"
-#    entrypoint: "python3 /source/apps/tx-fuzz.py --config /data/etb-config.yaml --fuzz-mode spam --target-ip 10.0.20.10 --target-port 8645 --tx-fuzz-delay 30 --tx-fuzz-path /usr/local/bin/tx-fuzz"
-#    num-nodes: 1 #should always be 1.
+  tx-fuzzer:
+    # launch the transaction spammer
+    client-name: "tx-fuzzer"
+    container-name: "tx-fuzzer"
+    image: "etb-all-clients"
+    tag: "capella"
+    start-ip-addr: "10.0.20.205"
+    entrypoint: "python3 /source/apps/tx-fuzz.py --config /data/etb-config.yaml --fuzz-mode spam --target-ip 10.0.20.10 --target-port 8645 --tx-fuzz-delay 30 --tx-fuzz-path /usr/local/bin/tx-fuzz"
+    num-nodes: 1 #should always be 1.
+
+  withdrawal-spammer:
+    client-name: "withdrawal-spammer"
+    container-name: "withdrawal-spammer"
+    image: "ethereum-testnet-bootstrapper"
+    tag: "latest"
+    start-ip-addr: "10.0.20.206"
+    entrypoint: "python3 /source/apps/withdrawal-spammer.py --config /data/etb-config.yaml"
+    num-nodes: 1 #should always be 1.

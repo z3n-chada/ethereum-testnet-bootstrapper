@@ -617,6 +617,12 @@ class ETBConfig(object):
             keys[acct.address] = acct.privateKey.hex()
         return keys
 
+    def get_random_eth1_key_pair(self):
+        keys = self.get_premine_keypairs()
+        pub_key = random.choice(list(keys.keys()))
+        priv_key = keys[pub_key]
+        return pub_key, priv_key
+
     def get_num_client_nodes(self) -> int:
         num_nodes = 0
         for client_module in self.clients.values():
@@ -705,6 +711,19 @@ class ETBConfig(object):
             client = random.choice([x for x in list(self.get_clients().keys())])
         client_instances = [x for x in self.clients[client]]
         return random.choice(client_instances).get_consensus_client_view()
+
+    def get_random_execution_client(self, client_filter=None) -> ExecutionClient:
+        '''
+        Get a random execution client view that optionally matches the client name filter
+        :param client_filter: optional name filter
+        :return: ExecutionClient
+        '''
+        if client_filter is not None:
+            client = random.choice([x for x in list(self.get_clients().keys()) if client_filter in x])
+        else:
+            client = random.choice([x for x in list(self.get_clients().keys())])
+        client_instances = [x for x in self.clients[client]]
+        return random.choice(client_instances).get_execution_client_view()
 
     def get_terminal_total_difficulty(self) -> int:
         """
