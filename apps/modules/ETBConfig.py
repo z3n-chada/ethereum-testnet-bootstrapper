@@ -927,7 +927,3 @@ class DockerEntry(object):
             entry["command"] = self.command
         return entry
 
-
-if __name__ == "__main__":
-    config = ETBConfig("../../configs/mainnet/phase0-merge-geth.yaml")
-    # testing code.

@@ -15,7 +15,6 @@ from .BeaconAPI import GetValidators, ETBConsensusBeaconAPI, GetFork, GetGenesis
 hex_regex = re.compile(r'0x[0-9a-fA-F]+')
 account_name_regex = re.compile(r'[0-9]+')
 
-
 class WithdrawalCredentialType(Enum):
     BLS = 0
     Execution = 1
@@ -65,6 +64,14 @@ class EthdoWallet(object):
         for account_name in accounts:
             ndx = account_name_regex.search(account_name).group()
             self.accounts.append(int(ndx, 10))
+
+    def account_from_ndx(self, ndx: int) -> str:
+        """
+        Keeping the account naming convention.
+        :param ndx:
+        :return:
+        """
+        return f'{self.wallet_name}/validator{ndx}'
 
     def _wallet_exists(self):
         return pathlib.Path(self.wallet_path).exists()
@@ -121,7 +128,7 @@ class EthdoWallet(object):
             '--path',
             f"m/12381/3600/{ndx}/0/0",
             '--account',
-            f'{self.wallet_name}/validator{ndx}',
+            self.account_from_ndx(ndx),
             '--passphrase',
             self.account_passphrase
         ]
@@ -183,7 +190,6 @@ class Ethdo(object):
         """
         for x in range(self.config.get('min-genesis-active-validator-count')):
             self.wallet.add_account(x)
-
 
     def get_withdrawal_keys(self, ndx) -> tuple[str, str]:
         path = f"m/12381/3600/{ndx}/0"
@@ -329,6 +335,50 @@ class Ethdo(object):
             raise Exception(f"Failed to get block info: {out.stderr}")
 
         return out.stdout.decode('utf-8')
+
+    def generate_deposit_data(self, ndx, amount_ether=32, fork_version=None):
+        '''
+        Generates a raw tx for the deposit data.
+        :param ndx:
+        :return:
+        '''
+        if ndx not in self.wallet.accounts:
+            self.wallet.add_account(ndx)
+        amount_wei = amount_ether * (10**18)
+        if fork_version is None:
+            forkversion = self.config.get('phase0-fork-version')
+        else:
+            forkversion = fork_version
+        print(amount_wei)
+        pub, priv = self.get_withdrawal_keys(ndx)
+        cmd = [
+            'ethdo',
+            'validator',
+            'depositdata',
+            '--base-dir',
+            self.wallet.wallet_path,
+            '--wallet-passphrase',
+            f'"{self.wallet.wallet_passphrase}"',
+            '--passphrase',
+            self.wallet.account_passphrase,
+            "--validatoraccount",
+            f"{self.wallet.account_from_ndx(ndx)}",
+            '--forkversion',
+            f"{forkversion}",
+            '--depositvalue',
+            f'{amount_wei}Wei',
+            '--withdrawalpubkey',
+            pub,
+            '--launchpad',
+            '--debug'
+        ]
+
+        out = subprocess.run(cmd, capture_output=True)
+        if len(out.stderr) > 0:
+            raise Exception(f"Failed to generate depositdata: {out.stderr}")
+
+        return out.stdout.decode('utf-8')
+
 
 class ValidatorKeyStore(object):
     def __init__(self, etb_config, validator_ndx: int):
