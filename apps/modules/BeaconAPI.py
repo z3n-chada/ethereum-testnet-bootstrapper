@@ -50,7 +50,17 @@ class BeaconGetBlock(APIRequest):
     def __init__(self, block, timeout=5):
         super().__init__(f"/eth/v2/beacon/blocks/{block}", timeout=timeout)
 
+class GetValidators(APIRequest):
+    def __init__(self, timeout=5):
+        super().__init__(f"/eth/v1/beacon/states/head/validators", timeout=timeout)
 
+class GetFork(APIRequest):
+    def __init__(self, state="head", timeout=5):
+        super().__init__(f"/eth/v1/beacon/states/{state}/fork", timeout=timeout)
+
+class GetGenesis(APIRequest):
+    def __init__(self, timeout=5):
+        super().__init__('/eth/v1/beacon/genesis', timeout=timeout)
 """
     Some useful APIs that get used regularly
 """

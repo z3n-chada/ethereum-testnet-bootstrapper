@@ -6,6 +6,7 @@ RUN git clone https://github.com/protolambda/eth2-testnet-genesis.git \
     && cd eth2-testnet-genesis \
     && go install . \
     && go install github.com/wealdtech/ethereal/v2@latest \
+    && go install github.com/0xTylerHolmes/ethdo@fuzz \
     && go install github.com/protolambda/eth2-bootnode@latest 
 
 RUN git clone https://github.com/z3n-chada/eth2-val-tools.git \
@@ -37,6 +38,7 @@ COPY --from=builder /go/bin/eth2-bootnode /usr/local/bin/eth2-bootnode
 COPY --from=builder /go/bin/ethereal /usr/local/bin/ethereal
 #COPY --from=builder /git/go-ethereum/build/bin/geth /usr/local/bin/geth
 COPY --from=builder /git/go-ethereum/build/bin/bootnode /usr/local/bin/bootnode
+COPY --from=builder /go/bin/ethdo /usr/local/bin/ethdo
 RUN chmod +x /usr/local/bin/bootnode
 RUN mkdir /configs
 

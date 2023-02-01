@@ -43,9 +43,8 @@ class TestnetStatusChecker(object):
     def __init__(self, args):
         self.etb_config = ETBConfig(args.config)
         self.now = self.etb_config.get("bootstrap-genesis")
-
         self.consensus_genesis_delay = self.etb_config.get_consensus_genesis_delay()
-
+        self.no_terminate = args.no_terminate
         self.etb_beacon_api = ETBConsensusBeaconAPI(
             self.etb_config,
             non_error=True,
@@ -140,11 +139,20 @@ class TestnetStatusChecker(object):
             else:
                 time.sleep(1)
 
+    def start_indefinite_checker(self):
+        while True:
+            self.update_health_metric()
+            print(self.health_metric.__repr__(), flush=True)
+            time.sleep(self.secs_per_eth2_slot)
+
     def start_status_checker(self):
         print(f"starting the status checker, delaying {int(time.time()) - self.genesis_time} seconds for consensus genesis.")
         self.wait_until("genesis", int(self.genesis_time))
-        print(f"{self.log_prefix}: Consensus Genesis Occured", flush=True)
+        print(f"{self.log_prefix}: Consensus Genesis Occurred", flush=True)
 
+        if self.no_terminate:
+            print("Running checker in indefinite mode.")
+            self.start_indefinite_checker()
         # wait until phase0 to ensure all is working.
         self.wait_until("phase0", self.phase0_time, do_check_heads=True)
         if self.testnet_healthy():
@@ -180,6 +188,15 @@ if __name__ == "__main__":
         dest="config",
         required=True,
         help="path to config file to consume for experiment",
+    )
+
+    parser.add_argument(
+        "--no-terminate",
+        dest="no_terminate",
+        required=False,
+        default=False,
+        action="store_true",
+        help="run the status checker forever.",
     )
     parser.add_argument(
         "--phase0-slot",

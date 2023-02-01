@@ -15,7 +15,7 @@ logger = logging.getLogger("bootstrapper_log")
 
 class ConsensusGenesisWriter(object):
     def __init__(self, etb_config):
-        self.etb_config : ETBConfig = etb_config
+        self.etb_config: ETBConfig = etb_config
 
         self.minimal_defaults = {
             "max-committees-per-slot": 4,
@@ -77,10 +77,10 @@ class ConsensusGenesisWriter(object):
         logger.debug(f"ssz path: {state_out}")
 
         genesis_fork_cmd_map = {
-            ForkVersion.Phase0 : "phase0",
-            ForkVersion.Altair : "altair",
-            ForkVersion.Bellatrix : "merge",
-            ForkVersion.Capella : "merge",
+            ForkVersion.Phase0: "phase0",
+            ForkVersion.Altair: "altair",
+            ForkVersion.Bellatrix: "merge",
+            ForkVersion.Capella: "merge",
         }
 
         fork_version: ForkVersion = self.etb_config.get_genesis_fork()
@@ -117,6 +117,7 @@ class ConsensusGenesisWriter(object):
 
         return ssz
 
+
 mainnet_config_defaults = {
     # time
     'SECONDS_PER_SLOT': 12,
@@ -152,13 +153,11 @@ class ConsensusConfigurationWriter(object):
             'min-genesis-active-validator-count')
         config_entries['MIN_GENESIS_TIME'] = self.etb_config.get('bootstrap-genesis')
         config_entries['GENESIS_DELAY'] = self.etb_config.get('consensus-genesis-delay')
-        config_entries['GENESIS_FORK_VERSION'] = f'0x{self.etb_config.get("genesis-fork-version"):08x}'
+        config_entries['GENESIS_FORK_VERSION'] = f'0x{self.etb_config.get("phase0-fork-version"):08x}'
         return config_entries
 
     def get_forking_config_values(self) -> OrderedDict:
         config_entries = OrderedDict()
-        config_entries['PHASE0_FORK_VERSION'] = f'0x{self.etb_config.get("phase0-fork-version"):08x}'
-        config_entries['PHASE0_FORK_EPOCH'] = self.etb_config.get('phase0-fork-epoch')
         config_entries['ALTAIR_FORK_VERSION'] = f'0x{self.etb_config.get("altair-fork-version"):08x}'
         config_entries['ALTAIR_FORK_EPOCH'] = self.etb_config.get('altair-fork-epoch')
         config_entries['BELLATRIX_FORK_VERSION'] = f'0x{self.etb_config.get("bellatrix-fork-version"):08x}'
@@ -182,9 +181,9 @@ class ConsensusConfigurationWriter(object):
         config_entries = OrderedDict()
         config_entries['SECONDS_PER_SLOT'] = mainnet_config_defaults['SECONDS_PER_SLOT']
         config_entries['SECONDS_PER_ETH1_BLOCK'] = self.etb_config.get('seconds-per-eth1-block')
-        config_entries['MIN_VALIDATOR_WITHDRAWABILITY_DELAY'] = mainnet_config_defaults[
-            'MIN_VALIDATOR_WITHDRAWABILITY_DELAY']
-        config_entries['SHARD_COMMITTEE_PERIOD'] = mainnet_config_defaults['SHARD_COMMITTEE_PERIOD']
+        config_entries['MIN_VALIDATOR_WITHDRAWABILITY_DELAY'] = self.etb_config.get(
+            'min-validator-withdrawability-delay')
+        config_entries['SHARD_COMMITTEE_PERIOD'] = self.etb_config.get('shard-committee-period')
         config_entries['ETH1_FOLLOW_DISTANCE'] = self.etb_config.get('eth1-follow-distance')
         return config_entries
 
@@ -295,9 +294,6 @@ GENESIS_DELAY: {config['GENESIS_DELAY']}
 #  - These may be re-assigned to another fork-version later
 #  - Temporarily set to max uint64 value: 2**64 - 1
 
-# Phase0
-# PHASE0_FORK_VERSION: {config['PHASE0_FORK_VERSION']}
-# PHASE0_FORK_EPOCH: {config['PHASE0_FORK_EPOCH']}
 # Altair
 ALTAIR_FORK_VERSION: {config['ALTAIR_FORK_VERSION']}
 ALTAIR_FORK_EPOCH: {config['ALTAIR_FORK_EPOCH']}

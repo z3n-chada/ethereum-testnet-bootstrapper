@@ -1,7 +1,9 @@
+import random
 from enum import IntEnum
 
 from ruamel import yaml
 from typing import List, Dict, Union, Optional, Any
+from web3.auto import w3
 
 """
     Performs the heavy lifting of parsing and consuming configs for ETB.
@@ -597,6 +599,30 @@ class ETBConfig(object):
 
         return client_api_listings
 
+    def get_premine_keypairs(self) -> Dict[str, str]:
+        """
+        Returns a dict with eth1 premind keys: {pubkey: privkey}
+        :return: {pubkey: privkey}
+        """
+        w3.eth.account.enable_unaudited_hdwallet_features()
+        keys = {}
+
+        mnemonic = self.accounts.get("eth1-account-mnemonic")
+        password = self.accounts.get("eth1-passphrase")
+        premines = self.accounts.get("eth1-premine")
+        for acc in premines:
+            acct = w3.eth.account.from_mnemonic(
+                mnemonic, account_path=acc, passphrase=password
+            )
+            keys[acct.address] = acct.privateKey.hex()
+        return keys
+
+    def get_random_eth1_key_pair(self):
+        keys = self.get_premine_keypairs()
+        pub_key = random.choice(list(keys.keys()))
+        priv_key = keys[pub_key]
+        return pub_key, priv_key
+
     def get_num_client_nodes(self) -> int:
         num_nodes = 0
         for client_module in self.clients.values():
@@ -673,6 +699,32 @@ class ETBConfig(object):
 
         return int(consensus_merge_time / self.get('seconds-per-eth1-block'))
 
+    def get_random_consensus_client(self, client_filter=None) -> ConsensusClient:
+        '''
+        Get a random consensus client view that optionally matches the client name filter
+        :param client_filter: optional name filter
+        :return: ConsensusClient
+        '''
+        if client_filter is not None:
+            client = random.choice([x for x in list(self.get_clients().keys()) if client_filter in x])
+        else:
+            client = random.choice([x for x in list(self.get_clients().keys())])
+        client_instances = [x for x in self.clients[client]]
+        return random.choice(client_instances).get_consensus_client_view()
+
+    def get_random_execution_client(self, client_filter=None) -> ExecutionClient:
+        '''
+        Get a random execution client view that optionally matches the client name filter
+        :param client_filter: optional name filter
+        :return: ExecutionClient
+        '''
+        if client_filter is not None:
+            client = random.choice([x for x in list(self.get_clients().keys()) if client_filter in x])
+        else:
+            client = random.choice([x for x in list(self.get_clients().keys())])
+        client_instances = [x for x in self.clients[client]]
+        return random.choice(client_instances).get_execution_client_view()
+
     def get_terminal_total_difficulty(self) -> int:
         """
             Based on the configuration parameters for fork version epochs
@@ -694,6 +746,24 @@ class ETBConfig(object):
     def get_terminal_block_hash_activation_epoch(self) -> int:
         return 18446744073709551615
 
+    def get_cl_slots_per_epoch(self) -> int:
+        return 32
+
+    def get_bootstrap_genesis_time(self) -> int:
+        if "bootstrap-genesis" in self.global_config:
+            return self.global_config["bootstrap-genesis"]
+        else:
+            raise Exception("ETBConfig tried getting bootstrap genesis time before bootstrapping.")
+    def get_shanghai_time(self) -> int:
+        """
+        the ELs have shangaiTime which should coorespond with CAPELLA_FORK_EPOCH
+        :return: shanghaiTime
+        """
+        if self.get_final_fork() < ForkVersion.Capella:
+            return self.get_bootstrap_genesis_time() + 1000000 # sufficiently long enough delay to not hit
+        else:
+            return self.get('capella-fork-epoch') * self.get_cl_slots_per_epoch() * self.get_seconds_per_cl_block() + self.get_bootstrap_genesis_time()
+
     """
         The following functions define paramets that are not exposed to the 
         user to change.
@@ -707,8 +777,11 @@ class ETBConfig(object):
 
     def get_consensus_genesis_delay(self) -> int:
         # how long before testnet genesis that cl genesis occurs in seconds
-        return self.get('eth1-follow-distance') * self.get('seconds-per-eth1-block') + self.get('execution-genesis'
+        if self.get_genesis_fork() < ForkVersion.Bellatrix:
+            return self.get('eth1-follow-distance') * self.get('seconds-per-eth1-block') + self.get('execution-genesis'
                                                                                                 '-delay')
+        else:
+            return 0
 
     def get_clique_signer(self) -> str:
         """
@@ -804,6 +877,9 @@ class ETBConfig(object):
                 }
 
 
+
+
+
 """
     Classes to facilitate transforming the etb-config file to other formats and
     specifications.
@@ -851,7 +927,3 @@ class DockerEntry(object):
             entry["command"] = self.command
         return entry
 
-
-if __name__ == "__main__":
-    config = ETBConfig("../../configs/mainnet/phase0-merge-geth.yaml")
-    # testing code.

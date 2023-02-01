@@ -66,7 +66,7 @@ class ExecutionGenesisWriter(object):
             "mergeForkBlock": self.etb_config.get_el_merge_fork_block(),
             "arrowGlacierBlock": self.etb_config.get_el_merge_fork_block(),
             "grayGlacierBlock": self.etb_config.get_el_merge_fork_block(),
-            "shanghaiTime": self.execution_genesis + self.etb_config.get("shanghai-delay"),
+            "shanghaiTime": self.etb_config.get_shanghai_time(),
             "terminalTotalDifficulty": self.etb_config.get_terminal_total_difficulty(),
         }
         self.genesis["config"] = config
@@ -106,8 +106,10 @@ class ExecutionGenesisWriter(object):
                 "istanbulBlock": 0,
                 "berlinBlock": 0,
                 "londonBlock": 0,
-                "preMergeForkBlock": 0,
-                "shanghaiTime": self.execution_genesis + self.etb_config.get("shanghai-delay"),
+                "arrowGlacierBlock": self.etb_config.get_el_merge_fork_block(),
+                "grayGlacierBlock": self.etb_config.get_el_merge_fork_block(),
+                "mergeForkBlock":  self.etb_config.get_el_merge_fork_block(),
+                "shanghaiTime": self.etb_config.get_shanghai_time(),
                 "terminalTotalDifficulty": 0,
                 "ethash": {},
             }
@@ -166,8 +168,11 @@ class ExecutionGenesisWriter(object):
                 "eip3198Transition": "0x0",
                 "eip3529Transition": "0x0",
                 "eip3541Transition": "0x0",
-                "eip4895TransitionTimestamp": "0x639b5c68",  # no idea what this is.
-                "terminalTotalDifficulty": "0x0",
+                "eip4895TransitionTimestamp": f"0x{self.etb_config.get_shanghai_time():08x}",
+                "eip3855TransitionTimestamp": f"0x{self.etb_config.get_shanghai_time():08x}",
+                "eip3651TransitionTimestamp": f"0x{self.etb_config.get_shanghai_time():08x}",
+                "eip3860TransitionTimestamp": f"0x{self.etb_config.get_shanghai_time():08x}",
+                "terminalTotalDifficulty": f"0x{self.etb_config.get_terminal_total_difficulty():08x}",
             },
             "genesis": {
                 "seal": {

@@ -19,7 +19,7 @@ files:
 
   etb-config-file: "/data/etb-config.yaml"
   testnet-dir: "/data/local_testnet" # where client setups occur
-    #  execution-bootstrap-dir: "/data/local_testnet/execution-bootstrapper"
+  #  execution-bootstrap-dir: "/data/local_testnet/execution-bootstrapper"
   docker-compose-file:  "/source/docker-compose.yaml" #wrt to docker config
   # this file is created when all testnet directories have been written.
   consensus-checkpoint-file: "/data/consensus-clients-ready"
@@ -31,64 +31,60 @@ files:
   deposit-contract-deployment-block-hash-file: "/data/deposit_contract_block_hash.txt"
   # contract deployment block number
   deposit-contract-deployment-block-number-file: "/data/deposit_contract_block.txt"
-  # nodes
-#  execution-enode-file: "/data/execution-bootstrapper/enodes.txt"
-#  # the enr for the bootnode we chose.
-#
-#  # all of the enodes of el clients comma seperated.
-#  execution-enodes-file: "/data/execution-enodes.txt"
-#  # notify all clients the etb-config file is ready.
+  # notify all clients the etb-config file is ready.
   etb-config-checkpoint-file: "/data/etb-config-file-ready"
 
 
 config-params:
-  
-  deposit-contract-address: "0x8c594691c0e592ffa21f153a16ae41db5befcaaa"
+  # note this is the cannonical contract address. Do not use your own mnemonic or keys.
+  deposit-contract-address: "0x00000000219ab540356cBB839Cbe05303d7705Fa"
+#  deposit-contract-address: "0x1111111111111111111111111111111111111111"
 
   # used for configuring execution genesis
   execution-layer:
     seconds-per-eth1-block: 14
     execution-genesis-delay: 0
-    chain-id: 0x03000666
-    network-id: 0x03000666
+    chain-id: 0x01000666
+    network-id: 0x01000666
 
     # the first execution node that comes alive to bootstrap the network.
     execution-bootstrapper: "geth-bootstrapper"
 
-    #TODO: remove the necessity for this, we no longer need to config this.
-
-    terminal-total-difficulty: 0
-    terminal-block-hash: "0x0000000000000000000000000000000000000000000000000000000000000000"
-    terminal-block-hash-activation-epoch: 18446744073709551615
   # used for generating the consensus config placed in /data/eth2-config.yaml
   consensus-layer:
     # cconsensus-genesis-delay: 225 # eth1-follow-distance*seconds-per-eth1-block + 1
     preset-base: 'mainnet'
-    min-genesis-active-validator-count: 16 # custom preseeded into genesis state.
+    config-name: "local-testnet0"
+    min-genesis-active-validator-count: 50 # custom preseeded into genesis state.
+    min-validator-withdrawability-delay: 1 # how soon we can process withdrawals
+    shard-committee-period: 1 # how soon we can process withdrawals
     eth1-follow-distance: 16 # allow past eth1 blocks to be processed.
 
     forks:
       # forks that aren't in far-future will be considered as possible end forks for experiments.
-#      genesis-fork-version: 0x03000666
 
       phase0-fork-version: 0x01000666
       phase0-fork-epoch: 0 # genesis
 
       altair-fork-version: 0x02000666
-      altair-fork-epoch: 0 # genesis
+      altair-fork-epoch: 0
 
       bellatrix-fork-version: 0x03000666
-      bellatrix-fork-epoch: 0 # genesis
+      bellatrix-fork-epoch: 0
 
       capella-fork-version: 0x04000666
-      capella-fork-epoch: 18446744073709551615 # far future
+      capella-fork-epoch: 2 # testing capella
 
-      sharding-fork-version: 0x04000666
+      eip4844-fork-version: 0x05000666
+      eip4844-fork-epoch: 18446744073709551615 # far future
+
+      sharding-fork-version: 0x06000666
       sharding-fork-epoch: 18446744073709551615 # far future
 
 accounts:
   eth1-account-mnemonic: "cat swing flag economy stadium alone churn speed unique patch report train"
   eth1-passphrase: "testnet-password"
+  # if we are using a clique network, the first premine is signer
   eth1-premine:
       "m/44'/60'/0'/0/0" : "100000000"
       "m/44'/60'/0'/0/1" : "100000000"
@@ -96,14 +92,14 @@ accounts:
       "m/44'/60'/0'/0/3" : "100000000"
 
   validator-mnemonic: "ocean style run case glory clip into nature guess jacket document firm fiscal hello kite disagree symptom tide net coral envelope wink render festival" 
-  withdrawl-mnemonic: "scatter supreme field crazy unveil chronic favorite middle front umbrella mutual gentle word wild economy dress whale whip method office report eternal garment parrot"
+#  withdrawl-mnemonic: "scatter supreme field crazy unveil chronic favorite middle front umbrella mutual gentle word wild economy dress whale whip method office report eternal garment parrot"
 
 execution-configs:
 
   geth-execution-config:
     execution-client: "geth"
     execution-log-level: "4" # detail
-    execution-http-apis: "debug,txpool,admin,net,eth,web3,personal,engine"
+    execution-http-apis: "debug,txpool,admin,net,eth,web3,personal,engine,clique,miner"
     execution-ws-apis: "admin,net,eth,engine"
     execution-http-port: 8645
     execution-ws-port: 8646
@@ -138,7 +134,7 @@ execution-configs:
 
 consensus-configs:
   base-consensus-client:
-    num-validators: 4       # number of validators for every client node
+    num-validators: 10       # number of validators for every client node
     # start ports increment each time we have a node.
 
     consensus-p2p-port: 4000    # start port used for discovery
@@ -170,7 +166,7 @@ client-modules:
   prysm-geth:
     # docker-compose
     image: "etb-all-clients"
-    tag: "latest"
+    tag: "capella"
     container-name: "prysm-client-geth"
     start-ip-addr: "10.0.20.10"
     depends: "ethereum-testnet-bootstrapper"
@@ -200,7 +196,7 @@ client-modules:
   teku-geth:
     # docker-compose
     image: "etb-all-clients"
-    tag: "latest"
+    tag: "capella"
     container-name: "teku-client-geth"
     start-ip-addr: "10.0.20.20"
     depends: "ethereum-testnet-bootstrapper"
@@ -210,7 +206,7 @@ client-modules:
     consensus-client: "teku"
     consensus-config: "base-consensus-client"
     consensus-launcher: "/source/deps/launchers/cl/launch-teku.sh"
-    validator-offset-start: 4
+    validator-offset-start: 10
     testnet-dir: '/data/local_testnet/teku-geth'
 
     # execution-info
@@ -225,37 +221,37 @@ client-modules:
     additional-env:
       teku-debug-level: "DEBUG"
 
-#  nimbus-geth:
-#    # docker-compose
-#    image: "etb-all-clients"
-#    tag: "latest"
-#    container-name: "nimbus-client-geth"
-#    start-ip-addr: "10.0.20.30"
-#    num-nodes: 1
-#
-#    # consensus-info
-#    consensus-client: "nimbus"
-#    consensus-config: "base-consensus-client"
-#    consensus-launcher: "/source/deps/launchers/cl/launch-nimbus.sh"
-#    validator-offset-start: 8
-#    testnet-dir: '/data/local_testnet/nimbus-geth'
-#
-#    # execution-info
-#    execution-client: "geth"
-#    execution-config: "geth-execution-config"
-#    execution-launcher: "/source/deps/launchers/el/launch-geth.sh"
-#
-#    # shared-info
-#    jwt-secret-file: "/data/local_testnet/nimbus-geth/jwt-secret"
-#
-#    additional-env:
-#      nimbus-debug-level: "trace"
+  nimbus-geth:
+    # docker-compose
+    image: "etb-all-clients"
+    tag: "capella"
+    container-name: "nimbus-client-geth"
+    start-ip-addr: "10.0.20.30"
+    num-nodes: 1
+
+    # consensus-info
+    consensus-client: "nimbus"
+    consensus-config: "base-consensus-client"
+    consensus-launcher: "/source/deps/launchers/cl/launch-nimbus.sh"
+    validator-offset-start: 20
+    testnet-dir: '/data/local_testnet/nimbus-geth'
+
+    # execution-info
+    execution-client: "geth"
+    execution-config: "geth-execution-config"
+    execution-launcher: "/source/deps/launchers/el/launch-geth.sh"
+
+    # shared-info
+    jwt-secret-file: "/data/local_testnet/nimbus-geth/jwt-secret"
+
+    additional-env:
+      nimbus-debug-level: "TRACE"
 
 
   lighthouse-geth:
     # docker-compose
     image: "etb-all-clients"
-    tag: "latest"
+    tag: "capella"
     container-name: "lighthouse-client-geth"
     start-ip-addr: "10.0.20.40"
     num-nodes: 1
@@ -264,8 +260,7 @@ client-modules:
     consensus-client: "lighthouse"
     consensus-config: "base-consensus-client"
     consensus-launcher: "/source/deps/launchers/cl/launch-lighthouse.sh"
-#    validator-offset-start: 12
-    validator-offset-start: 8
+    validator-offset-start: 30
     testnet-dir: '/data/local_testnet/lighthouse-geth'
 
     # execution-info
@@ -275,14 +270,14 @@ client-modules:
 
     # shared-info
     jwt-secret-file: "/data/local_testnet/lighthouse-geth/jwt-secret"
-    
+
     additional-env:
       lighthouse-debug-level: "debug"
 
   lodestar-geth:
     # docker-compose
     image: "etb-all-clients"
-    tag: "latest"
+    tag: "capella"
     container-name: "lodestar-client-geth"
     start-ip-addr: "10.0.20.50"
     num-nodes: 1
@@ -291,8 +286,7 @@ client-modules:
     consensus-client: "lodestar"
     consensus-config: "base-consensus-client"
     consensus-launcher: "/source/deps/launchers/cl/launch-lodestar.sh"
-#    validator-offset-start: 16
-    validator-offset-start: 12
+    validator-offset-start: 40
     testnet-dir: '/data/local_testnet/lodestar-geth'
 
     # execution-info
@@ -305,6 +299,34 @@ client-modules:
 
     additional-env:
       lstar-debug-level: "debug"
+
+  teku-geth-no-deposit:
+    # docker-compose
+    image: "etb-all-clients"
+    tag: "capella"
+    container-name: "teku-client-geth-no-deposit"
+    start-ip-addr: "10.0.20.60"
+    depends: "ethereum-testnet-bootstrapper"
+    num-nodes: 1
+
+    # consensus-info
+    consensus-client: "teku"
+    consensus-config: "base-consensus-client"
+    consensus-launcher: "/source/deps/launchers/cl/launch-teku.sh"
+    validator-offset-start: 50
+    testnet-dir: '/data/local_testnet/teku-geth-no-deposit'
+
+    # execution-info
+    execution-client: "geth"
+    execution-config: "geth-execution-config"
+    execution-launcher: "/source/deps/launchers/el/launch-geth.sh"
+
+    # shared-info
+    jwt-secret-file: "/data/local_testnet/teku-geth-no-deposit/jwt-secret"
+
+    # args specific to teku nodes.
+    additional-env:
+      teku-debug-level: "DEBUG"
 
 generic-modules:
 
@@ -323,7 +345,8 @@ generic-modules:
     container-name: "status-check"
     start-ip-addr: "10.0.20.207"
     num-nodes: 1
-    entrypoint: "python3 /source/apps/status-check.py --config /data/etb-config.yaml --phase0-slot 12 --phase1-slot 32 --phase2-slot 64 --phase3-slot 96 --number-of-checks 3 --log-prefix antithesis --terminate-experiment-prefix terminate"
+#    entrypoint: "python3 /source/apps/status-check.py --config /data/etb-config.yaml --phase0-slot 58 --phase1-slot 60 --phase2-slot 96 --phase3-slot 128 --number-of-checks 3 --log-prefix antithesis --terminate-experiment-prefix terminate"
+    entrypoint: "python3 /source/apps/status-check.py --config /data/etb-config.yaml --no-terminate --number-of-checks 3"
 
   eth2-bootnode:
     # args for docker-compose
@@ -341,3 +364,22 @@ generic-modules:
       consensus-bootnode-enr-port: 9001 #port in the enr
       consensus-bootnode-api-port: 6000 # port for web api.
       consensus-bootnode-enr-file: "/data/eth2-bootnode-enr.dat" # this must match the file at the top.
+
+#  tx-fuzzer:
+#    # launch the transaction spammer
+#    client-name: "tx-fuzzer"
+#    container-name: "tx-fuzzer"
+#    image: "etb-all-clients"
+#    tag: "capella"
+#    start-ip-addr: "10.0.20.205"
+#    entrypoint: "python3 /source/apps/tx-fuzz.py --config /data/etb-config.yaml --fuzz-mode spam --target-ip 10.0.20.10 --target-port 8645 --tx-fuzz-delay 30 --tx-fuzz-path /usr/local/bin/tx-fuzz"
+#    num-nodes: 1 #should always be 1.
+#
+#  withdrawal-spammer:
+#    client-name: "withdrawal-spammer"
+#    container-name: "withdrawal-spammer"
+#    image: "ethereum-testnet-bootstrapper"
+#    tag: "latest"
+#    start-ip-addr: "10.0.20.206"
+#    entrypoint: "python3 /source/apps/withdrawal-spammer.py --config /data/etb-config.yaml"
+#    num-nodes: 1 #should always be 1.
