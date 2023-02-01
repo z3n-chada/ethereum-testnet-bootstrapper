@@ -1,24 +1,25 @@
 # built CL images
-FROM lighthouse:capella as lh_builder
-FROM lodestar:capella as ls_builder
-FROM nimbus:capella as nimbus_builder
-FROM teku:capella as teku_builder
-FROM prysm:capella as prysm_builder
+FROM lighthouse:capella AS lh_builder
+FROM lodestar:capella AS ls_builder
+FROM nimbus:capella AS nimbus_builder
+FROM teku:capella AS teku_builder
+FROM prysm:capella AS prysm_builder
 # built EL images
-FROM besu:capella as besu_builder
-FROM geth:capella as geth_builder
-#FROM nethermind:etb as nethermind_builder
+FROM besu:capella AS besu_builder
+FROM geth:capella AS geth_builder
+FROM nethermind:etb AS nethermind_builder
 # built fuzzers
-FROM tx-fuzzer:latest as txfuzzer_builder
-FROM geth:bad-block-creator as geth_bb_builder
+FROM tx-fuzzer:latest AS txfuzzer_builder
+FROM geth:bad-block-creator AS geth_bb_builder
+FROM prysm:evil-shapella AS prysm_evil_shapella_builder
 
 FROM etb-client-runner:latest as base
 
 COPY --from=geth_builder /usr/local/bin/geth /usr/local/bin/geth
-#COPY --from=geth_builder /geth.version /geth.version
+COPY --from=geth_builder /geth.version /geth.version
 
 COPY --from=besu_builder /opt/besu /opt/besu
-# COPY --from=besu_builder /besu.version /besu.version
+COPY --from=besu_builder /besu.version /besu.version
 RUN ln -s /opt/besu/bin/besu /usr/local/bin/besu
 #COPY --from=nethermind_builder /nethermind/ /nethermind/
 #COPY --from=nethermind_builder /nethermind.version /nethermind.version
