@@ -1,19 +1,18 @@
 """
     Classes that support validator operations such as deposits and withdrawals.
 """
-import json
 import pathlib
-import random
-import shutil
 import subprocess
 import re
+import shutil
+
 from enum import Enum
 
 from .ETBConfig import ETBConfig, ConsensusClient
-from .BeaconAPI import GetValidators, ETBConsensusBeaconAPI, GetFork, GetGenesis
 
 hex_regex = re.compile(r'0x[0-9a-fA-F]+')
 account_name_regex = re.compile(r'[0-9]+')
+
 
 class WithdrawalCredentialType(Enum):
     BLS = 0
@@ -26,7 +25,7 @@ class EthdoWallet(object):
     keeps track of the data so we don't have to generate them
     repeatedly.
 
-    It also implements all of the ethdo commands that *require* accounts
+    It also implements all the ethdo commands that *require* accounts
 
     """
 
@@ -38,10 +37,12 @@ class EthdoWallet(object):
         self.account_passphrase = "account-passphrase"
         self.mnemonic = etb_config.get('validator-mnemonic')
 
-        if not self._wallet_exists():
-            self.create_wallet()
-        else:
-            self._get_accounts_from_wallet_dir()
+        # remove an old wallet before using this one.
+        if self._wallet_exists():
+            self._remove_wallet()
+
+        # create the wallet
+        self._create_wallet()
 
     def _get_accounts_from_wallet_dir(self):
         cmd = [
@@ -80,7 +81,7 @@ class EthdoWallet(object):
         if self._wallet_exists():
             shutil.rmtree(self.wallet_path)
 
-    def create_wallet(self):
+    def _create_wallet(self):
         """
         remove the old wallet and create a new one.
 
@@ -140,50 +141,16 @@ class EthdoWallet(object):
 
         return out.stdout
 
-    def refresh(self):
-        self._remove_wallet()
-        self.create_wallet()
 
 
 class Ethdo(object):
-    def __init__(self, etb_config, offline_data_path='/tmp/offline-data.json', refresh=True):
+    def __init__(self, etb_config):
         self.config: ETBConfig = etb_config
         self.mnemonic = self.config.get('validator-mnemonic')
-        self.offline_data_path = pathlib.Path(offline_data_path)
         self.wallet: EthdoWallet = EthdoWallet(etb_config)
-        self.add_genesis_accounts()
+        self._add_genesis_accounts()
 
-        if refresh or not self.offline_data_path.exists():
-            self._prepare_offline_data()
-
-    def _prepare_offline_data(self):
-        default_output_file = pathlib.Path('offline-preparation.json')
-        cmd = [
-            'ethdo',
-            'validator',
-            'exit',
-            '--mnemonic',
-            f'\"{self.mnemonic}\"',
-            '--prepare-offline',
-            '--connection',
-            f'{self.config.get_random_consensus_client().get_beacon_api_path()}'
-        ]
-        x = subprocess.run(cmd, capture_output=True)
-        if len(x.stderr) > 0:
-            raise Exception(f"Failed to prepare offline data: {x.stderr}")
-
-        with open(default_output_file, 'r') as f:
-            offline_prep_data = json.load(f)
-
-        default_output_file.unlink()
-
-        if self.offline_data_path.exists():
-            self.offline_data_path.unlink()
-
-        with open(self.offline_data_path, 'w') as f:
-            json.dump(offline_prep_data, f)
-
-    def add_genesis_accounts(self):
+    def _add_genesis_accounts(self):
         """
         Adds all the preseeded genesis accounts to ethdo with type0 credentials
         :return:
@@ -344,12 +311,11 @@ class Ethdo(object):
         '''
         if ndx not in self.wallet.accounts:
             self.wallet.add_account(ndx)
-        amount_wei = amount_ether * (10**18)
+        amount_wei = amount_ether * (10 ** 18)
         if fork_version is None:
             forkversion = self.config.get('phase0-fork-version')
         else:
             forkversion = fork_version
-        print(amount_wei)
         pub, priv = self.get_withdrawal_keys(ndx)
         cmd = [
             'ethdo',
@@ -380,11 +346,11 @@ class Ethdo(object):
         return out.stdout.decode('utf-8')
 
 
-class ValidatorKeyStore(object):
-    def __init__(self, etb_config, validator_ndx: int):
-        self.index: int = validator_ndx
-        ethdo = Ethdo(etb_config)
-        self.validating_key_path = f"m/12381/3600/{str(self.index)}/0/0"
-        self.withdrawal_key_path = f"m/12381/3600/{str(self.index)}/0"
-        self.withdrawal_pub_key, self.withdrawal_priv_key = ethdo.get_withdrawal_keys()
-        self.validating_pub_key, self.validating_priv_key = ethdo.get_validating_keys()
+# class ValidatorKeyStore(object):
+#     def __init__(self, etb_config, validator_ndx: int):
+#         self.index: int = validator_ndx
+#         ethdo = Ethdo(etb_config)
+#         self.validating_key_path = f"m/12381/3600/{str(self.index)}/0/0"
+#         self.withdrawal_key_path = f"m/12381/3600/{str(self.index)}/0"
+#         self.withdrawal_pub_key, self.withdrawal_priv_key = ethdo.get_withdrawal_keys()
+#         self.validating_pub_key, self.validating_priv_key = ethdo.get_validating_keys()

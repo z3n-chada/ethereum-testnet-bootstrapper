@@ -1,14 +1,16 @@
-import json
+import logging
 import pathlib
 import random
 import time
 import argparse
+import sys
 
-from modules.ExecutionRPC import ETBExecutionRPC, personal_unlock_account_RPC
 from modules.Ethereal import Ethereal
 from modules.BeaconAPI import ETBConsensusBeaconAPI, BeaconGetBlock
 from modules.Ethdo import Ethdo, WithdrawalCredentialType
 from modules.ETBConfig import ETBConfig, ExecutionClient
+
+
 
 
 class WithdrawalSpammer(object):
@@ -17,6 +19,13 @@ class WithdrawalSpammer(object):
         self.ethdo_interface = Ethdo(self.etb_config)
         self.max_actions_per_slot = max_actions_per_slot
         self.start_slot = int(self.etb_config.get('capella-fork-epoch')) * 32 - 12
+
+        log_format = logging.Formatter("%(asctime)s: %(levelname)s: %(message)s")
+        self.logger = logging.getLogger("withdrawal-spammer-log")
+        self.stdout_handler = logging.StreamHandler(sys.stdout)
+        self.stdout_handler.setLevel(logging.DEBUG)
+        self.stdout_handler.setFormatter(log_format)
+        self.logger.addHandler(self.stdout_handler)
 
     def _get_random_premine_address(self):
         return random.choice(list(self.etb_config.get_premine_keypairs().keys()))
@@ -29,17 +38,17 @@ class WithdrawalSpammer(object):
         if address is None:
             address = self._get_random_premine_address()
         try:
-            print(f'doing submit_bls_to_execution_change({ndx})', flush=True)
+            self.logger.info(f'doing submit_bls_to_execution_change({ndx})')
             self.ethdo_interface.send_bls_to_execution_change(ndx, address)
         except Exception as e:
-            print(f"Got exception on bls change submission {e}")
+            self.logger.warning(f"Got exception on bls change submission {e}")
 
     def submit_validator_exit(self, ndx):
-        print(f'doing submit_validator_exit({ndx})', flush=True)
+        self.logger.info(f'doing submit_validator_exit({ndx})')
         try:
             self.ethdo_interface.send_validator_exit(ndx)
         except Exception as e:
-            print(f"Got exception on validator exit{e}")
+            self.logger.warning(f"Got exception on validator exit{e}")
 
     def submit_validator_deposit(self, ndx, amount_ether=32):
         deposit_json = self.ethdo_interface.generate_deposit_data(ndx, amount_ether=amount_ether)
@@ -61,7 +70,7 @@ class WithdrawalSpammer(object):
             out = ethereal.beacon_deposit(depositdata_path, eth1_connection, eth1_pub, eth1_priv)
             print(out)
         except Exception as e:
-            print(f"submit_validator_deposit got exception: {e}")
+            print(f"submit_validator_deposit got exception: {e}", flush=True)
         finally:
             if depositdata_path.exists():
                 depositdata_path.unlink()
@@ -103,7 +112,7 @@ class WithdrawalSpammer(object):
             except:
                 time.sleep(12)
                 curr_slot = curr_slot + 1
-            print(f'Waiting for slot: {goal} currently at {curr_slot}', flush=True)
+            self.logger.debug(f'Waiting for slot: {goal} currently at {curr_slot}')
 
     def fuzz(self):
         self.wait_for_slot(self.start_slot)
@@ -123,10 +132,11 @@ class WithdrawalSpammer(object):
                 # print(f'got observed slot: {observed_slot}', flush=True)
                 except Exception as e:
                     # some unknown issue. just wait 12 seconds.
-                    print(f'failed to get slot, using: {observed_slot}', flush=True)
+                    self.logger.warning(f'failed to get slot, using: {observed_slot}')
                     time.sleep(12)
             goal_slot = observed_slot + 1
             self.on_slot()
+            self.stdout_handler.flush()
             if int(time.time()) > exit_time:
                 return
 
@@ -153,13 +163,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     while not pathlib.Path("/data/etb-config-file-ready").exists():
+        print("waiting on etb-config file to be ready..", flush=True)
         time.sleep(1)
 
     etb_config = ETBConfig(args.config)
     fuzzer = WithdrawalSpammer(etb_config, args.max_operations_per_slot)
     fuzzer.fuzz()
-
-# etb_config = ETBConfig('configs/mainnet/geth-capella-testing.yaml')
-# fuzzer = WithdrawalSpammer(etb_config, 0)
-# for x in range(10):
-#     fuzzer.submit_validator_deposit(60+x)
