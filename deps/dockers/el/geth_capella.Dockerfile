@@ -5,9 +5,9 @@ FROM base as builder
 RUN mkdir -p /go/src/github.com/ethereum/
 WORKDIR /go/src/github.com/ethereum/
 
-ARG GETH_BRANCH="withdrawals-timestamp"
+ARG GETH_BRANCH="master"
 
-RUN git clone https://github.com/lightclient/go-ethereum.git \
+RUN git clone https://github.com/ethereum/go-ethereum.git \
     && cd go-ethereum \
     && git checkout ${GETH_BRANCH}
 
