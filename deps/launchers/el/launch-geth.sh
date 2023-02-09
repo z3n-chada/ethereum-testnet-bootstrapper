@@ -18,7 +18,6 @@ env_vars=(
   "IP_ADDRESS"
   "IP_SUBNET"
   "JWT_SECRET_FILE"
-  "NODE_NUM"
   "CHAIN_ID"
 )
 

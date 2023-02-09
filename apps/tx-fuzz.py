@@ -13,7 +13,6 @@ from pathlib import Path
 from modules.ETBConfig import ETBConfig
 
 
-
 w3.eth.account.enable_unaudited_hdwallet_features()
 
 
@@ -34,7 +33,7 @@ class TxFuzzLauncher(object):
 
         mnemonic = self.etb_config.get("eth1-account-mnemonic")
         passphrase = self.etb_config.get("eth1-passphrase")
-        premines = self.etb_config.global_config['accounts']['eth1-premine'].keys()
+        premines = self.etb_config.global_config["accounts"]["eth1-premine"].keys()
 
         pub_keys = []
         priv_keys = []
@@ -59,7 +58,7 @@ class TxFuzzLauncher(object):
             ",".join(public_keys),
         ]
 
-        launch_time = self.etb_config.get('bootstrap-genesis')
+        launch_time = self.etb_config.get("bootstrap-genesis")
         now = int(time.time())
         if now > (launch_time + self.fuzz_delay):
             fuzzer_wait = 0

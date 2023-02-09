@@ -14,6 +14,7 @@ env_vars=(
   "CONSENSUS_P2P_PORT"
   "CONSENSUS_VALIDATOR_METRIC_PORT"
   "CONSENSUS_VALIDATOR_RPC_PORT"
+  "CONSENSUS_LOG_LEVEL"
   "IP_ADDRESS"
   "IP_SUBNET"
   "JWT_SECRET_FILE"
@@ -48,7 +49,7 @@ done
 bootnode_enr=`cat $CONSENSUS_BOOTNODE_FILE`
 
 teku \
-    --logging="$TEKU_DEBUG_LEVEL" \
+    --logging="$CONSENSUS_LOG_LEVEL" \
     --network="$TESTNET_DIR/config.yaml" \
     --initial-state="$TESTNET_DIR/genesis.ssz" \
     --data-path="$CONSENSUS_NODE_DIR" \

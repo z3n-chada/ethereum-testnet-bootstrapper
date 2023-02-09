@@ -18,7 +18,6 @@ env_vars=(
   "IP_ADDRESS"
   "IP_SUBNET"
   "JWT_SECRET_FILE"
-  "NODE_NUM"
   "CHAIN_ID"
 )
 
@@ -37,28 +36,25 @@ while [ ! -f "$EXECUTION_CHECKPOINT_FILE" ]; do
     sleep 1
 done
 
-#echo "$EXECUTION_BOOTNODE"
-#echo "{}" > /tmp/nethermind.cfg
-#nethermind \
-#  $ADDITIONAL_ARGS \
-#  --config="/tmp/nethermind.cfg" \
-#  --datadir="$EXECUTION_DATA_DIR" \
-#  --Init.ChainSpecPath="$NETHER_MIND_GENESIS_FILE" \
-#  --Init.StoreReceipts=true \
-#  --Init.WebSocketsEnabled=true \
-#  --Init.EnableUnsecuredDevWallet=true \
-#  --Init.DiagnosticMode="None" \
-#  --JsonRpc.Enabled=true \
-#  --JsonRpc.EnabledModules="$HTTP_APIS" \
-#  --JsonRpc.Port="$EXECUTION_HTTP_PORT" \
-#  --JsonRpc.WebSocketsPort="$EXECUTION_WS_PORT" \
-#  --JsonRpc.Host=0.0.0.0 \
-#  --Network.ExternalIp="$IP_ADDR" \
-#  --Network.LocalIp="$IP_ADDR" \
-#  --Network.DiscoveryPort="$EXECUTION_P2P_PORT" \
-#  --Network.P2PPort="$EXECUTION_P2P_PORT" \
-#  --Network.Bootnodes="$EXECUTION_BOOTNODE" \
-#  --Merge.Enabled=true \
-#  --Merge.TerminalTotalDifficulty="$TERMINAL_TOTAL_DIFFICULTY" \
-#  --JsonRpc.JwtSecretFile=$JWT_SECRET_FILE \
-#  --JsonRpc.AdditionalRpcUrls="http://localhost:$EXECUTION_ENGINE_HTTP_PORT|http|net;eth;subscribe;engine;web3;client;clique,http://localhost:$EXECUTION_ENGINE_WS_PORT|ws|net;eth;subscribe;engine;web3;client"
+
+echo "{}" > /tmp/nethermind.cfg
+nethermind \
+  $ADDITIONAL_ARGS \
+  --config="/tmp/nethermind.cfg" \
+  --datadir="$EXECUTION_NODE_DIR" \
+  --Init.ChainSpecPath="$EXECUTION_GENESIS_FILE" \
+  --Init.StoreReceipts=true \
+  --Init.WebSocketsEnabled=true \
+  --Init.EnableUnsecuredDevWallet=true \
+  --Init.DiagnosticMode="None" \
+  --JsonRpc.Enabled=true \
+  --JsonRpc.EnabledModules="$EXECUTION_HTTP_APIS" \
+  --JsonRpc.Port="$EXECUTION_HTTP_PORT" \
+  --JsonRpc.WebSocketsPort="$EXECUTION_WS_PORT" \
+  --JsonRpc.Host=0.0.0.0 \
+  --Network.ExternalIp="$IP_ADDRESS" \
+  --Network.LocalIp="$IP_ADDRESS" \
+  --Network.DiscoveryPort="$EXECUTION_P2P_PORT" \
+  --Network.P2PPort="$EXECUTION_P2P_PORT" \
+  --JsonRpc.JwtSecretFile="$JWT_SECRET_FILE" \
+  --JsonRpc.AdditionalRpcUrls="http://localhost:$EXECUTION_ENGINE_HTTP_PORT|http|net;eth;subscribe;engine;web3;client;clique,http://localhost:$EXECUTION_ENGINE_WS_PORT|ws|net;eth;subscribe;engine;web3;client"

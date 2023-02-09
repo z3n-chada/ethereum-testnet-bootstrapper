@@ -14,6 +14,7 @@ env_vars=(
   "CONSENSUS_P2P_PORT"
   "CONSENSUS_VALIDATOR_METRIC_PORT"
   "CONSENSUS_VALIDATOR_RPC_PORT"
+  "CONSENSUS_LOG_LEVEL"
   "IP_ADDRESS"
   "IP_SUBNET"
   "JWT_SECRET_FILE"
@@ -49,7 +50,7 @@ beacon-chain \
   --chain-config-file="$TESTNET_DIR/config.yaml" \
   --genesis-state="$TESTNET_DIR/genesis.ssz" \
   --bootstrap-node="$(< "$CONSENSUS_BOOTNODE_FILE")" \
-  --verbosity="$PRYSM_DEBUG_LEVEL" \
+  --verbosity="$CONSENSUS_LOG_LEVEL" \
   --p2p-host-ip="$IP_ADDRESS" \
   --p2p-max-peers="$NUM_CLIENT_NODES" \
   --p2p-udp-port="$CONSENSUS_P2P_PORT" --p2p-tcp-port="$CONSENSUS_P2P_PORT" \
@@ -77,6 +78,6 @@ validator \
   --monitoring-host=0.0.0.0 --monitoring-port="$CONSENSUS_VALIDATOR_METRIC_PORT" \
   --graffiti="$CONSENSUS_GRAFFITI" \
   --wallet-dir="$CONSENSUS_NODE_DIR" \
-  --wallet-password-file="$TESTNET_DIR/wallet-password.txt" \
+  --wallet-password-file="$CONSENSUS_NODE_DIR/wallet-password.txt" \
   --suggested-fee-recipient=0x00000000219ab540356cbb839cbe05303d7705fa \
   --verbosity=debug

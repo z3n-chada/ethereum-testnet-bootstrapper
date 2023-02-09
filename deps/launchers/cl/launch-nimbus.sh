@@ -14,6 +14,7 @@ env_vars=(
   "CONSENSUS_P2P_PORT"
   "CONSENSUS_VALIDATOR_METRIC_PORT"
   "CONSENSUS_VALIDATOR_RPC_PORT"
+  "CONSENSUS_LOG_LEVEL"
   "IP_ADDRESS"
   "IP_SUBNET"
   "JWT_SECRET_FILE"
@@ -49,7 +50,7 @@ echo "Launching nimbus."
 nimbus_beacon_node \
     --non-interactive \
     --data-dir="$CONSENSUS_NODE_DIR" \
-    --log-file="$CONSENSUS_NODE_DIR/beacon-log.txt" --log-level="$NIMBUS_DEBUG_LEVEL" \
+    --log-file="$CONSENSUS_NODE_DIR/beacon-log.txt" --log-level="$CONSENSUS_LOG_LEVEL" \
     --network="$TESTNET_DIR/" \
     --secrets-dir="$CONSENSUS_NODE_DIR/secrets" --validators-dir="$CONSENSUS_NODE_DIR/keys" \
     --rest \
