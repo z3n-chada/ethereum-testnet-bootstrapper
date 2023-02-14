@@ -50,6 +50,8 @@ bootnode_enr=`cat $CONSENSUS_BOOTNODE_FILE`
 
 teku \
     --logging="$CONSENSUS_LOG_LEVEL" \
+    --log-color-enabled=false \
+    --log-destination=CONSOLE \
     --network="$TESTNET_DIR/config.yaml" \
     --initial-state="$TESTNET_DIR/genesis.ssz" \
     --data-path="$CONSENSUS_NODE_DIR" \
