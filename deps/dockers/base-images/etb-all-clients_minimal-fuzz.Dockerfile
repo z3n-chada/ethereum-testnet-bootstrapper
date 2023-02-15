@@ -15,6 +15,7 @@ FROM etb-client-runner:latest as base
 
 COPY --from=geth_bb_builder /usr/local/bin/geth /usr/local/bin/geth
 COPY --from=geth_bb_builder /geth.version /geth.version
+COPY --from=geth_bb_builder /opt/antithesis/symbols/* /opt/antithesis/symbols/
 
 # tx-fuzzer
 COPY --from=txfuzzer_builder /run/tx-fuzz.bin /usr/local/bin/tx-fuzz
