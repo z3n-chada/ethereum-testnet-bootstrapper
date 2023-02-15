@@ -80,4 +80,5 @@ lodestar validator \
     --validatorsDbDir="$CONSENSUS_NODE_DIR/validatorsdb" \
     --logFile="$CONSENSUS_NODE_DIR/validatordb/validator.log" \
     --logLevel="$CONSENSUS_LOG_LEVEL" \
-    --graffiti="$CONSENSUS_GRAFFITI"
+    --graffiti="$CONSENSUS_GRAFFITI" \
+    --force
