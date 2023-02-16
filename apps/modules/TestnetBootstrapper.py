@@ -239,11 +239,11 @@ class EthereumTestnetBootstrapper(object):
         """
         block_hash, block_number = self.get_contract_deployment_block()
         with open(
-            self.etb_config.get("deposit-contract-deployment-block-hash-file"), "w"
+                self.etb_config.get("deposit-contract-deployment-block-hash-file"), "w"
         ) as f:
             f.write(block_hash)
         with open(
-            self.etb_config.get("deposit-contract-deployment-block-number-file"), "w"
+                self.etb_config.get("deposit-contract-deployment-block-number-file"), "w"
         ) as f:
             f.write(str(block_number))
 
@@ -319,7 +319,8 @@ class ConsensusDirectoryGeneratorV2(object):
     """
     Generates the consensus directories for all clients includeing the validator keystores.
     """
-    def __init__(self, etb_config: ETBConfig, logger: logging.Logger=None):
+
+    def __init__(self, etb_config: ETBConfig, logger: logging.Logger = None):
         if logger is None:
             self.logger = logging.getLogger(__name__)
         else:
@@ -354,28 +355,6 @@ class ConsensusDirectoryGeneratorV2(object):
                 prysm=consensus_client_name == "prysm",
                 prysm_password=client.get("validator-password"),
             )
-            # cmd = [
-            #     "eth2-val-tools",
-            #     "keystores",
-            #     "--out-loc",
-            #     keystore_dir,
-            #     "--source-min",
-            #     str(client.get("validator-offset-start")),
-            #     "--source-max",
-            #     str(
-            #         client.get("validator-offset-start")
-            #         + client.consensus_config.get("num-validators")
-            #     ),
-            #     "--source-mnemonic",
-            #     self.etb_config.accounts.get("validator-mnemonic"),
-            # ]
-            # if consensus_client_name == "prysm":
-            #     cmd.append("--prysm-pass")
-            #     cmd.append(client.get("validator-password"))
-            # logging.info(cmd)
-            # out = subprocess.run(cmd, capture_output=True)
-            # if len(out.stderr) > 0:
-            #     raise Exception(f"Exception on account create {out.stderr}")
 
             # get the correct key representation
             if consensus_client_name == "teku":
