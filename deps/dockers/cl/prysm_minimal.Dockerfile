@@ -8,6 +8,8 @@ RUN git clone --branch develop \
     https://github.com/prysmaticlabs/prysm
 
 WORKDIR /git/prysm
+RUN git log -n 1 --format=format:"%H" > /prysm.version
+
 # Build binaries for minimal configuration.
 RUN bazel build --config=minimal \
   //cmd/beacon-chain:beacon-chain \
@@ -19,7 +21,7 @@ FROM scratch
 
 COPY --from=builder /git/prysm/bazel-bin/cmd/beacon-chain/beacon-chain_/beacon-chain /usr/local/bin/
 COPY --from=builder /git/prysm/bazel-bin/cmd/validator/validator_/validator /usr/local/bin/
-
+COPY --from=builder /prysm.version /prysm.version
 #
 ##FROM scratch
 ##

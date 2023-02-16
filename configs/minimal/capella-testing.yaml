@@ -1,4 +1,6 @@
-# Running a minimal spec'd capella local testnet
+# Running a minimal spec'd capella local testnet with fuzzing enabled.
+# We start genesis with 120 validators and perform deposits. Capella
+# occurs at epoch 14 to allow some deposits to be processed.
 
 # parameters for building the docker network
 docker:
@@ -57,7 +59,7 @@ config-params:
     config-name: "local-minimal-testnet"
 
     #config param overrides
-    min-genesis-active-validator-count: 70 # custom pre-seeded into genesis state.
+    min-genesis-active-validator-count: 100 # custom pre-seeded into genesis state.
     min-validator-withdrawability-delay: 2 # increase the withdrawal speed
     shard-committee-period: 2 # increase the withdrawal speed
 
@@ -233,6 +235,8 @@ client-instances:
 ###############################################################################
 ####### All Consensus Clients paired with a Geth Execution Client. ############
 ###############################################################################
+
+  # Geth clients
   prysm-geth:
     # docker-compose
     image: "etb-all-clients"
@@ -304,37 +308,38 @@ client-instances:
 
     validator-offset-start: 40
 
-  # fuzz clients
-  prysm-geth-fuzzer:
+  # Besu clients
+
+  prysm-besu:
     # docker-compose
     image: "etb-all-clients"
-    tag: "minimal-fuzz"
+    tag: "minimal"
     start-ip-address: "10.0.20.60"
     num-nodes: 1
 
     # consensus-info
     consensus-config: "prysm-consensus-client"
-    execution-config: "geth-execution-config"
+    execution-config: "besu-execution-config"
 
     validator-offset-start: 50
 
+    additional-env:
+      validator-password: "testnet-password"
 
-  lighthouse-geth-fuzzer:
+  teku-besu:
     # docker-compose
     image: "etb-all-clients"
-    tag: "minimal-fuzz"
+    tag: "minimal"
     start-ip-address: "10.0.20.70"
     num-nodes: 1
 
     # consensus-info
-    consensus-config: "lighthouse-consensus-client"
-    execution-config: "geth-execution-config"
+    consensus-config: "teku-consensus-client"
+    execution-config: "besu-execution-config"
 
     validator-offset-start: 60
 
-
-  # clients to catch the extra deposits
-  teku-whale:
+  lighthouse-besu:
     # docker-compose
     image: "etb-all-clients"
     tag: "minimal"
@@ -342,10 +347,53 @@ client-instances:
     num-nodes: 1
 
     # consensus-info
-    consensus-config: "teku-consensus-client-whale"
+    consensus-config: "lighthouse-consensus-client"
     execution-config: "geth-execution-config"
 
     validator-offset-start: 70
+
+  lodestar-besu:
+    # docker-compose
+    image: "etb-all-clients"
+    tag: "minimal"
+    start-ip-address: "10.0.20.90"
+    num-nodes: 1
+
+    # consensus-info
+    consensus-config: "lodestar-consensus-client"
+    execution-config: "besu-execution-config"
+
+    validator-offset-start: 80
+
+    additional-env:
+      lodestar-preset: "minimal"
+
+  nimbus-besu:
+    # docker-compose
+    image: "etb-all-clients"
+    tag: "minimal"
+    start-ip-address: "10.0.20.100"
+    num-nodes: 1
+
+    # consensus-info
+    consensus-config: "nimbus-consensus-client"
+    execution-config: "besu-execution-config"
+
+    validator-offset-start: 90
+
+  # clients to catch the extra deposits
+  teku-whale:
+    # docker-compose
+    image: "etb-all-clients"
+    tag: "minimal"
+    start-ip-address: "10.0.20.130"
+    num-nodes: 1
+
+    # consensus-info
+    consensus-config: "teku-consensus-client-whale"
+    execution-config: "geth-execution-config"
+
+    validator-offset-start: 100
 
 # generic instances that run fuzzers/health checks/etc.
 generic-instances:
@@ -366,12 +414,13 @@ generic-instances:
     entrypoint: "python3 /source/apps/status-check.py --config /data/etb-config.yaml --phase0-slot 96 --phase1-slot 104 --phase2-slot 120 --phase3-slot 128"
     # root state is 12 (first deposits are processed here) start fuzzing epoch is 13, capella is 14, stop at 15. Healed by 16.
 
+  # spam regular deposits
   validator-operation-fuzzer:
-    image: "ethereum-testnet-bootstrapper"
-    tag: "latest"
+    image: "etb-all-clients"
+    tag: "minimal"
     start-ip-address: "10.0.20.208"
     num-nodes: 1
-    entrypoint: "python3 /source/apps/validator-operation-spammer.py --config /data/etb-config.yaml"
+    entrypoint: "python3 /source/apps/validator-operation-spammer.py --config /data/etb-config.yaml --only-valid-deposits"
 
 
   eth2-bootnode:

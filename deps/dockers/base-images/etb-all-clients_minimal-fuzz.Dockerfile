@@ -26,8 +26,10 @@ COPY --from=lh_builder /lighthouse.version /lighthouse.version
 
 COPY --from=prysm_builder /usr/local/bin/beacon-chain /usr/local/bin/beacon-chain
 COPY --from=prysm_builder /usr/local/bin/validator /usr/local/bin/validator
+COPY --from=prysm_builder /prysm_evil-shapella.version /prysm_evil-shapella.version
 
 # ethdo fuzzer
 COPY --from=go_builder /go/bin/ethdo /usr/local/bin/ethdo
+
 
 ENTRYPOINT ["/bin/bash"]

@@ -1,4 +1,6 @@
-# Running a minimal spec'd capella local testnet
+# Running a minimal spec'd capella local testnet with fuzzing enabled.
+# We start genesis with 120 validators and perform deposits. Capella
+# occurs at epoch 14 to allow some deposits to be processed.
 
 # parameters for building the docker network
 docker:
@@ -441,13 +443,21 @@ generic-instances:
     entrypoint: "python3 /source/apps/status-check.py --config /data/etb-config.yaml --phase0-slot 96 --phase1-slot 104 --phase2-slot 120 --phase3-slot 128"
     # root state is 12 (first deposits are processed here) start fuzzing epoch is 13, capella is 14, stop at 15. Healed by 16.
 
+  # validator-operation-spammer but with a modified ethdo.
   validator-operation-fuzzer:
-    image: "ethereum-testnet-bootstrapper"
-    tag: "latest"
+    image: "etb-all-clients"
+    tag: "minimal-fuzz"
     start-ip-address: "10.0.20.208"
     num-nodes: 1
     entrypoint: "python3 /source/apps/validator-operation-spammer.py --config /data/etb-config.yaml"
 
+# TODO: update to Marius branch.
+#  tx-spammer:
+#    image: "etb-all-clients"
+#    tag: "minimal-fuzz"
+#    start-ip-address: "10.0.20.209"
+#    num-nodes: 1
+#    entrypoint: "python3 /source/apps/tx-fuzz.py --config /data/etb-config.yaml --target-ip 10.0.20.110 --target-port 8645 --slot-delay 80"
 
   eth2-bootnode:
     image: "ethereum-testnet-bootstrapper"

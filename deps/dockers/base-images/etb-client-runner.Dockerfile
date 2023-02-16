@@ -8,7 +8,8 @@ RUN mkdir -p /rocksdb/lib && cd rocksdb && cp librocksdb.so* /rocksdb/lib/
 FROM golang:1.18 as go_builder
 
 RUN go install github.com/wealdtech/ethereal/v2@latest \
-    && go install github.com/wealdtech/ethdo@latest
+    && go install github.com/wealdtech/ethdo@latest \
+    && go install github.com/protolambda/eth2-val-tools@latest
 
 FROM debian:bullseye-slim as base
 # Install nodejs
@@ -57,6 +58,7 @@ RUN wget --no-check-certificate https://apt.llvm.org/llvm.sh && \
 
 COPY --from=go_builder /go/bin/ethereal /usr/local/bin/ethereal
 COPY --from=go_builder /go/bin/ethdo /usr/local/bin/ethdo
+COPY --from=go_builder /go/bin/eth2-val-tools /usr/local/bin/eth2-val-tools
 
 ENV LLVM_CONFIG=llvm-config-14
 
