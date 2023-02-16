@@ -1,4 +1,5 @@
 import logging
+import os
 import pathlib
 import random
 import time
@@ -261,6 +262,22 @@ if __name__ == "__main__":
         default=False,
         help="if true don't send invalid or duplicate deposits.",
     )
+
+    parser.add_argument(
+        "--only-valid-deposits",
+        dest="only_valid_deposits",
+        action="store_true",
+        default=False,
+        help="if true don't send invalid or duplicate deposits.",
+    )
+
+    parser.add_argument(
+        "--seed",
+        dest="seed",
+        default=None,
+        help="seed to use for random number generation.",
+    )
+
     args = parser.parse_args()
 
     while not pathlib.Path("/data/etb-config-file-ready").exists():
@@ -269,6 +286,16 @@ if __name__ == "__main__":
 
     _logger = create_logger("ValidatorOperationFuzzer", "debug")
     _etb_config = ETBConfig(args.config, _logger)
+
+    if args.seed is not None:
+        _logger.info(f"Using user supplied random seed: {args.seed}")
+        random.seed(args.seed)
+
+    else:
+        rand = os.urandom(10)
+        seed = int.from_bytes(rand, "big")
+        _logger.info(f"setting random seed to: {seed}")
+        random.seed(seed)
 
     fuzzer: ValidatorOperationFuzzer = ValidatorOperationFuzzer(
         _etb_config,
