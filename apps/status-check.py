@@ -290,7 +290,7 @@ def check_for_consensus(
 
     found_consensus = False
     curr_try = 0
-    while not found_consensus or curr_try > max_retries:
+    while not found_consensus or curr_try >= max_retries:
         curr_try += 1
         unreachable_clients = []
         unique_responses: dict[str, list[str]] = {}
@@ -387,6 +387,11 @@ class TestnetStatusCheckerV2(object):
         print(f"phase0_slot: {phase0_slot}\nphase1_slot: {phase1_slot}\n", flush=True)
         print(f"phase2_slot: {phase2_slot}\nphase3_slot: {phase3_slot}\n", flush=True)
 
+        # print network status as the network comes up.
+        while self.testnet_monitor.get_slot() < phase0_slot - 8:
+            self.testnet_monitor.wait_for_next_slot()
+            print(get_heads_status_check_slot(self.clients_to_monitor), flush=True)
+
         self.testnet_monitor.wait_for_slot(phase0_slot)
         if check_for_consensus(self.clients_to_monitor):
             print(f"Phase0 passed.", flush=True)
@@ -395,6 +400,7 @@ class TestnetStatusCheckerV2(object):
             print(f": terminate")
 
         self.testnet_monitor.wait_for_slot(phase1_slot)
+        # print the current view of the network.
         print(f"start_faults", flush=True)
 
         while self.testnet_monitor.get_slot() < phase2_slot:
