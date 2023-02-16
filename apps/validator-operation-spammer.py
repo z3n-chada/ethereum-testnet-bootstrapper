@@ -264,14 +264,6 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--only-valid-deposits",
-        dest="only_valid_deposits",
-        action="store_true",
-        default=False,
-        help="if true don't send invalid or duplicate deposits.",
-    )
-
-    parser.add_argument(
         "--seed",
         dest="seed",
         default=None,
