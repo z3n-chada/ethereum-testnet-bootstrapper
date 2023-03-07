@@ -2,14 +2,14 @@ FROM etb-client-builder:latest as base
 
 FROM base as builder
 
-RUN mkdir -p /go/src/github.com/ethereum/ 
+RUN mkdir -p /go/src/github.com/ethereum/
 WORKDIR /go/src/github.com/ethereum/
 
 ARG GETH_BRANCH="master"
 
-RUN git clone https://github.com/ethereum/go-ethereum \
+RUN git clone https://github.com/ethereum/go-ethereum.git \
     && cd go-ethereum \
-    && git checkout ${GETH_BRANCH} 
+    && git checkout ${GETH_BRANCH}
 
 # add items to this exclusions list to exclude them from instrumentation
 RUN touch /opt/antithesis/go_instrumentation/exclusions.txt
@@ -19,7 +19,7 @@ RUN touch /opt/antithesis/go_instrumentation/exclusions.txt
 WORKDIR /go/src/github.com/ethereum/
 RUN mkdir -p geth_instrumented && LD_LIBRARY_PATH=/opt/antithesis/go_instrumentation/lib /opt/antithesis/go_instrumentation/bin/goinstrumentor -antithesis=/opt/antithesis/go_instrumentation/instrumentation/go/wrappers/ -exclude=/opt/antithesis/go_instrumentation/exclusions.txt -stderrthreshold=INFO go-ethereum geth_instrumented
 RUN cp -r geth_instrumented/customer/* go-ethereum/
-RUN cd go-ethereum && go mod edit -require=antithesis.com/instrumentation/wrappers@v1.0.0 -replace antithesis.com/instrumentation/wrappers=/opt/antithesis/go_instrumentation/instrumentation/go/wrappers 
+RUN cd go-ethereum && go mod edit -require=antithesis.com/instrumentation/wrappers@v1.0.0 -replace antithesis.com/instrumentation/wrappers=/opt/antithesis/go_instrumentation/instrumentation/go/wrappers
 # Antithesis -------------------------------------------------
 # Get dependencies
 RUN cd /go/src/github.com/ethereum/go-ethereum && go get -t -d ./...

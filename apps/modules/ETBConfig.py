@@ -1,272 +1,312 @@
-import random
-from enum import IntEnum
+import logging
+import pathlib
+import re
 
+from .ETBConstants import (
+    PresetEnum,
+    MinimalPreset,
+    MainnetPreset,
+    ForkVersion,
+    always_match_regex,
+    Epoch,
+    TotalDifficultyStep,
+    PresetOverrides,
+)
 from ruamel import yaml
-from typing import List, Dict, Union, Optional, Any
+from typing import List, Dict, Union, Any, Generator, Type
 from web3.auto import w3
+
+
+class PremineKeyPair(object):
+    """
+    Represents the premines used in genesis.
+    """
+
+    def __init__(self, premine_path: str, password: str, mnemonic: str):
+        self.mnemonic = mnemonic
+        self.password = password
+        self.premine_path = premine_path
+        self._init()
+
+    def _init(self):
+        w3.eth.account.enable_unaudited_hdwallet_features()
+
+        acct = w3.eth.account.from_mnemonic(
+            self.mnemonic, account_path=self.premine_path, passphrase=self.password
+        )
+        self.public_key = acct.address
+        self.private_key = acct.privateKey.hex()
+
 
 """
     Performs the heavy lifting of parsing and consuming configs for ETB.
 """
 
 
-class ForkVersion(IntEnum):
-    Phase0 = 0
-    Altair = 1
-    Bellatrix = 2
-    Capella = 3
-
-
 class ConfigEntry(object):
     """
-    A generic configuration entry which has some useful features for getting
-    information out of etb-config sections.
+    A wrapper around some entries in a config file that allows access via
+    has and get to reduce boilerplate code.
 
-    A ConfigEntry in the etb-config file is the root in the yaml. e.g.
-    ConfigEntryName:
-        {
-            ConfigEntry
-        }
+    we use the recursive definition for nested fields that do *not* contain
+    instances.
     """
 
-    def __init__(self, config_entry: Dict):
-        if not isinstance(config_entry, ConfigEntry):
-            self.config = {}
-            self._validate_and_parse(config_entry)
-            if "additional-env" in config_entry:
-                self.config["additional-env"] = config_entry["additional-env"]
+    def __init__(self, data: dict, recursive=False):
+        self.invalid_keys = []
+        self.required_keys = []
+        self.ignored_keys = []
+        self.config_entry = {}
+        if recursive:
+            self._validate_and_populate(data)
+        else:
+            self.config_entry = self._validate_and_parse(data)
 
-    def _validate_and_parse(self, entry):
-        for k, v in entry.items():
-            if k != "additional-env":
-                if k in self.config.keys():
-                    print(f"found duplicate {k}")
-                    print(f"current key_list:{self.config.keys()}")
-                    raise Exception(f"Duplicate key {k} found in {self.config.keys()} already.")
-                else:
-                    self.config[k] = v
-                    if isinstance(v, dict):
-                        self._validate_and_parse(v)
-        return True
+    def _validate_and_parse(self, config_entry: dict) -> dict:
+        """
+        Ensures the data contained in this config follows spec.
+        :return: the entry.
+        """
+        entry = {}
+        for k, v in config_entry.items():
+            if k in self.invalid_keys:
+                raise Exception(f"Invalid entry {k} in config-entry")
+            elif k not in self.ignored_keys:
+
+                entry[k] = config_entry[k]
+                # do it recursively
+            else:
+                pass
+        if not all(x in list(entry.keys()) for x in self.required_keys):
+            raise Exception("ConfigEntry does not contain all required keys.")
+        return entry
+
+    # recursive entries
+    def _validate_and_populate(self, config_entry: dict):
+        bad_keys = ["image", "additional-env"]  # make sure this is not an instance
+        for k, v in config_entry.items():
+            if k in bad_keys:
+                raise Exception("Cannot recursive config entry setup for Instances.")
+            if k in self.config_entry.keys():
+                print(f"found duplicate {k}")
+                print(f"current key_list:{self.config_entry.keys()}")
+                raise Exception(
+                    f"Duplicate key {k} found in {self.config_entry.keys()} already."
+                )
+            else:
+                self.config_entry[k] = v
+                if isinstance(v, dict):
+                    self._validate_and_populate(v)
 
     def has(self, key):
-        return key in self.config
+        # first check for overloaded getters.
+        if hasattr(self, f"get_{key.replace('-', '_')}"):
+            return True
+
+        # now check the config entry
+        if key in self.config_entry:
+            return True
+
+        # last check if the dict of the object itself.
+        return key in self.__dict__
 
     def get(self, key):
-        if self.has(key):
-            return self.config[key]
+
+        if hasattr(self, f"get_{key.replace('-', '_')}"):
+            return getattr(self, f'get_{key.replace("-", "_")}')()
+
+        elif key in self.config_entry.keys():
+            return self.config_entry[key]
+
+        # last check for the dict
+        if key in self.__dict__:
+            return self.__dict__[key]
+
         else:
             raise Exception(f"Entry has no config entry: {key}")
 
     def items(self):
-        return self.config.items()
+        return self.config_entry.items()
 
     def keys(self):
-        return self.config.keys()
+        return self.config_entry.keys()
 
 
-class ModuledConfigEntry(object):
-    """
-    A module that encapsulates a config entry. The two differences between a
-    regular config entry and a module is:
-        1. It becomes one or more docker containers
-        2. It specifies num-nodes
-
-    The number of nodes refers to the number of modules, which in turn
-    determines the number of docker containers for that ModuledConfigEntry.
-
-    MODULETYPE:
-        {
-            ModuledConfigEntry {
-                        ConfigEntry
-                        num-nodes: #
-            }
-        }
-    """
-
-    def __init__(self, name: str, module_type: str, etb_config):
-        self.name: str = name
-        self.etb_config = etb_config
-        self.module_type: str = module_type
-        self.config: ConfigEntry = self._fetch_config_entry()
-
-        self.defined_env_vars: List[str] = [
-            "ip-address",
-            "node-num",
+class ConsensusConfigEntry(ConfigEntry):
+    def __init__(self, data: dict):
+        self.required_keys = [
+            "client",
+            "launcher",
+            "log-level",
+            "num-validators",
+            "p2p-port",
+            "beacon-api-port",
+            "beacon-rpc-port",
+            "validator-rpc-port",
+            "beacon-metric-port",
+            "validator-metric-port",
         ]
-
-    def __iter__(self):
-        for x in range(0, self.config.get('num-nodes')):
-            yield Module(self, x)
-
-    def _fetch_config_entry(self) -> ConfigEntry:
-        return ConfigEntry(self.etb_config.global_config[self.module_type][self.name])
-
-    def has(self, key: str) -> bool:
-
-        if hasattr(self, f"get_{key.replace('-', '_')}"):
-            return True
-
-        return self.config.has(key)
-
-    def get(self, key: str, ndx=None):
-
-        if key in self.__dict__:
-            return self.__dict__[key]
-
-        if hasattr(self, f"get_{key.replace('-', '_')}"):
-            if ndx is None:
-                return getattr(self, f'get_{key.replace("-", "_")}')()
-            else:
-                # some values depend on what number node we are using.
-                return getattr(self, f'get_{key.replace("-", "_")}')(ndx)
-
-        if self.config.has(key):
-            return self.config.get(key)
-
-        raise Exception(f"GenericInstance {self} can't get {key}")
+        self.invalid_keys = []
+        self.ignored_keys = []
+        self.config_entry = super()._validate_and_parse(data)
 
 
-class Module(ModuledConfigEntry):
+class ExecutionConfigEntry(ConfigEntry):
+    def __init__(self, data: dict):
+        self.required_keys = [
+            "client",
+            "launcher",
+            "log-level",
+            "http-apis",
+            "http-port",
+            "ws-port",
+            "ws-apis",
+            "engine-http-port",
+            "engine-ws-port",
+            "metric-port",
+        ]
+        self.invalid_keys = []
+        self.ignored_keys = []
+        self.config_entry = super()._validate_and_parse(data)
+
+
+class Instance(ConfigEntry):
     """
-        One instance of a ModuledConfigEntry
+    Contains a representation of a docker container that will be running
+    in the local testnet.
     """
 
-    def __init__(self, parent_module: ModuledConfigEntry, ndx: int):
-        self.root_name = parent_module.name
-        super().__init__(parent_module.name, parent_module.module_type, parent_module.etb_config)
-        # overwrite the name
-        self.name = f"{parent_module.name}-{ndx}"
+    def __init__(self, root_name: str, ndx: int, config: dict):
+        self.config_entry = config
+        self.root_name = root_name
+        self.name = f"{root_name}-{ndx}"
         self.ndx = ndx
-        # Modules must define their base docker vars.
-        self.docker_entry: DockerEntry = DockerEntry(self)
-        # defined_env_var -> DOCKER_ENV_VAR
 
-    def _fetch_config_entry(self) -> ConfigEntry:
-        # we need to override due to naming convention
-        return ConfigEntry(self.etb_config.global_config[self.module_type][self.root_name])
-
-    def has(self, key: str) -> bool:
-        if hasattr(self, f"get_{key.replace('-', '_')}"):
-            return True
-
-        return self.config.has(key)
-
-    def get(self, key: str):
-        if hasattr(self, f"get_{key.replace('-', '_')}"):
-            return getattr(self, f'get_{key.replace("-", "_")}')()
-
-        if self.config.has(key):
-            return self.config.get(key)
-
-        if self.config.has('additional-env'):
-            if key in self.config.get('additional-env').keys():
-                return self.config.get('additional-env')[key]
-
-        raise Exception(f"Module {self} can't get {key}")
+        # environment variables that need to be populated in docker container
+        self.defined_env_vars = ["ip-address"]
 
     def get_ip_address(self) -> str:
-        prefix = ".".join(self.config.get("start-ip-addr").split(".")[:3]) + "."
-        base = int(self.config.get("start-ip-addr").split(".")[-1])
+        prefix = (
+            ".".join(self.config_entry.get("start-ip-address").split(".")[:3]) + "."
+        )
+        base = int(self.config_entry.get("start-ip-address").split(".")[-1])
         return prefix + str(base + int(self.ndx))
-
-    def get_node_num(self) -> int:
-        return self.ndx
 
     def get_env_vars(self) -> Dict[str, Union[str, int, float]]:
         env_vars = {}
         for var in self.defined_env_vars:
-            env_vars[var.replace('-', '_').upper()] = self.get(var)
+            env_vars[var.replace("-", "_").upper()] = self.get(var)
         # add any env_vars from the additional env section.
-        if self.has('additional-env'):
-            for k, v in self.get('additional-env').items():
-                env_vars[k.replace('-', '_').upper()] = v
+        if self.has("additional-env"):
+            for k, v in self.get("additional-env").items():
+                env_vars[k.replace("-", "_").upper()] = v
 
         return env_vars
 
+    def get_docker_repr(self, docker_config: ConfigEntry) -> dict:
+        """
+        Get the docker-compose representation of this service.
+        :return:
+        """
+        entry = {
+            "container_name": self.name,
+            "image": f"{self.get('image')}:{self.get('tag')}",
+            "volumes": docker_config.get("volumes"),
+            "networks": {
+                docker_config.get("network-name"): {
+                    "ipv4_address": self.get_ip_address()
+                }
+            },
+        }
+        if self.has("entrypoint"):
+            entry["entrypoint"] = self.get("entrypoint").split()
+        else:
+            entry["entrypoint"] = ["/bin/sh", "-c"]
 
-class ETBClient(ModuledConfigEntry):
+        if self.has("docker-command"):
+            entry["command"] = self.get("docker-command")
+
+        env_vars = self.get_env_vars()
+
+        if len(env_vars.keys()) > 0:
+            entry["environment"] = env_vars
+
+        return entry
+
+
+class InstanceCollection(ConfigEntry):
     """
-    A special purpose ETBClient represents an entry in the ETB config for
-    one or more clients. These clients consist of both a CL and EL client.
+    Describes a collection of instances.
     """
 
-    def __init__(self, name: str, module_type: str, etb_config):
-        super().__init__(name, module_type, etb_config)
-        self.consensus_config: ConfigEntry = self.etb_config.consensus_configs[self.config.get('consensus-config')]
-        self.execution_config: ConfigEntry = self.etb_config.execution_configs[self.config.get('execution-config')]
+    def __init__(self, name: str, entry: dict):
+        # config entry code
+
+        self.required_keys = [
+            "image",
+            "tag",
+            "start-ip-address",
+            "num-nodes",
+        ]
+        self.ignored_keys = [
+            # 'entrypoint',  # handled in inherited classes
+        ]
+        self.invalid_keys = []
+        self.config_entry = super()._validate_and_parse(entry)
+        # instance code
+        self.name = name
+        self.num_nodes: int = self.config_entry.get("num-nodes")
 
     def __iter__(self):
-        for x in range(self.get('num-nodes')):
-            yield Client(self, x)
+        for x in range(self.get("num-nodes")):
+            yield Instance(self.name, x, self.config_entry)
 
 
-class Client(Module, ETBClient):
+class ClientInstance(Instance, ConfigEntry):
     """
-    An ETB client is a single client, inherit from this for either a CL or EL
-    client.
+    Represents a single instance with a CL and EL node.
+    Inherits ConfigEntry for get and has abstractions
     """
 
-    def __init__(self, parent_module: ETBClient, ndx: int):
-        super().__init__(parent_module, ndx)
+    def __init__(
+        self,
+        root_name: str,
+        ndx: int,
+        config: dict,
+        cl_config: ConsensusConfigEntry,
+        el_config: ExecutionConfigEntry,
+        files_config_entry: ConfigEntry,
+    ):
+        super().__init__(root_name, ndx, config)
+        self.consensus_config: ConsensusConfigEntry = cl_config
+        self.execution_config: ExecutionConfigEntry = el_config
+        self.etb_files_config: ConfigEntry = (
+            files_config_entry  # used to derive various path information.
+        )
 
-        client_env_vars = [
-            "testnet-dir",
-            "jwt-secret-file",
+        consensus_env_vars = [
+            # env vars defined in the consensus config
+            "consensus-client",
+            "consensus-launcher",
+            "consensus-config-file",
+            "consensus-genesis-file",
+            "consensus-num-validators",
+            "consensus-p2p-port",
+            "consensus-beacon-rpc-port",
+            "consensus-beacon-api-port",
+            "consensus-beacon-metric-port",
+            "consensus-validator-rpc-port",
+            "consensus-validator-metric-port",
+            "consensus-log-level",
+            # env vars that are derived.
+            "consensus-node-dir",
+            "consensus-graffiti",
         ]
 
-        for env_var in client_env_vars:
-            self.defined_env_vars.append(env_var)
-
-    def __repr__(self):
-        return f"[Client]:{self.name} - {self.ndx}\n"
-
-    def get_execution_client_view(self):
-        """Return an ExecutionClient view."""
-        return ExecutionClient(self, self.ndx)
-
-    def get_consensus_client_view(self):
-        """Return a ConsensusClient view."""
-        return ConsensusClient(self, self.ndx)
-
-    def get_node_dir(self) -> str:
-        root = self.config.get('testnet-dir')
-        return f"{root}/node_{self.ndx}"
-
-    def get_jwt_secret_file(self) -> str:
-        """The path not the file."""
-        return f"{self.config.get('jwt-secret-file')}-{self.ndx}"
-
-    def get_entrypoint(self) -> str:
-        return f"/bin/sh -c"
-
-    def get_command(self) -> List:
-        # to launch both scripts.
-        return [f"{self.get('execution-launcher')} & {self.get('consensus-launcher')}"]
-
-
-class ExecutionClient(Client):
-    """
-    A ExecutionClient is the CL portion of a single instance of an Client.
-    It contains all the information about the CL client and its configuration
-    settings.
-
-    Requires: name, ETBClients config, ndx (which instance this belongs to.)
-    """
-
-    def __init__(self, parent_module: Client, ndx: int):
-        self.parent_module = parent_module  # inheritance is misleading. it is the same instance.
-        super().__init__(parent_module, ndx)
-        self.name = parent_module.name
-        self.root_name = parent_module.root_name
-
-        # execution client env-vars
-        execution_client_env_vars = [
+        execution_env_vars = [
             "execution-client",
             "execution-launcher",
             "execution-genesis-file",
-        ]
-        execution_config_env_vars = [
             "execution-log-level",
             "execution-http-apis",
             "execution-ws-apis",
@@ -276,237 +316,270 @@ class ExecutionClient(Client):
             "execution-engine-ws-port",
             "execution-p2p-port",
             "execution-metric-port",
+            # env vars that are derived
+            "execution-node-dir",
         ]
 
-        execution_derived_env_vars = [
-            "execution-node-dir"
+        shared_env_vars = [
+            "jwt-secret-file",
+            "testnet-dir",
         ]
 
-        for env_var in execution_client_env_vars:
-            self.defined_env_vars.append(env_var)
-        for env_var in execution_config_env_vars:
-            self.defined_env_vars.append(env_var)
-        for env_var in execution_derived_env_vars:
-            self.defined_env_vars.append(env_var)
+        # prysm only cases
+        prysm_env_vars = [
+            "validator-password",
+            "wallet-password-path",
+        ]
 
-    def has(self, key: str) -> bool:
+        for k in consensus_env_vars:
+            self.defined_env_vars.append(k)
+        for k in execution_env_vars:
+            self.defined_env_vars.append(k)
+        for k in shared_env_vars:
+            self.defined_env_vars.append(k)
+        if self.get("consensus-client") == "prysm":
+            for k in prysm_env_vars:
+                self.defined_env_vars.append(k)
+
+    def has(self, key):
+        # first check for overloaded getters.
         if hasattr(self, f"get_{key.replace('-', '_')}"):
             return True
 
-        if self.config.has(key):
+        # now check the config entry
+        if key in self.config_entry:
             return True
 
-        if self.execution_config.has(key):
-            return True
+        # in order to fetch the has/get from consensus and execution configs
+        split_key = key.split("-")
+        if split_key[0] == "consensus":
+            return self.consensus_config.has("-".join(split_key[1:]))
 
-    def get(self, key: str):
+        if split_key[0] == "execution":
+            return self.execution_config.has("-".join(split_key[1:]))
+        # lastly check if the dict of the object itself.
+        return key in self.__dict__
 
-        if hasattr(self, f"get_{key.replace('-', '_')}"):
-            return getattr(self, f'get_{key.replace("-", "_")}')()
+    def get(self, key):
 
-        if self.config.has(key):
-            return self.config.get(key)
+        if not self.has(key):
+            raise Exception(f"Entry has no config entry: {key}")
 
-        if self.execution_config.has(key):
-            return self.execution_config.get(key)
-
-        raise Exception(f"Module {self} can't get {key}")
-
-    def _fetch_config_entry(self) -> ConfigEntry:
-        return self.parent_module.config
-
-    def get_execution_genesis_file(self) -> str:
-        return self.etb_config.get(f"{self.get('execution-client')}-genesis-file")
-
-    def get_execution_node_dir(self) -> str:
-        return f"{self.parent_module.get('node-dir')}/{self.get('execution-client')}"
-
-    def get_rpc_path(self, protocol="http") -> str:
-        """
-            Get a path for accessing the RPC interface in
-            {protocol}://{IP}:{PORT} form.
-            defaults to http.
-        """
-        if not self.has(f"execution-{protocol}-port"):
-            raise Exception(f"Couldn't look up protocol {protocol} port. Check config for execution-{protocol}-port")
-
-        protocol_port = self.get(f"execution-{protocol}-port")
-        return f"{protocol}://{self.get('ip-address')}:{protocol_port}"
-
-    def get_implemented_apis(self, protocol: str = 'http') -> List[str]:
-        """
-        get all implemented apis for a given protocol (lowercase)
-        :param protocol: optional, defaults to http
-        :return: list[(lower)apis]
-        """
-        return [x.lower() for x in self.get(f"execution-{protocol}-apis").split(',')]
-
-
-class ConsensusClient(Client):
-    """
-    A ConsensusClient is the CL portion of a single instance of an Client.
-    It contains all the information about the CL client and its configuration
-    settings.
-    """
-
-    def __init__(self, parent_module: Client, ndx: int):
-        self.parent_module = parent_module  # inheritance is misleading. it is the same instance.
-        super().__init__(parent_module, ndx)
-        self.name = parent_module.name
-        self.root_name = parent_module.root_name
-
-        # consensus client env-vars
-        consensus_client_env_vars = [
-            "consensus-client",
-            "consensus-launcher",
-            "consensus-config-file",
-            "consensus-genesis-file",
-        ]
-        # consensus-config
-        consensus_config_env_vars = [
-            "consensus-num-validators",
-            "consensus-p2p-port",
-            "consensus-beacon-rpc-port",
-            "consensus-beacon-api-port",
-            "consensus-beacon-metric-port",
-            "consensus-validator-rpc-port",
-            "consensus-validator-metric-port",
-        ]
-        # derived env-vars
-        derived_env_vars = [
-            "consensus-node-dir",
-            "consensus-graffiti",
-        ]
-
-        for env_var in consensus_client_env_vars:
-            self.defined_env_vars.append(env_var)
-        for env_var in consensus_config_env_vars:
-            self.defined_env_vars.append(env_var)
-        for env_var in derived_env_vars:
-            self.defined_env_vars.append(env_var)
-
-    def get(self, key: str):
         if hasattr(self, f"get_{key.replace('-', '_')}"):
             return getattr(self, f'get_{key.replace("-", "_")}')()
 
-        if self.config.has(key):
-            return self.config.get(key)
+        elif key in self.config_entry.keys():
+            return self.config_entry[key]
 
-        if self.consensus_config.has(key):
-            return self.consensus_config.get(key)
+        # in order to fetch the has/get from consensus and execution configs
+        split_key = key.split("-")
+        if split_key[0] == "consensus":
+            return self.consensus_config.get("-".join(split_key[1:]))
 
-        raise Exception(f"Module {self} can't get {key}")
+        if split_key[0] == "execution":
+            return self.execution_config.get("-".join(split_key[1:]))
 
+        # last check for the dict
+        elif key in self.__dict__:
+            return self.__dict__[key]
+
+        else:
+            raise Exception("Should not occur.")
+
+    def get_docker_command(self) -> list:
+        return [f"{self.get('execution-launcher')} & {self.get('consensus-launcher')}"]
+
+    # generic overrides
+    def get_testnet_dir(self) -> str:
+        return f"{self.etb_files_config.get('testnet-dir')}/{self.root_name}"
+
+    def get_jwt_secret_file(self) -> str:
+        return f"{self.get_testnet_dir()}/jwt-secret"
+
+    # consensus related overrides
     def get_consensus_config_file(self) -> str:
-        # the config.yaml is placed in the testnet-dir
-        return f"{self.parent_module.get('testnet-dir')}/config.yaml"
+        return f"{self.get_testnet_dir()}/config.yaml"
 
     def get_consensus_genesis_file(self) -> str:
-        # the config.yaml is placed in the testnet-dir
-        return f"{self.parent_module.get('testnet-dir')}/genesis.ssz"
-
-    def get_consensus_node_dir(self) -> str:
-        return self.get_node_dir()
+        return f"{self.get_testnet_dir()}/genesis.ssz"
 
     def get_consensus_graffiti(self) -> str:
-        return f"{self.get('consensus-client')}:{self.get('execution-client')}:{self.get('ip-address')}"
+        return f"{self.name}"
 
-    def get_consensus_num_validators(self) -> int:
-        return self.get('num-validators')
+    def get_consensus_node_dir(self) -> str:
+        return f"{self.etb_files_config.get('testnet-dir')}/{self.root_name}/node_{self.ndx}"
 
-    def get_beacon_api_path(self) -> str:
-        return f"http://{self.get('ip-address')}:{self.get('consensus-beacon-api-port')}"
+    def get_full_beacon_api_path(self) -> str:
+        # Returns the full path to the clients consensus beacon api port
+        return f"http://{self.get_ip_address()}:{self.get('consensus-beacon-api-port')}"
 
-    def _fetch_config_entry(self) -> ConfigEntry:
-        return self.parent_module.config
+    # prysm only overrides
+    def get_wallet_password_path(self) -> str:
+        return f"{self.get_consensus_node_dir()}/wallet-password.txt"
+
+    def get_validator_password(self) -> str:
+        return "testnet-password"
+
+    # execution related overrides
+    def get_execution_genesis_file(self) -> str:
+        if self.get("execution-client") == "nethermind":
+            # be careful with the env vars.
+            return self.etb_files_config.get("nether-mind-genesis-file")
+        return self.etb_files_config.get(f"{self.get('execution-client')}-genesis-file")
+
+    def get_execution_node_dir(self) -> str:
+        return f"{self.get_consensus_node_dir()}/{self.get('execution-client')}"
+
+    def get_full_execution_http_jsonrpc_path(self, protocol="http") -> str:
+        # Returns the full path to the clients execution jsonrpc port
+        client_req_str = f"execution-{protocol}-port"
+        return f"{protocol}://{self.get_ip_address()}:{self.get(client_req_str)}"
+
+
+class ClientInstanceCollection(InstanceCollection):
+    def __init__(
+        self,
+        name: str,
+        entry: dict,
+        cl_config: ConsensusConfigEntry,
+        el_config: ExecutionConfigEntry,
+        files_config_entry: ConfigEntry,
+    ):
+        super().__init__(name, entry)
+        self.cl_config: ConsensusConfigEntry = cl_config
+        self.el_config: ExecutionConfigEntry = el_config
+        self.files_config_entry: ConfigEntry = files_config_entry
+
+    def __iter__(self) -> Generator[ClientInstance, Any, None]:
+        for x in range(self.get("num-nodes")):
+            yield ClientInstance(
+                self.name,
+                x,
+                self.config_entry,
+                self.cl_config,
+                self.el_config,
+                self.files_config_entry,
+            )
+
+    # when creating client dirs we need to know the root for the client instance dirs.
+    def get_root_client_testnet_dir(self) -> str:
+        return f"{self.files_config_entry.get('testnet-dir')}/{self.name}"
 
 
 class ETBConfig(object):
     """
-    The overall ETBConfig class for consuming and parsing the config files used
-    in ethereum-testnet-bootstrapper
-
-    An etb config consists of the following parts:
-        docker
-        files
-        config-params
-            execution-layer
-            consensus-layer
-            accounts
-        execution-configs
-        consensus-configs
-        clients
-        generic-modules
+    Super Object that allows complex queries on etb-configs that
+    return a variety of data and representations of data.
     """
 
-    def __init__(self, path):
-        self.path: str = path
-        self.global_config: Dict = {}
+    def __init__(self, path: str, logger: logging.Logger = None):
+        if logger is None:
+            self.logger = logging.getLogger(__name__)
+        else:
+            self.logger: logging.Logger = logger
 
-        with open(path, "r") as f:
-            self.global_config = yaml.safe_load(f.read())
+        self.global_config: dict = {}
 
-        self.docker: ConfigEntry = ConfigEntry(self.global_config["docker"])
-        self.files: ConfigEntry = ConfigEntry(self.global_config["files"])
-        self.config_params: ConfigEntry = ConfigEntry(self.global_config["config-params"])
-        self.accounts: ConfigEntry = ConfigEntry(self.global_config["accounts"])
+        # parse the config file and create data structures.
+        config_path = pathlib.Path(path)
+        if config_path.exists():
+            self.logger.debug(f"Opening etb-config file: {config_path}")
+            with open(config_path, "r") as f:
+                try:
+                    self.global_config = yaml.safe_load(f.read())
+                except Exception as e:
+                    self.logger.error("Error parsing etb-config yaml.")
+                    raise Exception("Unable to parse yaml file.")
+        else:
+            self.logger.error(f"No etb-config file in path: {path}")
+            raise Exception(f"No file found at: {path}")
 
-        self.execution_configs: Dict[str, ConfigEntry] = {}
-        self.consensus_configs: Dict[str, ConfigEntry] = {}
-        self.clients: Dict[str, ETBClient] = {}
-        self.generic_modules: Dict[str, ModuledConfigEntry] = {}
+        self.docker: ConfigEntry = ConfigEntry(
+            self.global_config["docker"], recursive=True
+        )
+        self.files: ConfigEntry = ConfigEntry(
+            self.global_config["files"], recursive=True
+        )
+        self.config_params: ConfigEntry = ConfigEntry(
+            self.global_config["config-params"], recursive=True
+        )
+        self.accounts: ConfigEntry = ConfigEntry(
+            self.global_config["accounts"], recursive=True
+        )
+        # when calling .get() on etb-config we iterate through these config entries.
+        # ensure we do not have duplicates.
+        intersection = set(
+            self.docker.keys()
+            & self.files.keys()
+            & self.config_params.keys()
+            & self.accounts.keys()
+        )
 
-        for k, v in self.global_config["execution-configs"].items():
-            self.execution_configs[k] = ConfigEntry(v)
-        for k, v in self.global_config["consensus-configs"].items():
-            self.consensus_configs[k] = ConfigEntry(v)
-        for k in self.global_config["client-modules"].keys():
-            self.clients[k] = ETBClient(k, "client-modules", self)
-        for k in self.global_config["generic-modules"].keys():
-            self.generic_modules[k] = ModuledConfigEntry(k, "generic-modules", self)
+        if len(intersection) > 0:
+            raise Exception(
+                "Duplicate key entries in etb-config across dockers, files, config-params, and accounts."
+            )
 
-        # ensure we have unique keys for the clients as well
-        intersect = set(self.files.keys() & \
-                        self.config_params.keys() & \
-                        self.accounts.keys() & \
-                        self.execution_configs.keys() & \
-                        self.consensus_configs.keys() & \
-                        self.clients.keys() & \
-                        self.generic_modules.keys())
+        # process all the instances.
+        self.consensus_configs: dict[str, ConsensusConfigEntry] = {}
+        for cc, entry in self.global_config["consensus-configs"].items():
+            self.consensus_configs[cc] = ConsensusConfigEntry(entry)
 
-        if len(intersect) > 0:
-            raise Exception("Duplicate key entries in etb-config.")
+        self.execution_configs: dict[str, ExecutionConfigEntry] = {}
+        for ec, entry in self.global_config["execution-configs"].items():
+            self.execution_configs[ec] = ExecutionConfigEntry(entry)
 
-        # env vars for docker-template from the etb-config
-        self.defined_env_vars = [
-            "consensus-checkpoint-file",
-            "execution-checkpoint-file",
-            "consensus-bootnode-checkpoint-file",
-            "etb-config-checkpoint-file",
-            "ip-subnet",
-            "consensus-bootnode-file",
-            "num-client-nodes",
-        ]
+        self.client_instance_collections: dict[str, ClientInstanceCollection] = {}
+        for ci, entry in self.global_config["client-instances"].items():
+            # grab the referenced consensus configs.
+            cl_key = entry["consensus-config"]
+            el_key = entry["execution-config"]
+            if cl_key not in self.consensus_configs:
+                raise Exception(
+                    f"Reference to consensus config {cl_key} not in consensus-configs section."
+                )
+            if el_key not in self.execution_configs:
+                raise Exception(
+                    f"Reference to execution config {cl_key} not in execution-configs section."
+                )
+            cl_config = self.consensus_configs[cl_key]
+            el_config = self.execution_configs[el_key]
+            self.client_instance_collections[ci] = ClientInstanceCollection(
+                ci, entry, cl_config, el_config, self.files
+            )
 
-        config_param_vars = [
-            "network-id",
-            "chain-id",
-        ]
+        self.generic_instance_collections: dict[str, InstanceCollection] = {}
+        for gi, entry in self.global_config["generic-instances"].items():
+            self.generic_instance_collections[gi] = InstanceCollection(gi, entry)
 
-        for cpv in config_param_vars:
-            self.defined_env_vars.append(cpv)
+        # set useful members that describe the testnet.
+        self.preset_base: Type[
+            Union[MainnetPreset, MinimalPreset]
+        ] = self.get_preset_base()
+        # in case we need to perform actions for clique network.
+        self.clique_signer_instance_name: Union[None, str] = None
 
-    def has(self, key):
+    # define a get and has construct for ease of use in modules.
+    def has(self, key) -> bool:
+        exists_in_config_entries = (
+            key in self.docker.keys()
+            or key in self.files.keys()
+            or key in self.config_params.keys()
+            or key in self.accounts.keys()
+        )
 
-        return self.files.has(key) or \
-            self.config_params.has(key) or \
-            self.accounts.has(key) or \
-            key in self.execution_configs or \
-            key in self.consensus_configs or \
-            key in self.clients or \
-            key in self.generic_modules
+        if exists_in_config_entries:
+            return True
 
-    def get(self, key) -> Any:
+        # etb-config can also be used like a ConfigEntry
+        if hasattr(self, f"get_{key.replace('-', '_')}"):
+            return True
+
+        return False
+
+    def get(self, key):
+        if not self.has(key):
+            raise Exception(f"etb-config doesn't have result for key: {key}")
 
         if hasattr(self, f"get_{key.replace('-', '_')}"):
             return getattr(self, f'get_{key.replace("-", "_")}')()
@@ -514,416 +587,302 @@ class ETBConfig(object):
         if self.files.has(key):
             return self.files.get(key)
 
+        if self.docker.has(key):
+            return self.docker.get(key)
+
         if self.config_params.has(key):
             return self.config_params.get(key)
 
         if self.accounts.has(key):
             return self.accounts.get(key)
 
-        if self.docker.has(key):
-            return self.docker.get(key)
+        raise Exception("Should not occur.")
 
-        # TODO: find a place to put the genesis time.
-        # hacky workaround for now.
-        if key in self.global_config:
-            return self.global_config[key]
+    # get data structures describing instances running on the network
+    def get_client_instances(
+        self,
+        client_name_filter: re.Pattern[str] = always_match_regex,
+        el_api_filter: re.Pattern[str] = always_match_regex,
+    ) -> List[ClientInstance]:
+        possible_clients = []
+        name_matched_clients = []
+        el_matched_clients = []
+        for collections in self.client_instance_collections.values():
+            for clients in collections:
+                possible_clients.append(clients)
 
-        raise Exception(f"Unhandled get {key} request on ETBConfig")
+        # for speed
+        if (
+            client_name_filter == always_match_regex
+            and el_api_filter == always_match_regex
+        ):
+            return possible_clients
+        else:
+            for client in possible_clients:
+                if client_name_filter.search(client.name) is not None:
+                    name_matched_clients.append(client)
+            for client in name_matched_clients:
+                if el_api_filter.search(client.get("execution-http-apis")) is not None:
+                    el_matched_clients.append(client)
 
-    def _get_env_vars(self) -> Dict[str, Union[str, int, float]]:
-        env_vars = {}
-        for var in self.defined_env_vars:
-            env_vars[var.replace('-', '_').upper()] = self.get(var)
-        return env_vars
+        return el_matched_clients
 
-    """
-        The following functions are for getting and interacting with EL/CL views
-        of the clients listed in the configuration file.
-    """
+    def get_generic_instances(self) -> List[Instance]:
+        all_generic_instances = []
+        for collections in self.generic_instance_collections.values():
+            for instances in collections:
+                all_generic_instances.append(instances)
+        return all_generic_instances
 
-    def get_clients(self) -> Dict[str, ETBClient]:
-        return self.clients
-
-    def get_generic_modules(self) -> Dict[str, ModuledConfigEntry]:
-        return self.generic_modules
-
-    def get_execution_rpc_paths(self, protocol='http', apis: List[str] = []) -> Dict[str, str]:
+    def get_docker_compose_repr(self) -> dict:
         """
-        :param protocol:
-        :param apis: optional. only return views that support the provided apis
+        Takes all the information contained in the config file and flattens
+        it into a suitable representation for a docker-compose file.
+        :return: docker-compose compatible yaml
+        """
+        # env-vars that are added to every service in the docker
+        global_env_vars_to_get = [
+            # checkpoint files
+            "etb-config-checkpoint-file",
+            "consensus-checkpoint-file",
+            "execution-checkpoint-file",
+            "consensus-bootnode-checkpoint-file",
+            "consensus-bootnode-file",
+            # misc globals
+            "ip-subnet",
+            "num-client-nodes",
+            # execution vars only contained in etb-config
+            "chain-id",
+            "network-id",
+        ]
+
+        global_env_vars = {}
+        for var in global_env_vars_to_get:
+            global_env_vars[var.replace("-", "_").upper()] = self.get(var)
+
+        services = {}
+        for generic_instances in self.get_generic_instances():
+            services[generic_instances.name] = generic_instances.get_docker_repr(
+                self.docker
+            )
+            for k, v in global_env_vars.items():
+                services[generic_instances.name]["environment"][k] = v
+
+        for client_instances in self.get_client_instances():
+            services[client_instances.name] = client_instances.get_docker_repr(
+                self.docker
+            )
+            for k, v in global_env_vars.items():
+                services[client_instances.name]["environment"][k] = v
+
+        return {
+            "services": services,
+            "networks": {
+                self.docker.get("network-name"): {
+                    "driver": "bridge",
+                    "ipam": {"config": [{"subnet": self.docker.get("ip-subnet")}]},
+                }
+            },
+        }
+
+    # get information about the testnet
+    def get_preset_base(self) -> Type[Union[MainnetPreset, MinimalPreset]]:
+        preset_base = self.config_params.get("preset-base")
+        if preset_base == "minimal":
+            return MinimalPreset
+        if preset_base == "mainnet":
+            return MainnetPreset
+
+        raise Exception("Invalid preset-base in consensus config-parameters.")
+
+    def get_preset_value(self, str_repr: str) -> int:
+        """
+            Get the value of a preset. Some can be overwritten, so check
+            those first before returning the defaul.
+        :param str_repr: preset variable
+        :return: int(value)
+        """
+        sanitized_input = str_repr.replace("_", "-").lower()
+        defined_lookups = {
+            "slots-per-epoch": self.preset_base.SLOTS_PER_EPOCH,
+            "epochs-per-eth1-voting-period": self.preset_base.EPOCHS_PER_ETH1_VOTING_PERIOD,
+            "seconds-per-slot": self.preset_base.SECONDS_PER_SLOT,
+            "seconds-per-eth1-block": self.preset_base.SECONDS_PER_ETH1_BLOCK,
+            "min-validator-withdrawability-delay": self.preset_base.MIN_VALIDATOR_WITHDRAWABILITY_DELAY,
+            "shard-committee-period": self.preset_base.SHARD_COMMITTEE_PERIOD,
+            "eth1-follow-distance": self.preset_base.ETH1_FOLLOW_DISTANCE,
+            "inactivity-score-bias": self.preset_base.INACTIVITY_SCORE_BIAS,
+            "inactivity-score-recovery-rate": self.preset_base.INACTIVITY_SCORE_RECOVERY_RATE,
+            "ejection-balance": self.preset_base.EJECTION_BALANCE,
+            "min-per-epoch-churn-limit": self.preset_base.MIN_PER_EPOCH_CHURN_LIMIT,
+            "churn-limit-quotient": self.preset_base.CHURN_LIMIT_QUOTIENT,
+            "proposer-score-boost": self.preset_base.PROPOSER_SCORE_BOOST,
+        }
+
+        for enum_override in PresetOverrides:
+            if sanitized_input == enum_override:
+                if self.config_params.has(enum_override):
+                    override = self.config_params.get(enum_override)
+                    self.logger.debug(
+                        f"Returning etb-config overwritten preset: {enum_override} : {override}"
+                    )
+                    return override
+
+        if sanitized_input in defined_lookups:
+            value = defined_lookups[sanitized_input].value
+            self.logger.debug(
+                f"returning default preset for {sanitized_input} : {value}"
+            )
+            return value
+
+        raise Exception(f"No preset value defined for vairable: {str_repr}")
+
+    def get_genesis_fork_upgrade(self) -> ForkVersion:
+        """
+        The genesis fork upgrade is the network fork on the start of the
+        network. **NOT** the phase0 version used for signatures!
+
+        This is used for the TestnetBootstrapper to identify how the network
+        should come up.
         :return:
         """
-        if len(apis) > 0:
-            apis_to_filter = [x.lower() for x in apis]
+        if self.get("eip4844-fork-epoch") == 0:
+            return ForkVersion.EIP4844
+        if self.get("capella-fork-epoch") == 0:
+            return ForkVersion.Capella
+        if self.get("bellatrix-fork-epoch") == 0:
+            return ForkVersion.Bellatrix
+        if self.get("altair-fork-epoch") == 0:
+            return ForkVersion.Altair
+        if self.get("phase0-fork-epoch") == 0:
+            return ForkVersion.Phase0
         else:
-            apis_to_filter = None
+            raise Exception("No genesis-fork-epoch set to 0.")
 
-        named_rpc_dict = {}
-        for client_module in self.get_clients().values():
-            for client_instance in client_module:
-                el_view: ExecutionClient = client_instance.get_execution_client_view()
-                if apis_to_filter is not None:
-                    impl_apis = el_view.get_implemented_apis()
-                    if not all(x in impl_apis for x in apis_to_filter):
-                        continue
-                rpc_path = el_view.get_rpc_path(protocol)
-                named_rpc_dict[client_instance.name] = rpc_path
-
-        return named_rpc_dict
-
-    def get_all_consensus_client_beacon_api_paths(self) -> Dict[str, str]:
-
-        api_paths: Dict[str, str] = {}
-
-        for client_modules in self.clients.values():
-            for client_instance in client_modules:
-                cl_view = client_instance.get_consensus_client_view()
-                api_paths[client_instance.name] = cl_view.get('beacon-api-path')
-
-        return api_paths
-
-    def get_all_execution_clients_and_apis(self, protocol='http') -> Dict[str, List[str]]:
+    def get_consensus_genesis_delay(self) -> int:
         """
-            Get all the execution clients and their el-apis they implement.
-            all apis are cast to lowercase.
+        Calculate the consensus genesis delay.
+        If we aren't doing a bellatrix genesis then we use eth1-follow-distance
+        :return: int(delay)
         """
-        client_api_listings: Dict[str, List[str]] = {}
-        "hello"
-        for client_modules in self.clients.values():
-            for client_instance in client_modules:
-                apis: List[str] = []
-                el_view = client_instance.get_execution_client_view()
-                for api in el_view.get('execution-http-apis').split(','):
-                    apis.append(api.lower())
-                client_api_listings[client_instance.name] = apis
+        if self.get_genesis_fork_upgrade() < ForkVersion.Bellatrix:
+            return self.get_preset_value(
+                "eth1-follow-distance"
+            ) * self.get_preset_value("seconds-per-eth1-block")
+        else:
+            return 0
 
-        return client_api_listings
-
-    def get_premine_keypairs(self) -> Dict[str, str]:
-        """
-        Returns a dict with eth1 premind keys: {pubkey: privkey}
-        :return: {pubkey: privkey}
-        """
-        w3.eth.account.enable_unaudited_hdwallet_features()
-        keys = {}
-
-        mnemonic = self.accounts.get("eth1-account-mnemonic")
-        password = self.accounts.get("eth1-passphrase")
-        premines = self.accounts.get("eth1-premine")
-        for acc in premines:
-            acct = w3.eth.account.from_mnemonic(
-                mnemonic, account_path=acc, passphrase=password
-            )
-            keys[acct.address] = acct.privateKey.hex()
-        return keys
-
-    def get_random_eth1_key_pair(self):
-        keys = self.get_premine_keypairs()
-        pub_key = random.choice(list(keys.keys()))
-        priv_key = keys[pub_key]
-        return pub_key, priv_key
-
-    def get_num_client_nodes(self) -> int:
-        num_nodes = 0
-        for client_module in self.clients.values():
-            num_nodes += client_module.get('num-nodes')
-        return num_nodes
-
-    """
-        The following functions help with obtaining information about network
-        forks and values related to forking.
-    """
-
-    def get_genesis_fork(self) -> ForkVersion:
-        if self.get('capella-fork-epoch') == 0:
-            return ForkVersion.Capella
-
-        if self.get('bellatrix-fork-epoch') == 0:
-            return ForkVersion.Bellatrix
-
-        if self.get('altair-fork-epoch') == 0:
-            return ForkVersion.Altair
-
-        return ForkVersion.Phase0
-
-    def is_clique_genesis(self) -> bool:
-        """
-        Is the EL genesis is a clique network.
-        :return: bool
-        """
-        return self.get_genesis_fork() < ForkVersion.Bellatrix
-
-    def get_genesis_fork_version(self) -> int:
-        lookup_dict = {
-            ForkVersion.Phase0: self.get('phase0-fork-version'),
-            ForkVersion.Altair: self.get('altair-fork-version'),
-            ForkVersion.Bellatrix: self.get('bellatrix-fork-version'),
-            ForkVersion.Capella: self.get('capella-fork-version'),
-        }
-        return lookup_dict[self.get_genesis_fork()]
-
-    def get_final_fork(self) -> ForkVersion:
-        '''The last fork in the config that is not in far-future'''
-        far_future_epoch = 18446744073709551615
-        if self.get('capella-fork-epoch') != far_future_epoch:
-            return ForkVersion.Capella
-
-        if self.get('bellatrix-fork-epoch') != far_future_epoch:
-            return ForkVersion.Bellatrix
-
-        if self.get('altair-fork-epoch') != far_future_epoch:
-            return ForkVersion.Altair
-
-        return ForkVersion.Phase0
-
-    def get_el_merge_fork_block(self) -> int:
+    def get_execution_merge_fork_block(self) -> int:
         """
         Based on the configuration parameters for fork version epochs
         calculate the merge fork block height for the execution layer
         :return: block height as int.
         """
         # post-merge genesis
-        if self.get_genesis_fork() >= ForkVersion.Bellatrix:
-            return 0
-        # no merge in testnet
-        if self.get_final_fork() < ForkVersion.Bellatrix:
-            return 18446744073709551615  # a large enough number to not care.
-
-        consensus_merge_epoch = self.get('bellatrix-fork-epoch')
-        consensus_genesis_delay = self.get('consensus-genesis-delay')
-        cl_blocks_per_second = self.get('seconds-per-cl-block')
-        cl_blocks_per_epoch = self.get('consensus-blocks-per-epoch')
-
-        consensus_merge_time = consensus_merge_epoch * cl_blocks_per_epoch * cl_blocks_per_second + \
-                               consensus_genesis_delay
-
-        return int(consensus_merge_time / self.get('seconds-per-eth1-block'))
-
-    def get_random_consensus_client(self, client_filter=None) -> ConsensusClient:
-        '''
-        Get a random consensus client view that optionally matches the client name filter
-        :param client_filter: optional name filter
-        :return: ConsensusClient
-        '''
-        if client_filter is not None:
-            client = random.choice([x for x in list(self.get_clients().keys()) if client_filter in x])
-        else:
-            client = random.choice([x for x in list(self.get_clients().keys())])
-        client_instances = [x for x in self.clients[client]]
-        return random.choice(client_instances).get_consensus_client_view()
-
-    def get_random_execution_client(self, client_filter=None) -> ExecutionClient:
-        '''
-        Get a random execution client view that optionally matches the client name filter
-        :param client_filter: optional name filter
-        :return: ExecutionClient
-        '''
-        if client_filter is not None:
-            client = random.choice([x for x in list(self.get_clients().keys()) if client_filter in x])
-        else:
-            client = random.choice([x for x in list(self.get_clients().keys())])
-        client_instances = [x for x in self.clients[client]]
-        return random.choice(client_instances).get_execution_client_view()
-
-    def get_terminal_total_difficulty(self) -> int:
-        """
-            Based on the configuration parameters for fork version epochs
-            calculate the ttd for EL clients.
-        :return: ttd as int.
-        """
-        if self.get_genesis_fork() >= ForkVersion.Bellatrix:
+        if self.get_genesis_fork_upgrade() >= ForkVersion.Bellatrix:
             return 0
 
-        if self.get_final_fork() < ForkVersion.Bellatrix:
-            return 18446744073709551615
+        # determine if we are doing a merge
+        if self.config_params.get("bellatrix-fork-epoch") == Epoch.FarFuture.value():
+            return Epoch.FarFuture.value()
 
-        # we use clique to each block is 2 difficulty.
-        return int(self.get_el_merge_fork_block() * 2 + 3)
+        # pre bellatrix genesis with configured merge.
+        merge_slot = (
+            self.config_params.get("bellatrix-fork-epoch")
+            * self.preset_base.SLOTS_PER_EPOCH.value
+        )
+        merge_time = (
+            merge_slot * self.preset_base.SECONDS_PER_SLOT.value
+        ) + self.get_consensus_genesis_delay()
+        merge_el_block = int(merge_time // self.get("seconds-per-eth1-block"))
 
-    def get_terminal_block_hash(self) -> str:
-        return "0x0000000000000000000000000000000000000000000000000000000000000000"
-
-    def get_terminal_block_hash_activation_epoch(self) -> int:
-        return 18446744073709551615
-
-    def get_cl_slots_per_epoch(self) -> int:
-        return 32
+        self.logger.debug(f"time to merge: {merge_time} -> eth1-block {merge_el_block}")
+        return merge_el_block
 
     def get_bootstrap_genesis_time(self) -> int:
         if "bootstrap-genesis" in self.global_config:
             return self.global_config["bootstrap-genesis"]
-        else:
-            raise Exception("ETBConfig tried getting bootstrap genesis time before bootstrapping.")
+
+        raise Exception("Tried getting bootstrap genesis before bootstrapping.")
+
     def get_shanghai_time(self) -> int:
         """
-        the ELs have shangaiTime which should coorespond with CAPELLA_FORK_EPOCH
+        the ELs have shangaiTime which should correspond with CAPELLA_FORK_EPOCH
         :return: shanghaiTime
         """
-        if self.get_final_fork() < ForkVersion.Capella:
-            return self.get_bootstrap_genesis_time() + 1000000 # sufficiently long enough delay to not hit
-        else:
-            return self.get('capella-fork-epoch') * self.get_cl_slots_per_epoch() * self.get_seconds_per_cl_block() + self.get_bootstrap_genesis_time()
+        capella_fork_epoch = self.config_params.get("capella-fork-epoch")
+        capella_delta = (
+            capella_fork_epoch
+            * self.preset_base.SLOTS_PER_EPOCH.value
+            * self.preset_base.SECONDS_PER_SLOT.value
+        ) + self.get_consensus_genesis_delay()
+        shanghai_time = self.get_bootstrap_genesis_time() + capella_delta
+        self.logger.debug(
+            f"Calculated shanghai time as cl epoch: {capella_fork_epoch} at time: {shanghai_time}"
+        )
+        return shanghai_time
 
-    """
-        The following functions define paramets that are not exposed to the 
-        user to change.
-    """
-
-    def get_seconds_per_cl_block(self) -> int:
-        return 12
-
-    def get_consensus_blocks_per_epoch(self) -> int:
-        return 32
-
-    def get_consensus_genesis_delay(self) -> int:
-        # how long before testnet genesis that cl genesis occurs in seconds
-        if self.get_genesis_fork() < ForkVersion.Bellatrix:
-            return self.get('eth1-follow-distance') * self.get('seconds-per-eth1-block') + self.get('execution-genesis'
-                                                                                                '-delay')
-        else:
-            return 0
-
-    def get_clique_signer(self) -> str:
+    def get_terminal_total_difficulty(self) -> int:
         """
-        In order of premines we allocate those to signers
-        :param num_signers:
-        :return: List[signer1,signer2,...]
+        The chain total difficulty at the time of the bellatrix upgrade
+        :return: int(TTD)
         """
-        from web3.auto import w3
-        w3.eth.account.enable_unaudited_hdwallet_features()
+        ttd = self.get_execution_merge_fork_block() * TotalDifficultyStep.Clique.value
+        self.logger.debug(f"Calculate TTD: {ttd}")
+        return ttd
 
-        pub_keys = []
-        if not self.has('eth1-premine'):
-            raise Exception("Expected accounts->eth1-premine section in config")
+    def get_num_client_nodes(self) -> int:
+        return len(self.get_client_instances())
 
-        premines = list(self.global_config['accounts']['eth1-premine'].keys())
-        premines.sort()
+    def get_premine_keypairs(self) -> list[PremineKeyPair]:
 
-        acct = w3.eth.account.from_mnemonic(self.get("eth1-account-mnemonic"),
-                                            account_path=premines[0],
-                                            passphrase=self.get("eth1-passphrase"))
+        """
+        Returns a dict with eth1 premind keys: {pubkey: privkey}
+        :return: {premine : (public, private)}
+        """
+        pkps = []
+        for acc in self.accounts.get("eth1-premine"):
+            pkp = PremineKeyPair(
+                acc,
+                self.accounts.get("eth1-passphrase"),
+                self.accounts.get("eth1-account-mnemonic"),
+            )
+            pkps.append(pkp)
 
-        return acct.address
+        return pkps
 
-    def set_genesis_time(self, t: int) -> None:
-        """Set the genesis time in the etb-config"""
-        self.global_config["bootstrap-genesis"] = t
+    def get_number_of_unaccounted_validator_deposits(self) -> int:
+        """
+        Returns the number of validator deposits that are not accounted for in the genesis state.
+        :return: int
+        """
+        total_validator_count = 0
+        for client in self.get_client_instances():
+            client_validator_count = client.consensus_config.get("num-validators")
+            total_validator_count += client_validator_count
+        self.logger.debug(f"total client validator indexes: {total_validator_count}")
+        return total_validator_count - self.config_params.get(
+            "min-genesis-active-validator-count"
+        )
 
-    def write_config_to_file(self, new_file_path: str = None):
-        """write the config out to the expected path. We do this so we can
-           update values during the bootstrap process. It uses the file found
-           in the config by default."""
+    # setters for modifying the etb-config file exposed to nodes.
+    def set_bootstrap_genesis_time(self, bootstrap_genesis_time: int):
+        self.global_config["bootstrap-genesis"] = bootstrap_genesis_time
 
-        path_to_use: str = self.get('etb-config-file')
-        if new_file_path is not None:
-            path_to_use = new_file_path
-
-        with open(path_to_use, "w") as f:
+    # save off information about the etb-config file.
+    def write_etb_config_to_testnet_dir(self):
+        """
+        Write the etb-config file with all the modified fields to testnet dir.
+        This allows other modules to use the same parameters from the bootstrapper.
+        :return:
+        """
+        with open(self.files.get("etb-config-file"), "w") as f:
+            self.logger.debug(
+                f"Dumping etb-config global_config to file: {self.files.get('etb-config-file')}"
+            )
             yaml.safe_dump(self.global_config, f)
 
-    def write_checkpoint_file(self, checkpoint: str):
-        if checkpoint not in self.files.keys():
-            raise Exception("Tried to write undefined checkpoint")
-
-        with open(self.files.get(checkpoint), "w") as checkpoint_file:
-            checkpoint_file.write("1")
-
-    def write_to_docker_compose(self, path: str = None):
-        """
-            Write a docker-compose with all the clients and generic modules
-            from the config to the specified path. It defaults to whats given
-            in the config file.
-        """
-        p = self.get('docker-compose-file')
-        if path is not None:
-            p = path
-        with open(p, "w") as f:
-            f.write(yaml.safe_dump(self._get_docker_repr()))
-
-    def _get_docker_repr(self) -> dict:
-
-        services = {}
-        # clients
-        for client_module in self.clients.values():
-            env_vars = self._get_env_vars()
-            for client in client_module:
-                for client_env_key, client_env_value in client.get('env-vars').items():
-                    env_vars[client_env_key] = client_env_value
-                for cl_key, cl_value in client.get('consensus-client-view').get('env-vars').items():
-                    env_vars[cl_key] = cl_value
-                for el_key, el_value in client.get('execution-client-view').get('env-vars').items():
-                    env_vars[el_key] = el_value
-                docker_entry = client.docker_entry
-                docker_entry.environment = env_vars
-                services[client.name] = docker_entry.serialize_docker_entry()
-
-        # generic modules
-        for gm in self.generic_modules.values():
-            env_vars = self._get_env_vars()
-            for gm_instance in gm:
-                for gm_env_key, gm_env_value in gm_instance.get_env_vars().items():
-                    env_vars[gm_env_key] = gm_env_value
-                docker_entry = gm_instance.docker_entry
-                docker_entry.environment = env_vars
-                services[gm_instance.name] = docker_entry.serialize_docker_entry()
-
-        return {"services": services,
-                "networks": {
-                    self.get("network-name"): {
-                        "driver": "bridge",
-                        "ipam": {"config": [{"subnet": self.get('ip-subnet')}]}
-                    }
-                },
-                }
-
-
-
-
-
-"""
-    Classes to facilitate transforming the etb-config file to other formats and
-    specifications.
-"""
-
-
-class DockerEntry(object):
-    """
-    A docker entry is all the information required by a docker-template file
-    to bring up all the instances. A docker entry represents one unique
-    instance.
-
-    Typical Docker Entry:
-
-    """
-
-    def __init__(self, module: Module):
-        self.module = module
-        self.container_name = self.module.get('container-name')
-        self.image = self.module.get('image')
-        if self.module.has('tag'):
-            self.tag = self.module.get('tag')
-        else:
-            self.tag = "latest"
-        self.entrypoint = self.module.get('entrypoint')
-        self.ip_address = self.module.get('ip-address')
-        self.network_name = self.module.etb_config.docker.get('network-name')
-        self.volumes = self.module.etb_config.docker.get('volumes')
-        self.environment = self.module.get('env-vars')
-        if self.module.has('command'):
-            self.command = self.module.get('command')
-        else:
-            self.command = None
-
-    def serialize_docker_entry(self) -> dict:
-        entry = {
-            "container_name": self.container_name,
-            "entrypoint": self.entrypoint.split(),
-            "environment": self.environment,
-            "image": f"{self.image}:{self.tag}",
-            "volumes": self.volumes,
-            "networks": {self.network_name: {"ipv4_address": self.ip_address}}
-        }
-        if self.command is not None:
-            entry["command"] = self.command
-        return entry
-
+    # quick conversions
+    def epoch_to_slot(self, epoch: int):
+        """epoch -> slot"""
+        return epoch * self.preset_base.SLOTS_PER_EPOCH.value

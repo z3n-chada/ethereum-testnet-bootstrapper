@@ -14,6 +14,7 @@ env_vars=(
   "CONSENSUS_P2P_PORT"
   "CONSENSUS_VALIDATOR_METRIC_PORT"
   "CONSENSUS_VALIDATOR_RPC_PORT"
+  "CONSENSUS_LOG_LEVEL"
   "IP_ADDRESS"
   "IP_SUBNET"
   "JWT_SECRET_FILE"
@@ -79,4 +80,4 @@ lighthouse \
       --graffiti="$CONSENSUS_GRAFFITI" \
       --http --http-port="$CONSENSUS_VALIDATOR_RPC_PORT" \
       --suggested-fee-recipient=0x00000000219ab540356cbb839cbe05303d7705fa \
-      --logfile="$CONSENSUS_NODE_DIR/validator.log" --logfile-debug-level="$LIGHTHOUSE_DEBUG_LEVEL"
+      --logfile="$CONSENSUS_NODE_DIR/validator.log" --logfile-debug-level="$CONSENSUS_LOG_LEVEL"

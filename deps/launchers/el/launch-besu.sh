@@ -18,7 +18,6 @@ env_vars=(
   "IP_ADDRESS"
   "IP_SUBNET"
   "JWT_SECRET_FILE"
-  "NODE_NUM"
   "CHAIN_ID"
 )
 
@@ -54,11 +53,11 @@ besu \
   --p2p-enabled=true \
   --p2p-host="$IP_ADDRESS" \
   --nat-method=DOCKER \
-  --sync-mode=X_SNAP \
-  --fast-sync-min-peers=1 \
+  --sync-mode=FULL \
   --p2p-port="$EXECUTION_P2P_PORT" \
   --engine-rpc-enabled=true \
   --engine-jwt-enabled \
   --engine-jwt-secret="$JWT_SECRET_FILE" \
   --engine-host-allowlist="*" \
+  --data-storage-format="BONSAI" \
   --engine-rpc-port="$EXECUTION_ENGINE_HTTP_PORT" 

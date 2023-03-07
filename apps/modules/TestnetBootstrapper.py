@@ -7,6 +7,7 @@ import logging
 import os
 import pathlib
 import random
+import re
 import shutil
 import subprocess
 import time
@@ -15,13 +16,17 @@ from typing import Dict
 
 from ruamel import yaml
 
-from .ConsensusGenesis import ConsensusConfigurationWriter, ConsensusGenesisWriter
-from .ETBConfig import ETBConfig, ConsensusClient, ETBClient, ForkVersion
+from .ConsensusGenesis import ConsensusGenesisWriter
+from .ETBConfig import ETBConfig, ClientInstance
+from .ETBUtils import write_checkpoint_file, Eth2ValTools
+from .ETBConstants import ForkVersion
 from .ExecutionGenesis import ExecutionGenesisWriter
-from .ExecutionRPC import (ETBExecutionRPC, admin_add_peer_RPC,
-                          admin_node_info_RPC, personal_unlock_account_RPC, miner_start_RPC, eth_get_block_RPC)
-
-logger = logging.getLogger("bootstrapper_log")
+from .ClientRequest import (
+    eth_getBlockByNumber,
+    admin_nodeInfo,
+    perform_batched_request,
+    admin_addPeer,
+)
 
 
 class EthereumTestnetBootstrapper(object):
@@ -34,9 +39,16 @@ class EthereumTestnetBootstrapper(object):
     used to bootstrap and run the testnet.
     """
 
-    def __init__(self, config_path):
-        self.etb_config = ETBConfig(config_path)
-        self.config_path = config_path
+    def __init__(self, config_path, logger: logging.Logger = None):
+        if logger is None:
+            # grab a logger from name
+            self.logger = logging.getLogger(__name__)
+            self.logger.warning(
+                "Default logger initialized since one was not supplied."
+            )
+        self.logger = logger
+        self.etb_config = ETBConfig(config_path, self.logger)
+        self.config_path = config_path  # save this to copy it into testnet dir.
 
     def init_testnet(self):
         """
@@ -44,9 +56,6 @@ class EthereumTestnetBootstrapper(object):
         the work that can be done statically. This includes creating the dir
         structure for the testnet and populating the cl bootnode enr file.
         """
-        # clear the last run
-        self.clear_last_run()
-
         # create the testnet root
         Path(self.etb_config.get("testnet-dir")).mkdir()
 
@@ -57,7 +66,10 @@ class EthereumTestnetBootstrapper(object):
         self._create_consensus_bootnode_dir()  # where we write the bootnode enr for CLs
         self._write_client_jwt_secrets()
 
-        self.etb_config.write_to_docker_compose()
+        # self.etb_config.write_to_docker_compose()
+        self.logger.debug("writing docker compose")
+        with open(self.etb_config.get("docker-compose-file"), "w") as f:
+            f.write(yaml.safe_dump(self.etb_config.get_docker_compose_repr()))
 
         # copy in the config file we used for the init process.
         shutil.copy(self.config_path, self.etb_config.get("etb-config-file"))
@@ -76,47 +88,49 @@ class EthereumTestnetBootstrapper(object):
         """
         # set the bootstrap time and update the file. Then signal dockers via
         # checkpoint.
-        self.etb_config.set_genesis_time(int(time.time()))
-        self.etb_config.write_config_to_file()
-
-        self.etb_config.write_checkpoint_file("etb-config-checkpoint-file")
+        self.etb_config.set_bootstrap_genesis_time(int(time.time()))
 
         # signal the consensus bootnode is ready to come online.
-        self.etb_config.write_checkpoint_file("consensus-bootnode-checkpoint-file")
+        write_checkpoint_file(self.etb_config.get("consensus-bootnode-checkpoint-file"))
 
         # bootstrap all the execution clients.
         self._write_execution_genesis_files()
-        self.etb_config.write_checkpoint_file("execution-checkpoint-file")
+        write_checkpoint_file(self.etb_config.get("execution-checkpoint-file"))
 
         # pair all the EL clients together.
-        self._pair_el_clients(self._get_all_el_enodes())
+        self.pair_el_clients()
 
         # if needed we start the clique miners
-        if self.etb_config.get_genesis_fork() < ForkVersion.Bellatrix:
+        if self.etb_config.get_genesis_fork_upgrade() < ForkVersion.Bellatrix:
+            # TODO figure out a more elegant way.
             self._start_clique_miners()
 
+        self.etb_config.write_etb_config_to_testnet_dir()
+        write_checkpoint_file(self.etb_config.get("etb-config-checkpoint-file"))
+
         # nimbus requires a contract_deposit_block_hash so fetch it.
-        self._write_contract_deployment_block_files()
+        self.write_contract_deployment_block_files()
 
         # bootstrap all the consensus clients.
-        self._write_consensus_genesis_files()
+        self.write_consensus_genesis_files()
         # cl_bootstrapper.bootstrap_consensus_clients()
-        self.etb_config.write_checkpoint_file("consensus-checkpoint-file")
+        write_checkpoint_file(self.etb_config.get("consensus-checkpoint-file"))
 
     def clear_last_run(self):
         """
         Clear all the files and dirs present in the testnet-root.
         """
-        testnet_root = self.etb_config.get("testnet-root")
-        if Path(testnet_root).exists():
-            for file in os.listdir(testnet_root):
-                path = Path(os.path.join(testnet_root, file))
-                if path.is_dir():
-                    shutil.rmtree(path)
-                else:
-                    path.unlink()
+        testnet_root = pathlib.Path(self.etb_config.get("testnet-root"))
+        docker_compose_file = pathlib.Path(self.etb_config.get("docker-compose-file"))
+        if testnet_root.exists():
+            for root, dirs, files in os.walk(testnet_root):
+                for f in files:
+                    pathlib.Path(f"{root}/{f}").unlink()
+                for d in dirs:
+                    shutil.rmtree(f"{root}/{d}")
 
-    # General private helpers to keep functions short.
+        if docker_compose_file.exists():
+            docker_compose_file.unlink()
 
     def _start_clique_miners(self) -> None:
         """
@@ -128,25 +142,28 @@ class EthereumTestnetBootstrapper(object):
         that implements the api. By default, we use alphabetical order.
         :return: None
         """
-        possible_el_clients = self.etb_config.get_execution_rpc_paths(protocol='http', apis=['personal','miner','clique'])
-        if len(possible_el_clients) == 0:
-            raise Exception("Error: Couldn't start clique miners as no EL client implements personal and miner")
-        logger.debug(f"Found possible clique miners: {possible_el_clients}")
-        names = list(possible_el_clients.keys())
-        names.sort()
-
-        miner_name = names[0]
-        logger.info(f"Starting clique miner for: {miner_name} : {possible_el_clients[miner_name]}")
-
-        address = self.etb_config.get_clique_signer()
-        passphrase = self.etb_config.get('eth1-passphrase')
-
-        unlock_rpc = personal_unlock_account_RPC(address=address, passphrase=passphrase, duration=100000)
-        miner_rpc = miner_start_RPC(1)
-
-        etb_rpc = ETBExecutionRPC(self.etb_config, timeout=5)
-        etb_rpc.do_rpc_request(unlock_rpc, client_nodes=[miner_name], all_clients=False)
-        etb_rpc.do_rpc_request(miner_rpc, client_nodes=[miner_name], all_clients=False)
+        raise Exception("NOT IMPLEMENTED")
+        # This is the previous implementation it has not been converted..from the old code.
+        # possible_el_clients = self.etb_config.get_execution_rpc_paths(protocol='http',
+        #                                                               apis=['personal', 'miner', 'clique'])
+        # if len(possible_el_clients) == 0:
+        #     raise Exception("Error: Couldn't start clique miners as no EL client implements personal and miner")
+        # self.logger.debug(f"Found possible clique miners: {possible_el_clients}")
+        # names = list(possible_el_clients.keys())
+        # names.sort()
+        #
+        # miner_name = names[0]
+        # self.logger.info(f"Starting clique miner for: {miner_name} : {possible_el_clients[miner_name]}")
+        #
+        # address = self.etb_config.get_clique_signer()
+        # passphrase = self.etb_config.get('eth1-passphrase')
+        #
+        # unlock_rpc = personal_unlock_account_RPC(address=address, passphrase=passphrase, duration=100000)
+        # miner_rpc = miner_start_RPC(1)
+        #
+        # etb_rpc = ETBExecutionRPC(self.etb_config, timeout=5)
+        # etb_rpc.do_rpc_request(unlock_rpc, client_nodes=[miner_name], all_clients=False)
+        # etb_rpc.do_rpc_request(miner_rpc, client_nodes=[miner_name], all_clients=False)
 
     def _create_consensus_bootnode_dir(self):
         """
@@ -156,75 +173,80 @@ class EthereumTestnetBootstrapper(object):
         enr_path = Path(self.etb_config.get("consensus-bootnode-file"))
         enr_path.parents[0].mkdir(exist_ok=True)
 
-    def _get_all_el_enodes(self, protocol='http') -> Dict[str, str]:
+    def pair_el_clients(self):
         """
-        fetch the EL enodes for all clients that implement the admin RPC
-        interface.
+        Given a dict of enodes, iterate through it and pair the clients via
+        the admin RPC interface.
+        """
+        admin_api_filter = re.compile(r"(admin|ADMIN)")
+        clients = self.etb_config.get_client_instances(el_api_filter=admin_api_filter)
+        rpc_request = admin_nodeInfo(
+            self.logger, timeout=30
+        )  # some els are slow to come up.
 
-        returns: dict {client-name : enode,...}
-        """
         enodes = {}
+        for client, resp in perform_batched_request(rpc_request, clients):
+            error, result = resp
+            if error is None:
+                enodes[client] = rpc_request.retrieve_response(result)["enode"]
+            else:
+                self.logger.error(
+                    f"Failed to get enode from client: {client.name}. Exception: {error}"
+                )
+                raise error
 
-        etb_rpc = ETBExecutionRPC(self.etb_config, timeout=5)
-        clients_with_admin_interface = []
-        for client, apis in self.etb_config.get_all_execution_clients_and_apis().items():
-            if 'admin' in apis:
-                clients_with_admin_interface.append(client)
+        # now peer the clients with themselves.
+        for client, enode in enodes.items():
+            add_enode_rpc_request = admin_addPeer(enode, self.logger)
+            for c in clients:
+                if c.name != client.name:
+                    err, result = add_enode_rpc_request.perform_request(client)
+                    if not err is None:
+                        self.logger.error(f"admin_addPeer failed with {err}")
 
-        node_info = etb_rpc.do_rpc_request(admin_node_info_RPC(), client_nodes=clients_with_admin_interface, all_clients=False)
-
-        for name, node_info_resp in node_info.items():
-            enodes[name] = node_info_resp["result"]["enode"]
-
-        return enodes
-
-    def _pair_el_clients(self, enode_dict, optional_delay=0):
-        """
-            Given a dict of enodes, iterate through it and pair the clients via
-            the admin RPC interface.
-        """
-        etb_rpc = ETBExecutionRPC(self.etb_config, timeout=5)
-
-        # iterate through all clients and enodes and peer them together.
-        for client, enode in enode_dict.items():
-            clients_to_peer = list(enode_dict.keys())
-            # don't peer a client with itself.
-            clients_to_peer.remove(client)
-            etb_rpc.do_rpc_request(
-                admin_add_peer_RPC(enode),
-                client_nodes=clients_to_peer,
-                all_clients=False,
-            )
-            time.sleep(optional_delay)
-
-    def _get_contract_deployment_block(self) -> tuple[str, int]:
+    def get_contract_deployment_block(self) -> tuple[str, int]:
         """
             Fetch a random EL client that implements the eth http api and get
             the 0th block for the contract deployment.
         :return: (block_number, block_hash)
         """
-        possible_el_clients = self.etb_config.get_execution_rpc_paths(protocol='http', apis=['eth'])
-        el_client_name = list(possible_el_clients.keys())[0]
-        logger.debug(f"fetching block 0x0 from {el_client_name}")
-        get_block_rpc = eth_get_block_RPC("0x0")
-        etb_rpc = ETBExecutionRPC(self.etb_config, timeout=5)
-        block_resp = etb_rpc.do_rpc_request(get_block_rpc, client_nodes=[el_client_name],all_clients=False)
-        response = block_resp[el_client_name]["result"]
-        logger.debug(f"{el_client_name} returned genesis block: {response}")
-        block_hash = response["hash"]
-        block_number = response["number"]
-        return block_hash, int(block_number,16)
+        el_http_regex = re.compile(r"(eth|ETH)")
+        possible_clients = self.etb_config.get_client_instances(
+            el_api_filter=el_http_regex
+        )
+        if not len(possible_clients) > 0:
+            raise Exception("No clients have an EL that supports the eth http-api")
 
-    def _write_contract_deployment_block_files(self):
+        client = random.choice(possible_clients)
+        rpc = eth_getBlockByNumber("0x0", self.logger)
+        err, response = rpc.perform_request(client)
+        if err is None:
+            block = rpc.retrieve_response(response)
+            block_number = block["number"]
+            block_hash = block["hash"]
+            self.logger.debug(f"Got block {block_number} with hash: {block_hash}")
+            return block_hash, int(block_number, 16)
+        else:
+            self.logger.error(
+                f"failed to get the contract deployment block with: {err}"
+            )
+            raise err
+
+    def write_contract_deployment_block_files(self):
         """
         Nimbus requires this to start up.
         :return: None
         """
-        block_hash, block_number = self._get_contract_deployment_block()
-        with open(self.etb_config.get('deposit-contract-deployment-block-hash-file'), 'w') as f:
+        block_hash, block_number = self.get_contract_deployment_block()
+        with open(
+                self.etb_config.get("deposit-contract-deployment-block-hash-file"), "w"
+        ) as f:
             f.write(block_hash)
-        with open(self.etb_config.get('deposit-contract-deployment-block-number-file'), 'w') as f:
+        with open(
+                self.etb_config.get("deposit-contract-deployment-block-number-file"), "w"
+        ) as f:
             f.write(str(block_number))
+
     def _create_client_testnet_directories(self):
         """
         Create the testnet directory structure of the testnet for init purposes
@@ -233,30 +255,31 @@ class EthereumTestnetBootstrapper(object):
         The dir structure for a client is:
             /{testnet_dir}/node_{node_num}/{execution-client}
         """
-        logger.info("Creating client testnet dirs.")
-        for multi_clients in self.etb_config.get_clients().values():
-            root_dir = Path(multi_clients.get("testnet-dir"))
+        self.logger.info("Creating client testnet dirs.")
+        for cic in self.etb_config.client_instance_collections.values():
+            root_dir = pathlib.Path(cic.get_root_client_testnet_dir())
             root_dir.mkdir()
-            for client in multi_clients:
-                print(client)
-                node_dir = Path(client.get_node_dir())
-                el_path = Path(node_dir.joinpath(f"{client.get('execution-client')}"))
+            self.logger.debug(f"created root-dir: {root_dir}")
+            for client_instance in cic:
+                node_dir = pathlib.Path(client_instance.get_consensus_node_dir())
+                el_dir = pathlib.Path(client_instance.get_execution_node_dir())
                 node_dir.mkdir()
-                el_path.mkdir()
+                self.logger.debug(f"created node-dir: {node_dir}")
+                el_dir.mkdir()
+                self.logger.debug(f"created el-dir: {el_dir}")
 
     def _write_client_jwt_secrets(self):
-        logger.info("Creating client jwt-secrets")
-        for multi_clients in self.etb_config.get_clients().values():
-            for client in multi_clients:
-                jwt_secret_file = client.get("jwt-secret-file")
-                jwt_secret = f"0x{random.randbytes(32).hex()}"
-                with open(jwt_secret_file, "w") as f:
-                    f.write(jwt_secret)
+        self.logger.info("Creating client jwt-secrets")
+        for client_instance in self.etb_config.get_client_instances():
+            jwt_secret_file = client_instance.get_jwt_secret_file()
+            self.logger.debug(f"populating jwt-secret-file: {jwt_secret_file}")
+            with open(jwt_secret_file, "w") as f:
+                f.write(f"0x{random.randbytes(32).hex()}")
 
     def _write_execution_genesis_files(self) -> None:
         """
-            Writes all the execution genesis json files for EL clients to the
-            file paths specified in the etb-config.
+        Writes all the execution genesis json files for EL clients to the
+        file paths specified in the etb-config.
         """
 
         egw = ExecutionGenesisWriter(self.etb_config)
@@ -265,214 +288,167 @@ class EthereumTestnetBootstrapper(object):
         # if not self.etb_config.has("bootstrap-genesis"):
         #     raise Exception("Cannot write execution genesis files before bootstrapping.")
 
-        with open(self.etb_config.get('geth-genesis-file'), 'w') as f:
+        with open(self.etb_config.get("geth-genesis-file"), "w") as f:
             f.write(json.dumps(egw.create_geth_genesis()))
 
-        with open(self.etb_config.get('besu-genesis-file'), 'w') as f:
+        with open(self.etb_config.get("besu-genesis-file"), "w") as f:
             f.write(json.dumps(egw.create_besu_genesis()))
 
-        with open(self.etb_config.get('nether-mind-genesis-file'), 'w') as f:
+        with open(self.etb_config.get("nether-mind-genesis-file"), "w") as f:
             f.write(json.dumps(egw.create_nethermind_genesis()))
 
-    def _write_consensus_genesis_files(self):
+    def write_consensus_genesis_files(self):
         """
         Create the consensus config.yaml file and the genesis.ssz file.
         """
-        logger.info("ConsensusBootstrapper bootstrapping consensus..")
-        ccw = ConsensusConfigurationWriter(self.etb_config)
+        self.logger.info("ConsensusBootstrapper bootstrapping consensus..")
         cgw = ConsensusGenesisWriter(self.etb_config)
         with open(self.etb_config.get("consensus-config-file"), "w") as f:
-            f.write(ccw.get_old_version_yaml())
-        logger.debug("ConsensusBootstrapper wrote config.yaml")
+            f.write(cgw.create_consensus_config_yaml())
+        self.logger.debug("ConsensusBootstrapper wrote config.yaml")
         with open(self.etb_config.get("consensus-genesis-file"), "wb") as f:
-            f.write(cgw.create_consensus_genesis())
-        logger.debug("ConsensusBootstrapper wrote genesis.ssz")
+            f.write(cgw.create_consensus_genesis_ssz())
+        self.logger.debug("ConsensusBootstrapper wrote genesis.ssz")
         # we have everything we need to populate all the consensus directories
 
-        generators = {
-            "teku": TekuConsensusDirectoryGenerator,
-            "prysm": PrysmTestnetGenerator,
-            "lighthouse": LighthouseTestnetGenerator,
-            "nimbus": NimbusTestnetGenerator,
-            "lodestar": LodestarTestnetGenerator,
-        }
-        for name, client in self.etb_config.get_clients().items():
-            logger.info(f"Creating testnet directory for {name}")
-            cdg = generators[client.get('consensus-client')](client)
-            cdg.finalize_testnet_dir()
+        cdg = ConsensusDirectoryGeneratorV2(self.etb_config, self.logger)
+        cdg.generate_validator_stores()
 
 
-class ConsensusDirectoryGenerator(object):
+class ConsensusDirectoryGeneratorV2(object):
     """
-    Generic ConsensusDirectoryGenerator. Given a ConsensusClient it generates the required
-    directory structure for the client to start up as well as populating the directories with
-    all the required files, e.g. genesis ssz, config files, etc.
+    Generates the consensus directories for all clients includeing the validator keystores.
     """
 
-    def __init__(self, client_module: ETBClient, password=None):
-        self.client_module = client_module
-        self.password = password
+    def __init__(self, etb_config: ETBConfig, logger: logging.Logger = None):
+        if logger is None:
+            self.logger = logging.getLogger(__name__)
+        else:
+            self.logger = logger
 
-        # self.etb_config = consensus_client.etb_config
-        self.mnemonic = self.client_module.etb_config.get('validator-mnemonic')
-        # self.mnemonic = self.client.get("validator-mnemonic")
+        self.etb_config: ETBConfig = etb_config
+        self.genesis_ssz_file = self.etb_config.get("consensus-genesis-file")
+        self.consensus_config = self.etb_config.get("consensus-config-file")
 
-        genesis_ssz = self.client_module.etb_config.get("consensus-genesis-file")
-        consensus_config = self.client_module.etb_config.get("consensus-config-file")
-        self.testnet_dir = pathlib.Path(self.client_module.get("testnet-dir"))
-        self.validator_dir = pathlib.Path(
-            self.client_module.get("testnet-dir") + "/validators/"
-        )
+        self.eth2valtools = Eth2ValTools(self.logger)
 
-        self.validator_dir.mkdir(exist_ok=True)
-
-        shutil.copy(genesis_ssz, str(self.testnet_dir) + "/genesis.ssz")
-        shutil.copy(consensus_config, str(self.testnet_dir) + "/config.yaml")
-
-        self._generate_validator_stores()
-
-    def _generate_validator_stores(self):
-        """
-        Clients have a validator offset start (which specifies the offset
-        from which we generate their keys.
-
-        The Clients Consensus-Config specifies the number of validators per
-        node, and the client specifies the number of nodes. Thus to have
-        multiple clients you must ensure that the validator offsets between
-        each client is at least num_nodes*num_validators above the previous
-        client.
-
-        You can check this using the ETBConfig.check_configuration_sanity()
-        """
-
-        validator_offset_start = self.client_module.get("validator-offset-start")
-        num_validators = self.client_module.consensus_config.config["num-validators"] #TODO: make this not shit.
-        for x in range(self.client_module.get("num-nodes")):
-
-            source_min = validator_offset_start + (x * num_validators)
-            source_max = source_min + num_validators
-            cmd = (
-                    "eth2-val-tools keystores "
-                    + f"--out-loc {self.validator_dir}/node_{x} "
-                    + f"--source-min {source_min} "
-                    + f"--source-max {source_max} "
-                    + f'--source-mnemonic "{self.mnemonic}"'
+    def generate_validator_stores(self):
+        # create the validator keystores.
+        for client in self.etb_config.get_client_instances():
+            consensus_client_name = client.consensus_config.get("client")
+            keystore_dir = client.get_consensus_node_dir() + "/generated_keystores/"
+            min_ndx = client.get("validator-offset-start")
+            max_ndx = client.get(
+                "validator-offset-start"
+            ) + client.consensus_config.get("num-validators")
+            src_mnemonic = self.etb_config.accounts.get("validator-mnemonic")
+            print(
+                f"generating validator stores for client: {consensus_client_name}",
+                flush=True,
             )
-            if self.password is not None:
-                cmd += f' --prysm-pass "{self.password}"'
-            subprocess.run(cmd, shell=True)
 
-
-class TekuConsensusDirectoryGenerator(ConsensusDirectoryGenerator):
-    def __init__(self, consensus_client):
-        super().__init__(consensus_client)
-
-    def finalize_testnet_dir(self):
-        for ndx in range(self.client_module.get("num-nodes")):
-            node_dir = pathlib.Path(str(self.testnet_dir) + f"/node_{ndx}")
-            keystore_dir = pathlib.Path(str(self.testnet_dir) + "/validators")
-            src_dir = pathlib.Path(str(keystore_dir) + f"/node_{ndx}")
-            shutil.copytree(str(src_dir) + "/teku-keys", str(node_dir) + "/keys")
-            shutil.copytree(str(src_dir) + "/teku-secrets", str(node_dir) + "/secrets")
-
-        shutil.rmtree(str(self.testnet_dir) + "/validators/")
-
-
-class PrysmTestnetGenerator(ConsensusDirectoryGenerator):
-    def __init__(self, consensus_client: ETBClient):
-        # super hacky workaround to get this to work. TODO: make this work nicely with new ETB.
-        validator_password = consensus_client.config.config['additional-env']['validator-password']
-        super().__init__(
-            consensus_client,
-            validator_password,
-        )
-        # prysm only stuff.
-        self.password_file = self.client_module.config.config["additional-env"]["wallet-path"]
-
-        with open(self.password_file, "w") as f:
-            f.write(self.password)
-
-    def finalize_testnet_dir(self):
-        """
-        Copy validator info into local client.
-        """
-        print(f"Finalizing prysm client {self.testnet_dir} testnet directory.")
-        for ndx in range(self.client_module.get("num-nodes")):
-            node_dir = pathlib.Path(str(self.testnet_dir) + f"/node_{ndx}")
-            keystore_dir = pathlib.Path(
-                str(self.testnet_dir) + f"/validators/node_{ndx}/"
+            self.eth2valtools.generate_keystores(
+                keystore_dir,
+                min_ndx,
+                max_ndx,
+                src_mnemonic,
+                prysm=consensus_client_name == "prysm",
+                prysm_password=client.get("validator-password"),
             )
-            for f in keystore_dir.glob("prysm/*"):
-                if f.is_dir():
-                    shutil.copytree(src=f, dst=f"{node_dir}/{f.name}")
-                else:
-                    shutil.copy(src=f, dst=f"{node_dir}/{f.name}")
-        # done now clean up..
-        shutil.rmtree(str(self.testnet_dir) + "/validators/")
 
+            # get the correct key representation
+            if consensus_client_name == "teku":
+                shutil.copytree(
+                    keystore_dir + "/teku-keys",
+                    client.get_consensus_node_dir() + "/keys",
+                )
+                shutil.copytree(
+                    keystore_dir + "/teku-secrets",
+                    client.get_consensus_node_dir() + "/secrets",
+                )
+            elif consensus_client_name == "prysm":
+                for item in pathlib.Path(keystore_dir).glob("prysm/*"):
+                    if item.is_dir():
+                        shutil.copytree(
+                            item, f"{client.get_consensus_node_dir()}/{item.name}"
+                        )
+                    else:
+                        shutil.copy(
+                            item, f"{client.get_consensus_node_dir()}/{item.name}"
+                        )
+                # prysm requires a wallet-password.txt to launch.
+                with open(client.get_wallet_password_path(), "w") as f:
+                    f.write(client.get_validator_password())
+            elif consensus_client_name == "lighthouse":
+                shutil.copytree(
+                    keystore_dir + "/keys", client.get_consensus_node_dir() + "/keys"
+                )
+                shutil.copytree(
+                    keystore_dir + "/secrets",
+                    client.get_consensus_node_dir() + "/secrets",
+                )
+                # put lighthouse specific items in the dir
+                lighthouse_deploy_block = pathlib.Path(
+                    client.get_testnet_dir() + "/deploy_block.txt"
+                )
+                if not lighthouse_deploy_block.exists():
+                    print("moving lighthouse deploy block to dir", flush=True)
+                    shutil.copy(
+                        src=self.etb_config.files.get(
+                            "deposit-contract-deployment-block-number-file"
+                        ),
+                        dst=str(lighthouse_deploy_block),
+                    )
+            elif consensus_client_name == "nimbus":
+                shutil.copytree(
+                    keystore_dir + "/nimbus-keys",
+                    client.get_consensus_node_dir() + "/keys",
+                )
+                shutil.copytree(
+                    keystore_dir + "/secrets",
+                    client.get_consensus_node_dir() + "/secrets",
+                )
+                # put nimbus specific items in the dir.
+                nimbus_deployment_block_hash_path = pathlib.Path(
+                    client.get_testnet_dir() + "/deposit_contract_block_hash.txt"
+                )
+                nimbus_deployment_block_number = pathlib.Path(
+                    client.get_testnet_dir() + "/deposit_contract_block.txt"
+                )
+                if not nimbus_deployment_block_hash_path.exists():
+                    shutil.copy(
+                        src=self.etb_config.files.get(
+                            "deposit-contract-deployment-block-hash-file"
+                        ),
+                        dst=str(nimbus_deployment_block_hash_path),
+                    )
+                if not nimbus_deployment_block_number.exists():
+                    print("moving nimbus files over", flush=True)
+                    shutil.copy(
+                        src=self.etb_config.files.get(
+                            "deposit-contract-deployment-block-number-file"
+                        ),
+                        dst=str(nimbus_deployment_block_number),
+                    )
+            elif consensus_client_name == "lodestar":
+                shutil.copytree(
+                    keystore_dir + "/keys", client.get_consensus_node_dir() + "/keys"
+                )
+                shutil.copytree(
+                    keystore_dir + "/lodestar-secrets",
+                    client.get_consensus_node_dir() + "/secrets",
+                )
+                # lodestar specific items
+                pathlib.Path(client.get_consensus_node_dir() + "/validatordb").mkdir()
+            else:
+                raise Exception(f"Unknown consensus clients: {client.name}")
 
-class LighthouseTestnetGenerator(ConsensusDirectoryGenerator):
-    def __init__(self, consensus_client):
-        super().__init__(consensus_client)
-
-        with open(str(self.testnet_dir) + "/deploy_block.txt", "w") as f:
-            f.write("0")
-
-    def finalize_testnet_dir(self):
-        """
-        Copy validator info into local client.
-        """
-        print(f"Finalizing lighthouse client dir={self.testnet_dir}")
-        for ndx in range(self.client_module.get("num-nodes")):
-            node_dir = pathlib.Path(str(self.testnet_dir) + f"/node_{ndx}")
-            keystore_dir = pathlib.Path(str(self.testnet_dir) + "/validators")
-            src_dir = pathlib.Path(str(keystore_dir) + f"/node_{ndx}")
-            shutil.copytree(str(src_dir) + "/keys", str(node_dir) + "/keys")
-            shutil.copytree(str(src_dir) + "/secrets", str(node_dir) + "/secrets")
-        # done now clean up..
-        shutil.rmtree(str(self.testnet_dir) + "/validators/")
-
-
-class NimbusTestnetGenerator(ConsensusDirectoryGenerator):
-    def __init__(self, consensus_client):
-        super().__init__(consensus_client)
-
-    def finalize_testnet_dir(self):
-        """
-        Copy validator info into local client.
-        """
-        print(f"Finalizing nimbus client dir={self.testnet_dir}")
-        for ndx in range(self.client_module.get("num-nodes")):
-            node_dir = pathlib.Path(str(self.testnet_dir) + f"/node_{ndx}")
-            keystore_dir = pathlib.Path(str(self.testnet_dir) + "/validators")
-            src_dir = pathlib.Path(str(keystore_dir) + f"/node_{ndx}")
-            shutil.copytree(str(src_dir) + "/nimbus-keys", str(node_dir) + "/keys")
-            shutil.copytree(str(src_dir) + "/secrets", str(node_dir) + "/secrets")
-        # done now clean up..
-        shutil.rmtree(str(self.testnet_dir) + "/validators/")
-
-        # nimbus required goodies.
-        shutil.copy(src="/data/deposit_contract_block_hash.txt", dst=str(self.testnet_dir) + "/deposit_contract_block_hash.txt")
-        shutil.copy(src="/data/deposit_contract_block.txt", dst=str(self.testnet_dir) + "/deposit_contract_block.txt")
-
-
-class LodestarTestnetGenerator(ConsensusDirectoryGenerator):
-    def __init__(self, consensus_client):
-        super().__init__(consensus_client)
-
-    def finalize_testnet_dir(self):
-        """
-        Copy validator info into local client.
-        """
-        for ndx in range(self.client_module.get("num-nodes")):
-            node_dir = pathlib.Path(str(self.testnet_dir) + f"/node_{ndx}")
-            keystore_dir = pathlib.Path(str(self.testnet_dir) + "/validators")
-            src_dir = pathlib.Path(str(keystore_dir) + f"/node_{ndx}")
-            shutil.copytree(str(src_dir) + "/keys", str(node_dir) + "/keys")
-            shutil.copytree(
-                str(src_dir) + "/lodestar-secrets", str(node_dir) + "/secrets"
+            shutil.copy(
+                self.etb_config.get("consensus-genesis-file"),
+                client.get_testnet_dir() + "/genesis.ssz",
             )
-            validator_db = pathlib.Path(str(node_dir) + "/validatordb")
-            validator_db.mkdir()
-        # done now clean up..
-        shutil.rmtree(str(self.testnet_dir) + "/validators/")
+            shutil.copy(
+                self.etb_config.get("consensus-config-file"),
+                client.get_testnet_dir() + "/config.yaml",
+            )
+            shutil.rmtree(keystore_dir)

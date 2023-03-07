@@ -10,9 +10,10 @@ class ExecutionGenesisWriter(object):
     def __init__(self, global_config):
         self.etb_config: ETBConfig = global_config
         self.genesis = {}
-        self.execution_genesis = self.etb_config.get("bootstrap-genesis") + self.etb_config.get(
-            "execution-genesis-delay")
-
+        self.execution_genesis = (
+            self.etb_config.get_bootstrap_genesis_time()
+            + self.etb_config.get("execution-genesis-delay")
+        )
 
     def get_allocs(self) -> dict:
         allocs = {}
@@ -63,16 +64,16 @@ class ExecutionGenesisWriter(object):
             "istanbulBlock": 0,
             "berlinBlock": 0,
             "londonBlock": 0,
-            "mergeForkBlock": self.etb_config.get_el_merge_fork_block(),
-            "arrowGlacierBlock": self.etb_config.get_el_merge_fork_block(),
-            "grayGlacierBlock": self.etb_config.get_el_merge_fork_block(),
+            "mergeForkBlock": self.etb_config.get_execution_merge_fork_block(),
+            "arrowGlacierBlock": self.etb_config.get_execution_merge_fork_block(),
+            "grayGlacierBlock": self.etb_config.get_execution_merge_fork_block(),
             "shanghaiTime": self.etb_config.get_shanghai_time(),
             "terminalTotalDifficulty": self.etb_config.get_terminal_total_difficulty(),
         }
         self.genesis["config"] = config
 
-        if self.etb_config.is_clique_genesis():
-            signer = self.etb_config.get('clique-signer')
+        if self.etb_config.get_genesis_fork_upgrade() < ForkVersion.Bellatrix:
+            signer = self.etb_config.get("clique-signer")
             self.genesis["extraData"] = f"0x{'0' * 64}{signer[2:]}{'0' * 130}"
             self.genesis["config"]["clique"] = {
                 "period": self.etb_config.get("seconds-per-eth1-block"),
@@ -106,13 +107,13 @@ class ExecutionGenesisWriter(object):
                 "istanbulBlock": 0,
                 "berlinBlock": 0,
                 "londonBlock": 0,
-                "arrowGlacierBlock": self.etb_config.get_el_merge_fork_block(),
-                "grayGlacierBlock": self.etb_config.get_el_merge_fork_block(),
-                "mergeForkBlock":  self.etb_config.get_el_merge_fork_block(),
+                "arrowGlacierBlock": self.etb_config.get_execution_merge_fork_block(),
+                "grayGlacierBlock": self.etb_config.get_execution_merge_fork_block(),
+                "mergeForkBlock": self.etb_config.get_execution_merge_fork_block(),
                 "shanghaiTime": self.etb_config.get_shanghai_time(),
                 "terminalTotalDifficulty": 0,
                 "ethash": {},
-            }
+            },
         }
 
         # besu doesn't use keystores like geth, however you can embed the accounts in the genesis.
@@ -123,8 +124,11 @@ class ExecutionGenesisWriter(object):
             acct = w3.eth.account.from_mnemonic(
                 mnemonic, account_path=acc, passphrase=password
             )
+            self.genesis["alloc"][acct.address]["privateKey"] = acct.privateKey.hex()[
+                2:
+            ]
 
-            self.genesis["alloc"][acct.address]["privateKey"] = acct.privateKey.hex()[2:]
+        # TODO: besu clique.
 
         return self.genesis
 
@@ -203,6 +207,8 @@ class ExecutionGenesisWriter(object):
                 "difficultyBombDelays": {},
             }
         }
+
+        # TODO: nethermind clique
         return self.genesis
 
 

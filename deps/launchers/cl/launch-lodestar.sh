@@ -14,6 +14,7 @@ env_vars=(
   "CONSENSUS_P2P_PORT"
   "CONSENSUS_VALIDATOR_METRIC_PORT"
   "CONSENSUS_VALIDATOR_RPC_PORT"
+  "CONSENSUS_LOG_LEVEL"
   "IP_ADDRESS"
   "IP_SUBNET"
   "JWT_SECRET_FILE"
@@ -59,7 +60,7 @@ lodestar beacon \
     --rest.address=0.0.0.0 \
     --rest.port="$CONSENSUS_BEACON_API_PORT" \
     --rest.namespace="*" \
-    --logLevel="$LSTAR_DEBUG_LEVEL" \
+    --logLevel="$CONSENSUS_LOG_LEVEL" \
     --logFile="$CONSENSUS_NODE_DIR/beacon.log" \
     --enr.ip="$IP_ADDRESS" \
     --enr.tcp="$CONSENSUS_P2P_PORT" \
@@ -78,5 +79,6 @@ lodestar validator \
     --beaconNodes="http://127.0.0.1:$CONSENSUS_BEACON_API_PORT" \
     --validatorsDbDir="$CONSENSUS_NODE_DIR/validatorsdb" \
     --logFile="$CONSENSUS_NODE_DIR/validatordb/validator.log" \
-    --logLevel="$LSTAR_DEBUG_LEVEL" \
-    --graffiti="$CONSENSUS_GRAFFITI"
+    --logLevel="$CONSENSUS_LOG_LEVEL" \
+    --graffiti="$CONSENSUS_GRAFFITI" \
+    --force

@@ -8,7 +8,7 @@ RUN apt-get install -y unzip && \
 
 WORKDIR /git
 
-RUN git clone https://github.com/sigp/lighthouse.git && cd lighthouse && git checkout stable
+RUN git clone https://github.com/sigp/lighthouse.git && cd lighthouse && git checkout capella
 
 RUN rustup toolchain install stable
 

@@ -81,5 +81,8 @@ COPY lib/libvoidstar.so /usr/lib/libvoidstar.so
 RUN mkdir -p /opt/antithesis/
 COPY go_instrumentation /opt/antithesis/go_instrumentation
 
+RUN npm install -g npm@latest
+RUN npm install -g @bazel/bazelisk
+
 
 ENTRYPOINT ["/bin/bash"]

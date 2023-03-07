@@ -12,13 +12,6 @@ RUN cd /git/nethermind &&  dotnet publish src/Nethermind/Nethermind.Runner -c re
 
 RUN cd /git/nethermind && git log -n 1 --format=format:"%H" > /nethermind.version
 
-from etb-client-runner:latest 
-
-RUN apt remove git wget ca-certificates make g++ -y \
-    && apt autoremove -y \
-    && apt clean \
-    && rm -rf /var/lib/apt/lists/*
-
 FROM scratch
 
 COPY --from=builder /git/nethermind/out /nethermind/
