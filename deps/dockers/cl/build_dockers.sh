@@ -10,3 +10,4 @@ BUILDKIT=1 docker build -t nimbus:etb-minimal -f nimbus_minimal.Dockerfile .
 BUILDKIT=1 docker build -t teku:etb-minimal -f teku_minimal.Dockerfile .
 BUILDKIT=1 docker build -t lodestar:etb-minimal -f lodestar_minimal.Dockerfile .
 BUILDKIT=1 docker build -t lighthouse:etb-minimal -f lighthouse_minimal.Dockerfile .
+BUILDKIT=1 docker build -t prysm:etb-minimal -f prysm_minimal.Dockerfile .
