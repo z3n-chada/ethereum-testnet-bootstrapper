@@ -32,8 +32,8 @@ RUN wget --no-check-certificate https://apt.llvm.org/llvm.sh && chmod +x llvm.sh
 ENV LLVM_CONFIG=llvm-config-14
 
 # set up go
-RUN wget https://go.dev/dl/go1.18.3.linux-amd64.tar.gz
-RUN tar -zxvf go1.18.3.linux-amd64.tar.gz -C /usr/local/
+RUN wget https://go.dev/dl/go1.19.6.linux-amd64.tar.gz
+RUN tar -zxvf go1.19.6.linux-amd64.tar.gz -C /usr/local/
 RUN ln -s /usr/local/go/bin/go /usr/local/bin/go
 RUN ln -s /usr/local/go/bin/gofmt /usr/local/bin/gofmt
 
