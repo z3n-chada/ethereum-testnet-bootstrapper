@@ -25,6 +25,7 @@ package instrumentation
 // int fuzz_getchar();
 // void fuzz_info_message( const char* message );
 // void fuzz_error_message( const char* message );
+// u_int64_t fuzz_get_random();
 // size_t init_coverage_module(size_t edge_count, const char* symbol_file_name);
 // bool notify_coverage(size_t edge_plus_module);
 // void fuzz_exit(int exit_code);
@@ -36,28 +37,9 @@ import (
 	"unsafe"
 )
 
-// AntithesisGoInstrumentationVerbose points to the literal
-// "ANT_GO_INSTRUMENTATION_VERBOSE". This environment variable
-// should be present if you want every edge reported.
-const AntithesisGoInstrumentationVerbose string = "ANT_GO_INSTRUMENTATION_VERBOSE"
-
-var edgesVisited = map[uint32]bool{}
 var moduleInitialized = false
-
-// TODO What integer types would be best to use?
 var moduleOffset uint64
-var moduleEdgeCount = -1
-
-// TODO Add an init() function to this package.
-func getInstrumentationWrapperVerbose() bool {
-	_, present := os.LookupEnv(AntithesisGoInstrumentationVerbose)
-	return present
-}
-
-// InstrumentationWrapperVerbose reads environment variables specific
-// to the Go instrumentation. Right now, this simply causes edge numbers
-// to be written to stderr.
-var instrumentationWrapperVerbose bool = getInstrumentationWrapperVerbose()
+var edgesVisited = bitSet{}
 
 // InitializeModule should be called only once from a program.
 func InitializeModule(symbolTable string, edgeCount int) uint64 {
@@ -78,15 +60,20 @@ func InitializeModule(symbolTable string, edgeCount int) uint64 {
 }
 
 // Notify will be called from instrumented code.
-func Notify(edge int) bool {
+func Notify(edge int) {
 	if !moduleInitialized {
 		// We cannot support incorrect workflows.
-		panic(fmt.Sprintf("antithesis.com/go/instrumentation.Notify() called before being initialized."))
+		panic(fmt.Sprintf("antithesis.com/go/instrumentation.Notify() called before InitializeModule()"))
+	}
+	if edgesVisited.Get(edge) {
+		return
 	}
 	edgePlusOffset := uint64(edge)
 	edgePlusOffset += moduleOffset
-	b := C.notify_coverage(C.ulong(edgePlusOffset))
-	return bool(b)
+	mustCall := C.notify_coverage(C.ulong(edgePlusOffset))
+	if !mustCall {
+		edgesVisited.Set(edge)
+	}
 }
 
 // FuzzGetChar is for the use of the test harness.
@@ -111,4 +98,9 @@ func ErrorMessage(message string) {
 	s := C.CString(message)
 	defer C.free(unsafe.Pointer(s))
 	C.fuzz_error_message(s)
+}
+
+// GetRandom may replace getrandom() in workloads.
+func GetRandom() uint64 {
+	return uint64(C.fuzz_get_random())
 }
