@@ -24,10 +24,10 @@ RUN cd go-ethereum && go mod edit -require=antithesis.com/instrumentation/wrappe
 # Get dependencies
 RUN cd /go/src/github.com/ethereum/go-ethereum && go get -t -d ./...
 
-RUN cd go-ethereum \
+RUN cd /go/src/github.com/ethereum/go-ethereum \
     && CGO_CFLAGS="-I/opt/antithesis/go_instrumentation/include" CGO_LDFLAGS="-L/opt/antithesis/go_instrumentation/lib" go install ./...
-
-RUN cd go-ethereum && git log -n 1 --format=format:"%H" > /geth.version
+RUN go env GOPATH
+RUN cd /go/src/github.com/ethereum/go-ethereum && git log -n 1 --format=format:"%H" > /geth.version
 
 FROM etb-client-runner
 

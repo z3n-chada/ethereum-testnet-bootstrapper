@@ -1,6 +1,6 @@
-#!/bin/bash
 
-git clone -b develop https://github.com/kurtosis-tech/tx-fuzz
+
+git clone -b main https://github.com/kurtosis-tech/tx-fuzz
 
 cp tx-fuzzer.Dockerfile tx-fuzz/tx-fuzzer.Dockerfile
 
