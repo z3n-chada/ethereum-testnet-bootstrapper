@@ -2,10 +2,10 @@
 
 # build the ethereum-testnet-bootstrapper docker.
 build-bootstrapper:
-	docker build -t ethereum-testnet-bootstrapper -f Dockerfile .
+	docker build --registries-conf=`pwd`/registries.conf -t ethereum-testnet-bootstrapper -f Dockerfile .
 
 rebuild-bootstrapper:
-	docker build --no-cache -t ethereum-testnet-bootstrapper -f Dockerfile .
+	docker build --registries-conf=`pwd`/registries.conf --no-cache -t ethereum-testnet-bootstrapper -f Dockerfile .
 
 # build all of the docker files we currently use
 build-dockers: build-bootstrapper

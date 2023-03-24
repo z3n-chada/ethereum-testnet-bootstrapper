@@ -4,9 +4,9 @@ WORKDIR /git
 # Included here to avoid build-time complaints
 ARG BRANCH="unstable"
 
-RUN git clone https://github.com/status-im/nimbus-eth2.git
+RUN git clone https://github.com/status-im/nimbus-eth2.git && cd nimbus-eth2 && git checkout unstable
 
-RUN cd nimbus-eth2 && git fetch origin pull/4519/head:pull_4519 && git checkout pull_4519
+#RUN cd nimbus-eth2 && git fetch origin pull/4519/head:pull_4519 && git checkout pull_4519
 
 RUN cd nimbus-eth2 && make -j64 update
 

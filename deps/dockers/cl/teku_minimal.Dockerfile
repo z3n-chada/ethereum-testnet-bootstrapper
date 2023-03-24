@@ -1,4 +1,4 @@
-FROM consensys/teku:develop as builder
+FROM consensys/teku:23.3.1 as builder
 
 FROM scratch
 
