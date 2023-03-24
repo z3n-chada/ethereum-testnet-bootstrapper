@@ -381,8 +381,38 @@ client-instances:
 
     validator-offset-start: 90
 
-  # clients to catch the extra deposits
-  teku-whale:
+# Nethermind clients
+
+  prysm-nethermind:
+    # docker-compose
+    image: "etb-all-clients"
+    tag: "minimal"
+    start-ip-address: "10.0.20.110"
+    num-nodes: 1
+
+    # consensus-info
+    consensus-config: "prysm-consensus-client"
+    execution-config: "nethermind-execution-config"
+
+    validator-offset-start: 100
+
+    additional-env:
+      validator-password: "testnet-password"
+
+  teku-nethermind:
+    # docker-compose
+    image: "etb-all-clients"
+    tag: "minimal"
+    start-ip-address: "10.0.20.120"
+    num-nodes: 1
+
+    # consensus-info
+    consensus-config: "teku-consensus-client"
+    execution-config: "nethermind-execution-config"
+
+    validator-offset-start: 110
+
+  lighthouse-nethermind:
     # docker-compose
     image: "etb-all-clients"
     tag: "minimal"
@@ -390,10 +420,53 @@ client-instances:
     num-nodes: 1
 
     # consensus-info
+    consensus-config: "lighthouse-consensus-client"
+    execution-config: "nethermind-execution-config"
+
+    validator-offset-start: 120
+
+  lodestar-nethermind:
+    # docker-compose
+    image: "etb-all-clients"
+    tag: "minimal"
+    start-ip-address: "10.0.20.140"
+    num-nodes: 1
+
+    # consensus-info
+    consensus-config: "lodestar-consensus-client"
+    execution-config: "nethermind-execution-config"
+
+    validator-offset-start: 130
+
+    additional-env:
+      lodestar-preset: "minimal"
+
+  nimbus-nethermind:
+    # docker-compose
+    image: "etb-all-clients"
+    tag: "minimal"
+    start-ip-address: "10.0.20.150"
+    num-nodes: 1
+
+    # consensus-info
+    consensus-config: "nimbus-consensus-client"
+    execution-config: "nethermind-execution-config"
+
+    validator-offset-start: 140
+    
+  # clients to catch the extra deposits
+  teku-whale:
+    # docker-compose
+    image: "etb-all-clients"
+    tag: "minimal"
+    start-ip-address: "10.0.20.160"
+    num-nodes: 1
+
+    # consensus-info
     consensus-config: "teku-consensus-client-whale"
     execution-config: "geth-execution-config"
 
-    validator-offset-start: 100
+    validator-offset-start: 150
 
 # generic instances that run fuzzers/health checks/etc.
 generic-instances:
