@@ -6,14 +6,14 @@ echo "Building base images."
 docker build --registries-conf=`pwd`/../../../registries.conf --no-cache -t etb-client-builder -f etb-client-builder.Dockerfile .
 docker build --registries-conf=`pwd`/../../../registries.conf --no-cache -t etb-client-runner -f etb-client-runner.Dockerfile .
 
-### els then cls
-cd ../el/ || exit
-echo "Building execution clients"
-./rebuild_dockers.sh
-
-# cd ../cl/ || exit
-# echo "Building consensus clients"
+# ### els then cls
+# cd ../el/ || exit
+# echo "Building execution clients"
 # ./rebuild_dockers.sh
+
+cd ../cl/ || exit
+echo "Building consensus clients"
+./rebuild_dockers.sh
 
 # cd ../fuzzers/ || exit
 # echo "building fuzzers."

@@ -20,14 +20,15 @@ RUN . /envfile; ./hack/update-go-pbs.sh --config=minimal || true
 RUN . /envfile; ./hack/update-go-ssz.sh --config=minimal || true
 
 
-FROM golang:1.20.1-bullseye AS instrumentor
+# FROM golang:1.20.1-bullseye AS instrumentor
+FROM etb-client-builder:latest as instrumentor
 
 COPY --from=builder /git/prysm /git/prysm
 WORKDIR /git
 
 RUN mkdir -p /opt/antithesis/
-COPY ./go_instrumentation /opt/antithesis/go_instrumentation
-COPY ./go_instrumentation/lib/libvoidstar.so /usr/lib/libvoidstar.so
+# COPY ./go_instrumentation /opt/antithesis/go_instrumentation
+# COPY ./go_instrumentation/lib/libvoidstar.so /usr/lib/libvoidstar.so
 RUN mkdir -p prysm_instrumented
 RUN /opt/antithesis/go_instrumentation/bin/goinstrumentor -version
 RUN /opt/antithesis/go_instrumentation/bin/goinstrumentor \

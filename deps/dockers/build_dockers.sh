@@ -1,7 +1,6 @@
-
 # build the builder first
-cd base-images/ || exit
-echo "Building base images."
+# cd base-images/ || exit
+# echo "Building base images."
 BUILDKIT=1 docker build --registries-conf=`pwd`/../../../registries.conf -t etb-client-builder -f etb-client-builder.Dockerfile .
 BUILDKIT=1 docker build --registries-conf=`pwd`/../../../registries.conf -t etb-client-runner -f etb-client-runner.Dockerfile .
 

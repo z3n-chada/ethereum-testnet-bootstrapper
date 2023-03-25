@@ -1,6 +1,7 @@
-
-
 # git clone -b master https://github.com/MariusVanDerWijden/tx-fuzz
+
+
+git clone -b main https://github.com/kurtosis-tech/tx-fuzz
 
 # cp tx-fuzzer.Dockerfile tx-fuzz/tx-fuzzer.Dockerfile
 
