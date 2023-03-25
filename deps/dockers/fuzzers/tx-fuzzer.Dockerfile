@@ -10,17 +10,12 @@ ENV CGO_ENABLED=0
 
 WORKDIR /git
 # Copy and download dependencies using go mod
-COPY go.mod .
-COPY go.sum .
-RUN go mod download
 
-# Copy the code into the container
-COPY . .
+RUN git clone -b master https://github.com/MariusVanDerWijden/tx-fuzz
 
-# RUN go test ./...
+WORKDIR /git/tx-fuzz/cmd/livefuzzer
 
-# Build the application
-RUN GOOS=linux go build -o tx-fuzz.bin ./cmd/livefuzzer/main.go
+RUN GOOS=linux go build -o tx-fuzz.bin
 # RUN GOOS=linux go build -o tx-fuzz.bin ./cmd/livefuzzer/*
 
 FROM debian:bullseye-slim
@@ -28,7 +23,7 @@ FROM debian:bullseye-slim
 WORKDIR /run
 
 # Copy the code into the container
-COPY --from=builder /git/tx-fuzz.bin .
+COPY --from=builder /git/tx-fuzz/tx-fuzz.bin .
 
 ENTRYPOINT ["./tx-fuzz.bin"]
 
