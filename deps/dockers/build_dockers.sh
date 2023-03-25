@@ -10,13 +10,13 @@
 # echo "Building execution clients"
 # ./build_dockers.sh
 
-cd cl/ || exit
-echo "Building consensus clients"
-./build_dockers.sh
-
-# cd ../fuzzers/ || exit
-# echo "building fuzzers."
+# cd cl/ || exit
+# echo "Building consensus clients"
 # ./build_dockers.sh
+
+cd fuzzers/ || exit
+echo "building fuzzers."
+./build_dockers.sh
 
 # #
 # cd ../base-images/ || exit
