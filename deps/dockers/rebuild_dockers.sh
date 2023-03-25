@@ -1,17 +1,18 @@
 
 
 # build the builder first
-cd base-images/ || exit
-echo "Building base images."
-docker build --registries-conf=`pwd`/../../../registries.conf --no-cache -t etb-client-builder -f etb-client-builder.Dockerfile .
-docker build --registries-conf=`pwd`/../../../registries.conf --no-cache -t etb-client-runner -f etb-client-runner.Dockerfile .
+# cd base-images/ || exit
+# echo "Building base images."
+# docker build --registries-conf=`pwd`/../../../registries.conf --no-cache -t etb-client-builder -f etb-client-builder.Dockerfile .
+# docker build --registries-conf=`pwd`/../../../registries.conf --no-cache -t etb-client-runner -f etb-client-runner.Dockerfile .
 
 # ### els then cls
 # cd ../el/ || exit
 # echo "Building execution clients"
 # ./rebuild_dockers.sh
 
-cd ../cl/ || exit
+# cd ../cl/ || exit
+cd cl/ || exit
 echo "Building consensus clients"
 ./rebuild_dockers.sh
 

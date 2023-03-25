@@ -2,7 +2,7 @@ FROM gcr.io/prysmaticlabs/build-agent AS builder
 
 WORKDIR /git
 
-RUN git clone --branch develop \
+RUN git clone --branch v4.0.0-rc.2 \
     --recurse-submodules \
     --depth 1 \
     https://github.com/prysmaticlabs/prysm
