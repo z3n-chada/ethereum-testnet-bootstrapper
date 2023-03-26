@@ -23,7 +23,7 @@ FROM debian:bullseye-slim
 WORKDIR /run
 
 # Copy the code into the container
-COPY --from=builder /git/tx-fuzz/tx-fuzz.bin .
+COPY --from=builder /git/tx-fuzz/cmd/livefuzzer/tx-fuzz.bin .
 
 ENTRYPOINT ["./tx-fuzz.bin"]
 

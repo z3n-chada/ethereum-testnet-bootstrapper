@@ -27,9 +27,9 @@ RUN apt update && apt install -y dotnet-sdk-7.0
 # set up clang 14
 WORKDIR /git
 
-RUN wget --no-check-certificate https://apt.llvm.org/llvm.sh && chmod +x llvm.sh && ./llvm.sh 14
+RUN wget --no-check-certificate https://apt.llvm.org/llvm.sh && chmod +x llvm.sh && ./llvm.sh 15
 
-ENV LLVM_CONFIG=llvm-config-14
+ENV LLVM_CONFIG=llvm-config-15
 
 # set up go
 RUN wget https://go.dev/dl/go1.19.6.linux-amd64.tar.gz
