@@ -4,7 +4,7 @@ WORKDIR /git
 
 RUN git clone --branch v4.0.0-rc.2 \
     --recurse-submodules \
-    --depth=1 \
+    --depth 1 \
     https://github.com/prysmaticlabs/prysm
 
 WORKDIR /git/prysm

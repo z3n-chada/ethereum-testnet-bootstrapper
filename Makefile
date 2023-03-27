@@ -11,9 +11,17 @@ rebuild-bootstrapper:
 build-dockers: build-bootstrapper
 	cd deps/dockers && ./build_dockers.sh
 
-# build all of the docker files we currently use without a cache
+# build all of the instrumented docker files we currently use
+build-dockers-inst: build-bootstrapper
+	cd deps/dockers && ./build_dockersinst.sh
+
+# rebuild all of the docker files we currently use without a cache
 rebuild-dockers: 
 	cd deps/dockers && ./rebuild_dockers.sh
+
+# rebuild all of the instrumented docker files we currently use without a cache
+rebuild-dockers-inst: 
+	cd deps/dockers && ./rebuild_dockersinst.sh
 
 # init the testnet dirs and all files needed to later bootstrap the testnet.
 init-testnet:
