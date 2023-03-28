@@ -25,5 +25,11 @@ function container_builder() {
 
 # Private function
 function record_image_failure() {
-	echo $1 >> $FAILED_IMAGES_LOG
+    if [[ -z "${FAILED_IMAGES_LOG}" ]]; then
+        echo "Failed to build image $1"
+        echo "FAILED_IMAGES_LOG env not defined so exiting with status 1"
+        exit 1
+    else
+        echo $1 >> $FAILED_IMAGES_LOG
+    fi
 }

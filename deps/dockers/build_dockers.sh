@@ -23,7 +23,16 @@ antithesis_log_step "Building nethermind"
 build_image "nethermind:etb" "nethermind.Dockerfile"
 
 cd ../cl/ || exit 1
-./build_dockers.sh
+antithesis_log_step "Building nimbus"
+build_image "nimbus:etb-minimal" "nimbus_minimal.Dockerfile"
+antithesis_log_step "Building teku"
+build_image "teku:etb-minimal" "teku_minimal.Dockerfile"
+antithesis_log_step "Building lodestar"
+build_image "lodestar:etb-minimal" "lodestar_minimal.Dockerfile"
+antithesis_log_step "Building lighthouse"
+build_image "lighthouse:etb-minimal" "lighthouse_minimal.Dockerfile"
+antithesis_log_step "Building prysm"
+build_image "prysm:etb-minimal" "prysm_minimal_inst.Dockerfile"
 
 cd ../fuzzers/ || exit 1
 echo "<<<<<<<<<< ANTITHESIS >>>>>>>>>> - building fuzzers."
