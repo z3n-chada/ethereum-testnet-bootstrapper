@@ -1,0 +1,29 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: [ "master" ]
+
+env:
+    REGISTRY_LOGIN: ${{ secrets.ANTITHESIS_LOGIN_FILE }}
+    REGISTRY: us-central1-docker.pkg.dev/molten-verve-216720
+    REPOSITORY: ethereum-repository
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Registry login
+      run: |
+          echo "${REGISTRY_LOGIN}" | docker login -u _json_key https://${REGISTRY} --password-stdin
+    - name: Build and push etb-all-clients images
+      timeout-minutes: 500
+      run: |
+          make build-etb-all-clients
+          docker tag etb-all-clients:minimal ${REGISTRY}/${REPOSITORY}/etb-all-clients:minimal
+          docker push ${REGISTRY}/${REPOSITORY}/etb-all-clients:minimal
+          docker tag etb-all-clients:minimal-fuzz ${REGISTRY}/${REPOSITORY}/etb-all-clients:minimal
+          docker push ${REGISTRY}/${REPOSITORY}/etb-all-clients:minimal-fuzz
+          docker tag etb-all-clients-inst:minimal ${REGISTRY}/${REPOSITORY}/etb-all-clients:minimal
+          docker push ${REGISTRY}/${REPOSITORY}/etb-all-clients-inst:minimal
