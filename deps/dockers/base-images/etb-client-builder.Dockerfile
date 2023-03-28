@@ -25,11 +25,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN wget https://packages.microsoft.com/config/debian/11/packages-microsoft-prod.deb -O packages-microsoft-prod.deb && dpkg -i packages-microsoft-prod.deb && rm packages-microsoft-prod.deb
 RUN apt update && apt install -y dotnet-sdk-7.0
 
-# set up clang 14
 WORKDIR /git
 
+# set up clang 14
 RUN wget --no-check-certificate https://apt.llvm.org/llvm.sh && chmod +x llvm.sh && ./llvm.sh 15
-
 ENV LLVM_CONFIG=llvm-config-15
 
 # set up go
