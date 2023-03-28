@@ -1,8 +1,8 @@
 # build the builder first
 cd base-images/ || exit
 echo "<<<<<<<<<< ANTITHESIS >>>>>>>>>> - Building base images."
-BUILDKIT=1 docker build --registries-conf=`pwd`/../../../registries.conf -t etb-client-builder -f etb-client-builder.Dockerfile .
-BUILDKIT=1 docker build --registries-conf=`pwd`/../../../registries.conf -t etb-client-runner -f etb-client-runner.Dockerfile .
+BUILDKIT=1 docker build -t etb-client-builder -f etb-client-builder.Dockerfile .
+BUILDKIT=1 docker build -t etb-client-runner -f etb-client-runner.Dockerfile .
 
 # ## els then cls
 cd ../el/ || exit
@@ -20,5 +20,5 @@ echo "<<<<<<<<<< ANTITHESIS >>>>>>>>>> - building fuzzers."
 cd ../base-images/ || exit
 echo "<<<<<<<<<< ANTITHESIS >>>>>>>>>> - Merging all clients."
 # currently mainnet configs have not been modified to support the new boostrapper
-BUILDKIT=1 docker build --registries-conf=`pwd`/../../../registries.conf --no-cache -t etb-all-clients-inst:minimal -f etb-all-clients_minimal_inst.Dockerfile .
-BUILDKIT=1 docker build --registries-conf=`pwd`/../../../registries.conf --no-cache -t etb-all-clients:minimal-fuzz -f etb-all-clients_minimal-fuzz.Dockerfile .
+BUILDKIT=1 docker build --no-cache -t etb-all-clients-inst:minimal -f etb-all-clients_minimal_inst.Dockerfile .
+BUILDKIT=1 docker build --no-cache -t etb-all-clients:minimal-fuzz -f etb-all-clients_minimal-fuzz.Dockerfile .

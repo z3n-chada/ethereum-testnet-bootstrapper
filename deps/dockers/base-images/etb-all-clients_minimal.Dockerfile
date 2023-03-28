@@ -1,7 +1,3 @@
-# ethdo
-FROM golang:1.18 as go_builder
-RUN go install github.com/wealdtech/ethdo@latest
-
 # built CL images
 FROM lighthouse:etb-minimal AS lh_builder
 FROM lodestar:etb-minimal AS ls_builder
@@ -16,6 +12,7 @@ FROM nethermind:etb AS nethermind_builder
 FROM tx-fuzzer:latest AS txfuzzer_builder
 FROM geth:bad-block-creator AS geth_bb_builder
 FROM prysm:evil-shapella AS prysm_evil_shapella_builder
+
 
 FROM etb-client-runner:latest
 
@@ -48,7 +45,7 @@ COPY --from=prysm_builder /usr/local/bin/validator /usr/local/bin/validator
 COPY --from=prysm_builder /prysm.version /prysm.version
 
 COPY --from=teku_builder /opt/teku /opt/teku
-#COPY --from=teku_builder /teku.version /teku.version
+COPY --from=teku_builder /teku.version /teku.version
 RUN ln -s /opt/teku/bin/teku /usr/local/bin/teku
 
 COPY --from=ls_builder /git/lodestar /git/lodestar

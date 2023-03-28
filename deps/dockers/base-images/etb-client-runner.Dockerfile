@@ -5,14 +5,16 @@ WORKDIR /git
 RUN cd rocksdb && make clean && make -j32 shared_lib
 RUN mkdir -p /rocksdb/lib && cd rocksdb && cp librocksdb.so* /rocksdb/lib/
 
+
 FROM golang:1.18 as go_builder
 
 RUN go install github.com/wealdtech/ethereal/v2@latest \
     && go install github.com/wealdtech/ethdo@latest \
     && go install github.com/protolambda/eth2-val-tools@latest
 
+
 FROM debian:bullseye-slim as base
-# Install nodejs
+
 WORKDIR /git
 
 RUN apt update && apt install curl ca-certificates -y --no-install-recommends \

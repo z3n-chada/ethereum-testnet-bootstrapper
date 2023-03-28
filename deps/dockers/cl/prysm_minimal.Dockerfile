@@ -27,9 +27,7 @@ FROM etb-client-builder:latest as instrumentor
 COPY --from=builder /git/prysm /git/prysm
 WORKDIR /git
 
-RUN mkdir -p /opt/antithesis/
-RUN mkdir -p prysm_instrumented
-RUN /opt/antithesis/go_instrumentation/bin/goinstrumentor -version
+RUN mkdir prysm_instrumented
 RUN /opt/antithesis/go_instrumentation/bin/goinstrumentor \
     -logtostderr -stderrthreshold=INFO \
     -antithesis /opt/antithesis/go_instrumentation/instrumentation/go/wrappers \
