@@ -1,11 +1,10 @@
 .PHONY: clean
 
-# build the ethereum-testnet-bootstrapper docker.
+# Build ethereum-testnet-bootstrapper image
 build-bootstrapper:
-	docker build --registries-conf=`pwd`/registries.conf -t ethereum-testnet-bootstrapper -f Dockerfile .
-
+	docker build -t ethereum-testnet-bootstrapper -f bootstrapper.Dockerfile .
 rebuild-bootstrapper:
-	docker build --registries-conf=`pwd`/registries.conf --no-cache -t ethereum-testnet-bootstrapper -f Dockerfile .
+	docker build --no-cache -t ethereum-testnet-bootstrapper -f bootstrapper.Dockerfile .
 
 # build all of the docker files we currently use
 build-dockers: build-bootstrapper
@@ -33,4 +32,3 @@ run-bootstrapper:
 
 clean:
 	docker run -it -v $(shell pwd)/:/source/ -v $(shell pwd)/data/:/data ethereum-testnet-bootstrapper --config $(config) --clear-last-run
-
