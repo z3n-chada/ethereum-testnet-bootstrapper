@@ -16,6 +16,7 @@ rebuild-etb-all-clients:
 	cd deps/dockers && REBUILD_IMAGES=1 ./build_dockers.sh
 
 build-all-images: build-bootstrapper build-etb-all-clients
+rebuild-all-images: rebuild-bootstrapper rebuild-etb-all-clients
 
 # init the testnet dirs and all files needed to later bootstrap the testnet.
 init-testnet:
