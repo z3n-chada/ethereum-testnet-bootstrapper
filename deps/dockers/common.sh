@@ -17,7 +17,7 @@ function antithesis_log_step() {
 # Private function
 function container_builder() {
     if hash docker 2>/dev/null; then
-        BUILDKIT=1 docker "$@"
+        BUILDKIT=1 docker "$@" .
     else
         podman "$@"
     fi
