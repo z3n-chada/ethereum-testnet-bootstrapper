@@ -31,7 +31,7 @@ RUN ln -s /nethermind/Nethermind.Runner /usr/local/bin/nethermind
 COPY --from=geth_bb_builder /usr/local/bin/geth /usr/local/bin/geth-bad-block
 COPY --from=geth_bb_builder /opt/antithesis/symbols/* /opt/antithesis/symbols/
 # tx-fuzzer
-COPY --from=txfuzzer_builder /run/tx-fuzz.bin /usr/local/bin/tx-fuzz
+COPY --from=txfuzzer_builder /tx-fuzz.bin /usr/local/bin/tx-fuzz
 
 # copy in all of the consensus clients
 COPY --from=lh_builder /usr/local/bin/lighthouse /usr/local/bin/lighthouse

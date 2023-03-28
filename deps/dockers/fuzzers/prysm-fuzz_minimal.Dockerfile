@@ -19,6 +19,6 @@ RUN bazel build --config=minimal \
 
 FROM scratch
 
-COPY --from=builder /git/prysm/bazel-bin/cmd/beacon-chain/beacon-chain_/beacon-chain /usr/local/bin/
-COPY --from=builder /git/prysm/bazel-bin/cmd/validator/validator_/validator /usr/local/bin/
+COPY --from=builder /git/prysm/bazel-bin/cmd/beacon-chain/beacon-chain_/beacon-chain /usr/local/bin/beacon-chain
+COPY --from=builder /git/prysm/bazel-bin/cmd/validator/validator_/validator /usr/local/bin/validator
 COPY --from=builder /prysm.version /prysm_evil-shapella.version
