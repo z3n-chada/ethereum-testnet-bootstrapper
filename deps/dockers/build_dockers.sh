@@ -15,11 +15,14 @@ build_image "etb-client-builder" "etb-client-builder.Dockerfile"
 build_image "etb-client-runner" "etb-client-runner.Dockerfile"
 
 cd ../el/ || exit 1
-antithesis_log_step "Building execution clients"
-./build_dockers.sh
+antithesis_log_step "Building geth"
+build_image "geth:etb" "geth.Dockerfile"
+antithesis_log_step "Building besu"
+build_image "besu:etb" "besu.Dockerfile"
+antithesis_log_step "Building nethermind"
+build_image "nethermind:etb" "nethermind.Dockerfile"
 
 cd ../cl/ || exit 1
-echo "<<<<<<<<<< ANTITHESIS >>>>>>>>>> - Building consensus clients"
 ./build_dockers.sh
 
 cd ../fuzzers/ || exit 1
