@@ -35,8 +35,14 @@ antithesis_log_step "Building prysm"
 build_image "prysm:etb-minimal" "prysm_minimal_inst.Dockerfile"
 
 cd ../fuzzers/ || exit 1
-echo "<<<<<<<<<< ANTITHESIS >>>>>>>>>> - building fuzzers."
-./build_dockers.sh
+antithesis_log_step "Building tx-fuzzer"
+build_image "tx-fuzzer" "tx-fuzzer.Dockerfile"
+antithesis_log_step "Building lighthouse-fuzz"
+build_image "lighthouse:etb-minimal-fuzz" "lighthouse-fuzz_minimal.Dockerfile"
+antithesis_log_step "Building prysm-fuzz"
+build_image "prysm:etb-minimal-fuzz" "prysm-fuzz_minimal.Dockerfile"
+antithesis_log_step "Building geth-bad-block-creator"
+build_image "geth:bad-block-creator" "geth_bad-block-creator.Dockerfile"
 
 cd ../base-images/ || exit 1
 antithesis_log_step "Building etb-all-clients"
