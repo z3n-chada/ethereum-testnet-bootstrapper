@@ -16,7 +16,7 @@ jobs:
     - name: Registry login
       uses: docker/login-action@v2
       with:
-        registry: ${REGISTRY}
+        registry: us-central1-docker.pkg.dev
         username: _json_key
         password: ${{ secrets.ANTITHESIS_LOGIN_FILE }}
     - name: Build and push etb-all-clients images
