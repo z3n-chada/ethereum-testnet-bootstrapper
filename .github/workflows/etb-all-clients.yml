@@ -1,8 +1,15 @@
-name: Docker Image CI
+name: etb-all-clients
 
 on:
   push:
     branches: [ "master" ]
+  schedule:
+    # Runs daily at 00:00 (see https://crontab.guru/#0_0_*_*_*)
+    - cron: '0 0 * * *'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
     REGISTRY: us-central1-docker.pkg.dev/molten-verve-216720
