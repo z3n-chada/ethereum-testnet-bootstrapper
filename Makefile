@@ -6,21 +6,16 @@ build-bootstrapper:
 rebuild-bootstrapper:
 	docker build --no-cache -t ethereum-testnet-bootstrapper -f bootstrapper.Dockerfile .
 
-# build all of the docker files we currently use
-build-dockers: build-bootstrapper
+# Build the etb-all-clients images:
+# - etb-all-clients:minimal
+# - etb-all-clients:minimal-fuzz
+# - etb-all-clients-inst:minimal
+build-etb-all-clients:
 	cd deps/dockers && ./build_dockers.sh
+rebuild-etb-all-clients:
+	cd deps/dockers && REBUILD_IMAGES=1 ./build_dockers.sh
 
-# build all of the instrumented docker files we currently use
-build-dockers-inst: build-bootstrapper
-	cd deps/dockers && ./build_dockersinst.sh
-
-# rebuild all of the docker files we currently use without a cache
-rebuild-dockers: 
-	cd deps/dockers && ./rebuild_dockers.sh
-
-# rebuild all of the instrumented docker files we currently use without a cache
-rebuild-dockers-inst: 
-	cd deps/dockers && ./rebuild_dockersinst.sh
+build-all-images: build-bootstrapper build-etb-all-clients
 
 # init the testnet dirs and all files needed to later bootstrap the testnet.
 init-testnet:
