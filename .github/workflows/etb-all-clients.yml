@@ -29,6 +29,10 @@ jobs:
     - name: Build and push etb-all-clients images
       timeout-minutes: 500
       run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf "/usr/local/share/boost"
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
           make build-etb-all-clients
           docker tag etb-all-clients:minimal ${REGISTRY}/${REPOSITORY}/etb-all-clients:minimal
           docker push ${REGISTRY}/${REPOSITORY}/etb-all-clients:minimal
