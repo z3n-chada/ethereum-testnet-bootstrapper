@@ -49,3 +49,18 @@ antithesis_log_step "Building etb-all-clients"
 build_image "etb-all-clients:minimal" "etb-all-clients_minimal.Dockerfile"
 build_image "etb-all-clients:minimal-fuzz" "etb-all-clients_minimal-fuzz.Dockerfile"
 build_image "etb-all-clients-inst:minimal" "etb-all-clients_minimal_inst.Dockerfile"
+
+# Check if failed images log contains entries
+if [ -s $FAILED_IMAGES_LOG ]; then
+	printf "\n\n"
+	RED='\033[0;31m'
+	NO_COLOR='\033[0m'
+	printf "${RED}The following images failed to build:${NO_COLOR}\n"
+	cat $FAILED_IMAGES_LOG
+	printf "\n\n"
+    exit 1
+else
+	rm $FAILED_IMAGES_LOG
+
+    echo "Images successfully built. Remember to push to the registry."
+fi
