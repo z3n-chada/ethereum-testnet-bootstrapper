@@ -41,10 +41,14 @@ jobs:
           sudo rm -rf /usr/local/lib/android
           sudo rm -rf "/usr/local/share/boost"
           sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+
           make build-etb-all-clients
+
           docker tag etb-all-clients:minimal ${REGISTRY}/${REPOSITORY}/etb-all-clients:minimal
           docker push ${REGISTRY}/${REPOSITORY}/etb-all-clients:minimal
-          docker tag etb-all-clients:minimal-fuzz ${REGISTRY}/${REPOSITORY}/etb-all-clients:minimal
+
+          docker tag etb-all-clients:minimal-fuzz ${REGISTRY}/${REPOSITORY}/etb-all-clients:minimal-fuzz
           docker push ${REGISTRY}/${REPOSITORY}/etb-all-clients:minimal-fuzz
+
           docker tag etb-all-clients-inst:minimal ${REGISTRY}/${REPOSITORY}/etb-all-clients:minimal
           docker push ${REGISTRY}/${REPOSITORY}/etb-all-clients-inst:minimal
