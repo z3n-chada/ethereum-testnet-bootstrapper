@@ -57,6 +57,7 @@ FROM scratch
 COPY --from=instrumentor /beacon-chain /usr/local/bin/
 COPY --from=instrumentor /validator /usr/local/bin/
 COPY --from=instrumentor /git/prysm_instrumented/symbols/* /opt/antithesis/symbols/
+COPY --from=instrumentor /git/prysm_instrumented/customer /prysm_instrumented_code
 COPY --from=uninstrumented /git/prysm/bazel-bin/cmd/beacon-chain/beacon-chain_/beacon-chain /usr/local/bin/beacon-chain_uninstrumented
 COPY --from=uninstrumented /git/prysm/bazel-bin/cmd/validator/validator_/validator /usr/local/bin/validator_uninstrumented
 COPY --from=builder /prysm.version /prysm.version

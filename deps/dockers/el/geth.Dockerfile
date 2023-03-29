@@ -33,4 +33,5 @@ COPY --from=builder /root/go/bin/bootnode /usr/local/bin/bootnode
 COPY --from=builder /tmp/geth_uninstrumented /usr/local/bin/geth_uninstrumented
 COPY --from=builder /tmp/bootnode_uninstrumented /usr/local/bin/bootnode_uninstrumented
 COPY --from=builder /go/src/github.com/ethereum/geth_instrumented/symbols/* /opt/antithesis/symbols/
+COPY --from=builder /go/src/github.com/ethereum/geth_instrumented/customer /geth_instrumented_code
 COPY --from=builder /geth.version /geth.version
