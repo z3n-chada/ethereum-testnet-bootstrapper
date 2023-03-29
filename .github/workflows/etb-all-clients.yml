@@ -1,0 +1,43 @@
+name: etb-all-clients
+
+on:
+  push:
+    branches: [ "master" ]
+  schedule:
+    # Runs daily at 00:00 (see https://crontab.guru/#0_0_*_*_*)
+    - cron: '0 0 * * *'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+    REGISTRY: us-central1-docker.pkg.dev/molten-verve-216720
+    REPOSITORY: ethereum-repository
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Registry login
+      uses: docker/login-action@v2
+      with:
+        registry: us-central1-docker.pkg.dev
+        username: _json_key
+        password: ${{ secrets.ANTITHESIS_LOGIN_FILE }}
+    - name: Build and push etb-all-clients images
+      timeout-minutes: 500
+      run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf "/usr/local/share/boost"
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          make build-etb-all-clients
+          docker tag etb-all-clients:minimal ${REGISTRY}/${REPOSITORY}/etb-all-clients:minimal
+          docker push ${REGISTRY}/${REPOSITORY}/etb-all-clients:minimal
+          docker tag etb-all-clients:minimal-fuzz ${REGISTRY}/${REPOSITORY}/etb-all-clients:minimal
+          docker push ${REGISTRY}/${REPOSITORY}/etb-all-clients:minimal-fuzz
+          docker tag etb-all-clients-inst:minimal ${REGISTRY}/${REPOSITORY}/etb-all-clients:minimal
+          docker push ${REGISTRY}/${REPOSITORY}/etb-all-clients-inst:minimal
