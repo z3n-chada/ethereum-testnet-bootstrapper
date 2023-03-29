@@ -50,5 +50,5 @@ jobs:
           docker tag etb-all-clients:minimal-fuzz ${REGISTRY}/${REPOSITORY}/etb-all-clients:minimal-fuzz
           docker push ${REGISTRY}/${REPOSITORY}/etb-all-clients:minimal-fuzz
 
-          docker tag etb-all-clients-inst:minimal ${REGISTRY}/${REPOSITORY}/etb-all-clients:minimal
+          docker tag etb-all-clients-inst:minimal ${REGISTRY}/${REPOSITORY}/etb-all-clients-inst:minimal
           docker push ${REGISTRY}/${REPOSITORY}/etb-all-clients-inst:minimal
