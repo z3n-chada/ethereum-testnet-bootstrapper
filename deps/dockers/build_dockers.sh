@@ -52,15 +52,15 @@ build_image "etb-all-clients-inst:minimal" "etb-all-clients_minimal_inst.Dockerf
 
 # Check if failed images log contains entries
 if [ -s $FAILED_IMAGES_LOG ]; then
-	printf "\n\n"
-	RED='\033[0;31m'
-	NO_COLOR='\033[0m'
-	printf "${RED}The following images failed to build:${NO_COLOR}\n"
-	cat $FAILED_IMAGES_LOG
-	printf "\n\n"
+    printf "\n\n"
+    RED='\033[0;31m'
+    NO_COLOR='\033[0m'
+    printf "${RED}The following images failed to build:${NO_COLOR}\n"
+    cat $FAILED_IMAGES_LOG
+    printf "\n\n"
     exit 1
 else
-	rm $FAILED_IMAGES_LOG
+    rm $FAILED_IMAGES_LOG
 
     echo "Images successfully built. Remember to push to the registry."
 fi
