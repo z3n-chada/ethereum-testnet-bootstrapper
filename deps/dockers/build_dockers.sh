@@ -32,7 +32,7 @@ build_image "lodestar:etb-minimal" "lodestar_minimal.Dockerfile"
 antithesis_log_step "Building lighthouse"
 build_image "lighthouse:etb-minimal" "lighthouse_minimal.Dockerfile"
 antithesis_log_step "Building prysm"
-build_image "prysm:etb-minimal" "prysm_minimal_inst.Dockerfile"
+build_image "prysm:etb-minimal" "prysm_minimal.Dockerfile"
 
 cd ../fuzzers/ || exit 1
 antithesis_log_step "Building tx-fuzzer"
