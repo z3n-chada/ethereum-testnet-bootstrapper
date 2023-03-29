@@ -17,6 +17,7 @@ FROM prysm:evil-shapella AS prysm_evil_shapella_builder
 FROM etb-client-runner:latest
 
 COPY --from=geth_builder /usr/local/bin/geth /usr/local/bin/geth
+COPY --from=geth_builder /usr/local/bin/geth_race /usr/local/bin/geth_race
 COPY --from=geth_builder /geth.version /geth.version
 COPY --from=geth_builder /opt/antithesis/symbols/* /opt/antithesis/symbols/
 COPY --from=geth_builder /geth_instrumented_code /geth_instrumented_code
@@ -42,6 +43,8 @@ COPY --from=nimbus_builder /nimbus.version /nimbus.version
 
 COPY --from=prysm_builder /usr/local/bin/beacon-chain /usr/local/bin/beacon-chain
 COPY --from=prysm_builder /usr/local/bin/validator /usr/local/bin/validator
+COPY --from=prysm_builder /usr/local/bin/beacon-chain_race /usr/local/bin/beacon-chain_race
+COPY --from=prysm_builder /usr/local/bin/validator_race /usr/local/bin/validator_race
 COPY --from=prysm_builder /prysm.version /prysm.version
 COPY --from=prysm_builder /opt/antithesis/symbols/* /opt/antithesis/symbols/
 COPY --from=prysm_builder /prysm_instrumented_code /prysm_instrumented_code
