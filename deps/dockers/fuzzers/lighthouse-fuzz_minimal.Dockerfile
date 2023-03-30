@@ -24,4 +24,4 @@ FROM scratch
 
 ENV LD_LIBRARY_PATH=/usr/lib/
 COPY --from=builder /git/lighthouse/target/x86_64-unknown-linux-gnu/release/lighthouse /usr/local/bin/lighthouse
-COPY --from=builder /lighthouse.version /lighthouse.version
+COPY --from=builder /lighthouse.version /lighthouse_fuzz.version

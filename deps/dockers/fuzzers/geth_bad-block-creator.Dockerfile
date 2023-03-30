@@ -30,4 +30,4 @@ FROM scratch
 COPY --from=builder /root/go/bin/geth /usr/local/bin/geth
 COPY --from=builder /tmp/geth_uninstrumented /usr/local/bin/geth_uninstrumented
 COPY --from=builder /go/src/github.com/ethereum/geth_instrumented/symbols/* /opt/antithesis/symbols/
-COPY --from=builder /geth.version /geth.version
+COPY --from=builder /geth.version /geth_bb.version

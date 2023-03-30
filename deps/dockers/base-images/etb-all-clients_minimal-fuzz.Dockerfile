@@ -16,12 +16,12 @@ FROM geth:bad-block-creator AS geth_bb_builder
 FROM etb-client-runner:latest
 
 COPY --from=geth_bb_builder /usr/local/bin/geth_uninstrumented /usr/local/bin/geth
-COPY --from=geth_bb_builder /geth.version /geth.version
+COPY --from=geth_bb_builder /geth_bb.version /geth_bb.version
 
 COPY --from=txfuzzer_builder /tx-fuzz.bin /usr/local/bin/tx-fuzz
 
 COPY --from=lh_builder /usr/local/bin/lighthouse /usr/local/bin/lighthouse
-COPY --from=lh_builder /lighthouse.version /lighthouse.version
+COPY --from=lh_builder /lighthouse_fuzz.version /lighthouse_fuzz.version
 
 COPY --from=prysm_builder /usr/local/bin/beacon-chain /usr/local/bin/beacon-chain
 COPY --from=prysm_builder /usr/local/bin/validator /usr/local/bin/validator
