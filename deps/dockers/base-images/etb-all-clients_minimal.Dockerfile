@@ -22,8 +22,6 @@ COPY --from=nethermind_builder /nethermind/ /nethermind/
 COPY --from=nethermind_builder /nethermind.version /nethermind.version
 RUN ln -s /nethermind/Nethermind.Runner /usr/local/bin/nethermind
 
-COPY --from=txfuzzer_builder /tx-fuzz.bin /usr/local/bin/tx-fuzz
-
 COPY --from=lh_builder /usr/local/bin/lighthouse_uninstrumented /usr/local/bin/lighthouse
 COPY --from=lh_builder /lighthouse.version /lighthouse.version
 
