@@ -10,9 +10,9 @@ source ./common.sh
 # EL, CL and Fuzzer images depend on the etb-client-builder image
 # The etb-all-clients images depend on the etb-client-runner image
 cd base-images/ || exit 1
-antithesis_log_step "Building base images"
-build_image "etb-client-builder" "etb-client-builder.Dockerfile"
-build_image "etb-client-runner" "etb-client-runner.Dockerfile"
+antithesis_log_step "Building base images (using cache)"
+REBUILD_IMAGES=0 build_image "etb-client-builder" "etb-client-builder.Dockerfile"
+REBUILD_IMAGES=0 build_image "etb-client-runner" "etb-client-runner.Dockerfile"
 
 cd ../el/ || exit 1
 antithesis_log_step "Building geth"
@@ -32,17 +32,17 @@ build_image "lodestar:etb-minimal" "lodestar_minimal.Dockerfile"
 antithesis_log_step "Building lighthouse"
 build_image "lighthouse:etb-minimal" "lighthouse_minimal.Dockerfile"
 antithesis_log_step "Building prysm"
-build_image "prysm:etb-minimal" "prysm_minimal_inst.Dockerfile"
+build_image "prysm:etb-minimal" "prysm_minimal.Dockerfile"
 
 cd ../fuzzers/ || exit 1
 antithesis_log_step "Building tx-fuzzer"
-build_image "tx-fuzzer" "tx-fuzzer.Dockerfile"
+REBUILD_IMAGES=0 build_image "tx-fuzzer" "tx-fuzzer.Dockerfile"
 antithesis_log_step "Building lighthouse-fuzz"
-build_image "lighthouse:etb-minimal-fuzz" "lighthouse-fuzz_minimal.Dockerfile"
+REBUILD_IMAGES=0 build_image "lighthouse:etb-minimal-fuzz" "lighthouse-fuzz_minimal.Dockerfile"
 antithesis_log_step "Building prysm-fuzz"
-build_image "prysm:etb-minimal-fuzz" "prysm-fuzz_minimal.Dockerfile"
+REBUILD_IMAGES=0 build_image "prysm:etb-minimal-fuzz" "prysm-fuzz_minimal.Dockerfile"
 antithesis_log_step "Building geth-bad-block-creator"
-build_image "geth:bad-block-creator" "geth_bad-block-creator.Dockerfile"
+REBUILD_IMAGES=0 build_image "geth:bad-block-creator" "geth_bad-block-creator.Dockerfile"
 
 cd ../base-images/ || exit 1
 antithesis_log_step "Building etb-all-clients"
@@ -52,15 +52,15 @@ build_image "etb-all-clients-inst:minimal" "etb-all-clients_minimal_inst.Dockerf
 
 # Check if failed images log contains entries
 if [ -s $FAILED_IMAGES_LOG ]; then
-	printf "\n\n"
-	RED='\033[0;31m'
-	NO_COLOR='\033[0m'
-	printf "${RED}The following images failed to build:${NO_COLOR}\n"
-	cat $FAILED_IMAGES_LOG
-	printf "\n\n"
+    printf "\n\n"
+    RED='\033[0;31m'
+    NO_COLOR='\033[0m'
+    printf "${RED}The following images failed to build:${NO_COLOR}\n"
+    cat $FAILED_IMAGES_LOG
+    printf "\n\n"
     exit 1
 else
-	rm $FAILED_IMAGES_LOG
+    rm $FAILED_IMAGES_LOG
 
     echo "Images successfully built. Remember to push to the registry."
 fi

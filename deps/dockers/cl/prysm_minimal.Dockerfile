@@ -36,6 +36,8 @@ RUN /opt/antithesis/go_instrumentation/bin/goinstrumentor \
 WORKDIR /git/prysm_instrumented/customer
 RUN go build -tags minimal -o /validator ./cmd/validator
 RUN go build -tags minimal -o /beacon-chain ./cmd/beacon-chain
+RUN go build -race -tags minimal -o /validator_race ./cmd/validator
+RUN go build -race -tags minimal -o /beacon-chain_race ./cmd/beacon-chain
 
 RUN /validator --version
 RUN /beacon-chain --version
@@ -56,7 +58,10 @@ FROM scratch
 
 COPY --from=instrumentor /beacon-chain /usr/local/bin/
 COPY --from=instrumentor /validator /usr/local/bin/
+COPY --from=instrumentor /beacon-chain_race /usr/local/bin/
+COPY --from=instrumentor /validator_race /usr/local/bin/
 COPY --from=instrumentor /git/prysm_instrumented/symbols/* /opt/antithesis/symbols/
+COPY --from=instrumentor /git/prysm_instrumented/customer /prysm_instrumented_code
 COPY --from=uninstrumented /git/prysm/bazel-bin/cmd/beacon-chain/beacon-chain_/beacon-chain /usr/local/bin/beacon-chain_uninstrumented
 COPY --from=uninstrumented /git/prysm/bazel-bin/cmd/validator/validator_/validator /usr/local/bin/validator_uninstrumented
 COPY --from=builder /prysm.version /prysm.version
