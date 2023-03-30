@@ -8,11 +8,6 @@ FROM prysm:etb-minimal AS prysm_builder
 FROM besu:etb AS besu_builder
 FROM geth:etb AS geth_builder
 FROM nethermind:etb AS nethermind_builder
-# built fuzzers
-FROM tx-fuzzer:latest AS txfuzzer_builder
-FROM geth:bad-block-creator AS geth_bb_builder
-FROM prysm:evil-shapella AS prysm_evil_shapella_builder
-
 
 FROM etb-client-runner:latest
 
@@ -26,10 +21,6 @@ RUN ln -s /opt/besu/bin/besu /usr/local/bin/besu
 COPY --from=nethermind_builder /nethermind/ /nethermind/
 COPY --from=nethermind_builder /nethermind.version /nethermind.version
 RUN ln -s /nethermind/Nethermind.Runner /usr/local/bin/nethermind
-
-COPY --from=geth_bb_builder /usr/local/bin/geth_uninstrumented /usr/local/bin/geth-bad-block
-
-COPY --from=txfuzzer_builder /tx-fuzz.bin /usr/local/bin/tx-fuzz
 
 COPY --from=lh_builder /usr/local/bin/lighthouse_uninstrumented /usr/local/bin/lighthouse
 COPY --from=lh_builder /lighthouse.version /lighthouse.version
