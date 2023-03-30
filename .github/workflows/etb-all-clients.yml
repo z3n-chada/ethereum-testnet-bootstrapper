@@ -21,6 +21,7 @@ concurrency:
 env:
     REGISTRY: us-central1-docker.pkg.dev/molten-verve-216720
     REPOSITORY: ethereum-repository
+    REBUILD_ALL: 1
 
 jobs:
   build:
