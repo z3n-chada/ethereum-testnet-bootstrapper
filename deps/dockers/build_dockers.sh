@@ -11,8 +11,8 @@ source ./common.sh
 # The etb-all-clients images depend on the etb-client-runner image
 cd base-images/ || exit 1
 antithesis_log_step "Building base images (using cache)"
-REBUILD_IMAGES=${REBUILD_ALL:-0} build_image "etb-client-builder" "etb-client-builder.Dockerfile"
-REBUILD_IMAGES=${REBUILD_ALL:-0} build_image "etb-client-runner" "etb-client-runner.Dockerfile"
+REBUILD_IMAGES=${REBUILD_ALL:-0} build_image "etb-client-builder:latest" "etb-client-builder.Dockerfile"
+REBUILD_IMAGES=${REBUILD_ALL:-0} build_image "etb-client-runner:latest" "etb-client-runner.Dockerfile"
 
 cd ../el/ || exit 1
 antithesis_log_step "Building geth"

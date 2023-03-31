@@ -42,7 +42,6 @@ RUN ln -s /usr/local/go/bin/gofmt /usr/local/bin/gofmt
 run apt update \
     && apt install curl ca-certificates -y --no-install-recommends \
     && curl -sL https://deb.nodesource.com/setup_18.x | bash -
-
 run apt-get update && apt-get install -y --no-install-recommends nodejs 
 
 # set up cargo/rustc
