@@ -36,8 +36,6 @@ jobs:
     - name: Build and push etb-all-clients images
       timeout-minutes: 500
       run: |
-          docker rmi --force $(docker images -q 'etb-client-' | uniq)
-
           make rebuild-etb-all-clients
 
           docker tag etb-all-clients:minimal ${REGISTRY}/${REPOSITORY}/etb-all-clients:minimal
