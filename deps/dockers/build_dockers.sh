@@ -11,8 +11,8 @@ source ./common.sh
 # The etb-all-clients images depend on the etb-client-runner image
 cd base-images/ || exit 1
 antithesis_log_step "Building base images (using cache)"
-REBUILD_IMAGES=${REBUILD_ALL:-0} build_image "etb-client-builder:latest" "etb-client-builder.Dockerfile"
-REBUILD_IMAGES=${REBUILD_ALL:-0} build_image "etb-client-runner:latest" "etb-client-runner.Dockerfile"
+build_image "etb-client-builder:latest" "etb-client-builder.Dockerfile"
+build_image "etb-client-runner:latest" "etb-client-runner.Dockerfile"
 
 cd ../el/ || exit 1
 antithesis_log_step "Building geth"
@@ -36,13 +36,13 @@ build_image "prysm:etb-minimal" "prysm_minimal.Dockerfile"
 
 cd ../fuzzers/ || exit 1
 antithesis_log_step "Building tx-fuzzer"
-REBUILD_IMAGES=${REBUILD_ALL:-0} build_image "tx-fuzzer" "tx-fuzzer.Dockerfile"
+build_image "tx-fuzzer" "tx-fuzzer.Dockerfile"
 antithesis_log_step "Building lighthouse-fuzz"
-REBUILD_IMAGES=${REBUILD_ALL:-0} build_image "lighthouse:etb-minimal-fuzz" "lighthouse-fuzz_minimal.Dockerfile"
+build_image "lighthouse:etb-minimal-fuzz" "lighthouse-fuzz_minimal.Dockerfile"
 antithesis_log_step "Building prysm-fuzz"
-REBUILD_IMAGES=${REBUILD_ALL:-0} build_image "prysm:etb-minimal-fuzz" "prysm-fuzz_minimal.Dockerfile"
+build_image "prysm:etb-minimal-fuzz" "prysm-fuzz_minimal.Dockerfile"
 antithesis_log_step "Building geth-bad-block-creator"
-REBUILD_IMAGES=${REBUILD_ALL:-0} build_image "geth:bad-block-creator" "geth_bad-block-creator.Dockerfile"
+build_image "geth:bad-block-creator" "geth_bad-block-creator.Dockerfile"
 
 cd ../base-images/ || exit 1
 antithesis_log_step "Building etb-all-clients"

@@ -21,7 +21,6 @@ concurrency:
 env:
     REGISTRY: us-central1-docker.pkg.dev/molten-verve-216720
     REPOSITORY: ethereum-repository
-    REBUILD_ALL: 1
 
 jobs:
   build:
@@ -37,11 +36,7 @@ jobs:
     - name: Build and push etb-all-clients images
       timeout-minutes: 500
       run: |
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /opt/ghc
-          sudo rm -rf /usr/local/lib/android
-          sudo rm -rf "/usr/local/share/boost"
-          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          docker rmi $(docker images | grep 'etb-client-')
 
           make rebuild-etb-all-clients
 
