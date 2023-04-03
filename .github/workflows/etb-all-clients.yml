@@ -12,7 +12,7 @@ on:
     branches: [ "master" ]
   schedule:
     # Runs daily at 00:00 (see https://crontab.guru/#0_0_*_*_*)
-    - cron: '0 0 * * *'
+    - cron: '0 3 * * *'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
