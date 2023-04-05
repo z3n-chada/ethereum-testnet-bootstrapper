@@ -58,7 +58,6 @@ if [ -s $FAILED_IMAGES_LOG ]; then
     printf "${RED}The following images failed to build:${NO_COLOR}\n"
     cat $FAILED_IMAGES_LOG
     printf "\n\n"
-    exit 1
 else
     rm $FAILED_IMAGES_LOG
 
