@@ -1,3 +1,5 @@
+![etb-all-clients](https://github.com/antithesishq/ethereum-testnet-bootstrapper/actions/workflows/etb-all-clients.yml/badge.svg)
+
 # ethereum-testnet-bootstrapper
 
 ## Building images
