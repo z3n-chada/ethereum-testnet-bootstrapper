@@ -1,19 +1,22 @@
 .PHONY: clean
 
-# build the ethereum-testnet-bootstrapper docker.
+# Build ethereum-testnet-bootstrapper image
 build-bootstrapper:
-	docker build -t ethereum-testnet-bootstrapper -f Dockerfile .
-
+	docker build -t ethereum-testnet-bootstrapper -f bootstrapper.Dockerfile .
 rebuild-bootstrapper:
-	docker build --no-cache -t ethereum-testnet-bootstrapper -f Dockerfile .
+	docker build --no-cache -t ethereum-testnet-bootstrapper -f bootstrapper.Dockerfile .
 
-# build all of the docker files we currently use
-build-dockers: build-bootstrapper
+# Build the etb-all-clients images:
+# - etb-all-clients:minimal
+# - etb-all-clients:minimal-fuzz
+# - etb-all-clients-inst:minimal
+build-etb-all-clients:
 	cd deps/dockers && ./build_dockers.sh
+rebuild-etb-all-clients:
+	cd deps/dockers && REBUILD_IMAGES=1 ./build_dockers.sh
 
-# build all of the docker files we currently use without a cache
-rebuild-dockers: rebuild-bootstrapper
-	cd deps/dockers && ./rebuild_dockers.sh
+build-all-images: build-bootstrapper build-etb-all-clients
+rebuild-all-images: rebuild-bootstrapper rebuild-etb-all-clients
 
 # init the testnet dirs and all files needed to later bootstrap the testnet.
 init-testnet:
@@ -25,4 +28,3 @@ run-bootstrapper:
 
 clean:
 	docker run -it -v $(shell pwd)/:/source/ -v $(shell pwd)/data/:/data ethereum-testnet-bootstrapper --config $(config) --clear-last-run
-

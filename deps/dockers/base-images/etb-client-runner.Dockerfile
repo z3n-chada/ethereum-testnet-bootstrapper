@@ -1,9 +1,10 @@
 FROM etb-client-builder:latest as rocks_builder
 
-WORKDIR /git
+WORKDIR /git/rocksdb
 
-RUN cd rocksdb && make clean && make -j32 shared_lib
-RUN mkdir -p /rocksdb/lib && cd rocksdb && cp librocksdb.so* /rocksdb/lib/
+RUN make clean && make -j2 shared_lib
+RUN mkdir -p /rocksdb/lib && cp librocksdb.so* /rocksdb/lib/
+
 
 FROM golang:1.18 as go_builder
 
@@ -11,8 +12,9 @@ RUN go install github.com/wealdtech/ethereal/v2@latest \
     && go install github.com/wealdtech/ethdo@latest \
     && go install github.com/protolambda/eth2-val-tools@latest
 
-FROM debian:bullseye-slim as base
-# Install nodejs
+
+FROM debian:bullseye-slim
+
 WORKDIR /git
 
 RUN apt update && apt install curl ca-certificates -y --no-install-recommends \
@@ -35,19 +37,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libzstd-dev \
     openjdk-17-jre \
     dotnet-runtime-7.0 \
-    aspnetcore-runtime-7.0
-
-RUN apt-get install -y --no-install-recommends \
+    aspnetcore-runtime-7.0 \
     python3-dev \
     python3-pip
 
 RUN pip3 install ruamel.yaml web3
 
-RUN mkdir -p /opt/antithesis/
 COPY --from=rocks_builder /rocksdb/lib/ /usr/local/rocksdb/lib/
 # Antithesis instrumentation resources
 COPY --from=rocks_builder /usr/lib/libvoidstar.so /usr/lib/libvoidstar.so
-COPY --from=rocks_builder /opt/antithesis/go_instrumentation /opt/antithesis/go_instrumentation
 
 RUN cp /usr/local/rocksdb/lib/librocksdb.so* /usr/lib
 

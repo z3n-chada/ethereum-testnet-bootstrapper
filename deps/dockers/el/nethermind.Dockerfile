@@ -1,16 +1,16 @@
-from etb-client-builder:latest as builder
+FROM etb-client-builder:latest as builder
 
-RUN apt-get install -y libsnappy-dev libc6-dev libc6
+ARG BRANCH="master"
 
 WORKDIR /git
 
-ARG NETHERMIND_BRANCH="master"
+RUN git clone --depth=1 --branch="${BRANCH}" https://github.com/NethermindEth/nethermind
 
-RUN git clone https://github.com/NethermindEth/nethermind && cd nethermind && git checkout ${NETHERMIND_BRANCH}
+WORKDIR /git/nethermind
 
-RUN cd /git/nethermind &&  dotnet publish src/Nethermind/Nethermind.Runner -c release -o out
+RUN git log -n 1 --format=format:"%H" > /nethermind.version
+RUN dotnet publish src/Nethermind/Nethermind.Runner -c release -o out
 
-RUN cd /git/nethermind && git log -n 1 --format=format:"%H" > /nethermind.version
 
 FROM scratch
 
