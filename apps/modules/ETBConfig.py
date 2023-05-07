@@ -36,7 +36,7 @@ class PremineKeyPair(object):
             self.mnemonic, account_path=self.premine_path, passphrase=self.password
         )
         self.public_key = acct.address
-        self.private_key = acct.privateKey.hex()
+        self.private_key = acct.key.hex()
 
 
 """
