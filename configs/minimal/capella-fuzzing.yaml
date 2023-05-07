@@ -78,8 +78,8 @@ config-params:
       capella-fork-version: 0x04000666
       capella-fork-epoch: 14
 
-      eip4844-fork-version: 0x05000666
-      eip4844-fork-epoch: 18446744073709551615 # far future
+      deneb-fork-version: 0x05000666
+      deneb-fork-epoch: 18446744073709551615 # far future
 
       sharding-fork-version: 0x06000666
       sharding-fork-epoch: 18446744073709551615 # far future

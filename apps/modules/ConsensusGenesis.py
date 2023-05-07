@@ -65,9 +65,9 @@ BELLATRIX_FORK_EPOCH: {self.etb_config.get('bellatrix-fork-epoch')}
 CAPELLA_FORK_VERSION: 0x{self.etb_config.get("capella-fork-version"):08x}
 CAPELLA_FORK_EPOCH: {self.etb_config.get('capella-fork-epoch')}
 
-# EIP4844
-EIP4844_FORK_VERSION: 0x{self.etb_config.get("eip4844-fork-version"):08x}
-EIP4844_FORK_EPOCH: {self.etb_config.get('eip4844-fork-epoch')}
+# Deneb
+DENEB_FORK_VERSION: 0x{self.etb_config.get("deneb-fork-version"):08x}
+DENEB_FORK_EPOCH: {self.etb_config.get('deneb-fork-epoch')}
 
 
 TERMINAL_TOTAL_DIFFICULTY: {self.etb_config.get('terminal-total-difficulty')}

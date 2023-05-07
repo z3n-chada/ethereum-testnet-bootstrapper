@@ -76,7 +76,7 @@ class ForkVersion(int, Enum):
     Altair = 1
     Bellatrix = 2
     Capella = 3
-    EIP4844 = 4
+    Deneb = 4
 
 
 class TotalDifficultyStep(int, Enum):

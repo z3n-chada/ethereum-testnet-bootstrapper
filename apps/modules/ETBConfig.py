@@ -749,8 +749,8 @@ class ETBConfig(object):
         should come up.
         :return:
         """
-        if self.get("eip4844-fork-epoch") == 0:
-            return ForkVersion.EIP4844
+        if self.get("deneb-fork-epoch") == 0:
+            return ForkVersion.Deneb
         if self.get("capella-fork-epoch") == 0:
             return ForkVersion.Capella
         if self.get("bellatrix-fork-epoch") == 0:
