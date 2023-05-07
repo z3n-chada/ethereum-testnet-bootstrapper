@@ -51,7 +51,9 @@ class ExecutionGenesisWriter(object):
             "parentHash": "0x" + ("0" * 64),
             "timestamp": str(self.execution_genesis),
         }
-
+        merge_fork_time = self.etb_config.get_consensus_fork_delay_seconds('bellatrix') + self.execution_genesis
+        shanghai_fork_time = self.etb_config.get_consensus_fork_delay_seconds('capella') + self.execution_genesis
+        cancun_fork_time = self.etb_config.get_consensus_fork_delay_seconds('deneb') + self.execution_genesis
         config = {
             "chainId": self.etb_config.get("chain-id"),
             "homesteadBlock": 0,
@@ -64,10 +66,11 @@ class ExecutionGenesisWriter(object):
             "istanbulBlock": 0,
             "berlinBlock": 0,
             "londonBlock": 0,
-            "mergeForkBlock": self.etb_config.get_execution_merge_fork_block(),
-            "arrowGlacierBlock": self.etb_config.get_execution_merge_fork_block(),
-            "grayGlacierBlock": self.etb_config.get_execution_merge_fork_block(),
-            "shanghaiTime": self.etb_config.get_shanghai_time(),
+            "mergeForkBlock": int(merge_fork_time // self.etb_config.get("seconds-per-eth1-block")),
+            "arrowGlacierBlock": int(merge_fork_time // self.etb_config.get("seconds-per-eth1-block")),
+            "grayGlacierBlock": int(merge_fork_time // self.etb_config.get("seconds-per-eth1-block")),
+            "shanghaiTime": shanghai_fork_time,
+            "cancunTime": cancun_fork_time,
             "terminalTotalDifficulty": self.etb_config.get_terminal_total_difficulty(),
         }
         self.genesis["config"] = config

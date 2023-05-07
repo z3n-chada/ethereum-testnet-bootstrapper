@@ -2,6 +2,7 @@ import logging
 import pathlib
 import re
 
+from .Consensus import DEFINED_CONSENSUS_FORK_NAMES, ConsensusFork
 from .ETBConstants import (
     PresetEnum,
     MinimalPreset,
@@ -562,6 +563,16 @@ class ETBConfig(object):
         # in case we need to perform actions for clique network.
         self.clique_signer_instance_name: Union[None, str] = None
 
+        # consensus forks
+        self.consensus_forks: dict[str, ConsensusFork] = {}
+        for fork_name in DEFINED_CONSENSUS_FORK_NAMES:
+            if not self.has(f"{fork_name}-fork-version"):
+                raise Exception(f"Missing {fork_name}-fork-version in config-file.")
+
+            fork_version = self.get(f"{fork_name}-fork-version")
+            fork_epoch = self.get(f"{fork_name}-fork-epoch")
+            self.consensus_forks[fork_name] = ConsensusFork(fork_name, fork_version, fork_epoch)
+
     # define a get and has construct for ease of use in modules.
     def has(self, key) -> bool:
         exists_in_config_entries = (
@@ -801,6 +812,22 @@ class ETBConfig(object):
 
         self.logger.debug(f"time to merge: {merge_time} -> eth1-block {merge_el_block}")
         return merge_el_block
+
+    def get_consensus_fork_delay_seconds(self, fork_name) -> int:
+        """
+        Given a consensus fork calculate the time that it will occur relative
+        to the genesis of the beacon chain.
+        """
+        if fork_name not in self.consensus_forks.keys():
+            raise Exception(f"Fork {fork_name}  not defined in config. {fork_name}")
+
+        consensus_fork = self.consensus_forks[fork_name]
+        consensus_fork_delay_seconds = (
+            consensus_fork.epoch
+            * self.preset_base.SLOTS_PER_EPOCH.value
+            * self.preset_base.SECONDS_PER_SLOT.value
+        ) + self.get_consensus_genesis_delay()
+
 
     def get_bootstrap_genesis_time(self) -> int:
         if "bootstrap-genesis" in self.global_config:

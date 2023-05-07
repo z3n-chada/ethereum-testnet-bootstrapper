@@ -244,14 +244,6 @@ class Eth2TestnetGenesis(object):
     def write_genesis_ssz(self):
         # this is needed to generate the genesis.ssz file.
         self._dump_validator_yaml()
-        # str repr for this tool.
-        genesis_fork_cmd_map = {
-            ForkVersion.Phase0: "phase0",
-            ForkVersion.Altair: "altair",
-            ForkVersion.Bellatrix: "merge",
-            ForkVersion.Capella: "merge",
-        }
-
         genesis_fork_version: ForkVersion = self.etb_config.get_genesis_fork_upgrade()
         consensus_config = self.etb_config.files.get("consensus-config-file")
         state_out = self.etb_config.files.get("consensus-genesis-file")
@@ -263,7 +255,7 @@ class Eth2TestnetGenesis(object):
 
         cmd = [
             "eth2-testnet-genesis",
-            f"{genesis_fork_cmd_map[genesis_fork_version]}",
+            f"{genesis_fork_version.name.lower()}",
             "--mnemonics",
             "/tmp/validators.yaml",
             "--config",
@@ -288,7 +280,6 @@ class Eth2TestnetGenesis(object):
             cmd.append(self.etb_config.files.get("geth-genesis-file"))
 
         if genesis_fork_version >= ForkVersion.Capella:
-            # not tested
             cmd.append("--preset-capella")
             cmd.append(preset_base_str)
 
