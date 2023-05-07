@@ -52,7 +52,8 @@ class ConfigEntry(object):
     instances.
     """
 
-    def __init__(self, data: dict, recursive=False):
+    def __init__(self, config_key, data: dict, recursive=False):
+        self.config_key = config_key
         self.invalid_keys = []
         self.required_keys = []
         self.ignored_keys = []
@@ -77,8 +78,9 @@ class ConfigEntry(object):
                 # do it recursively
             else:
                 pass
-        if not all(x in list(entry.keys()) for x in self.required_keys):
-            raise Exception("ConfigEntry does not contain all required keys.")
+        missing_keys = [k for k in self.required_keys if k not in entry]
+        if len(missing_keys) != 0:
+            raise Exception(f"{type(self).__name__} does not contain all required keys: {', '.join(missing_keys)}")
         return entry
 
     # recursive entries
@@ -210,6 +212,7 @@ class Instance(ConfigEntry):
         """
         entry = {
             "container_name": self.name,
+            "host_name": self.name,
             "image": f"{self.get('image')}:{self.get('tag')}",
             "volumes": docker_config.get("volumes"),
             "networks": {
@@ -494,16 +497,16 @@ class ETBConfig(object):
             self.logger.error(f"No etb-config file in path: {path}")
             raise Exception(f"No file found at: {path}")
 
-        self.docker: ConfigEntry = ConfigEntry(
+        self.docker: ConfigEntry = ConfigEntry("docker",
             self.global_config["docker"], recursive=True
         )
-        self.files: ConfigEntry = ConfigEntry(
+        self.files: ConfigEntry = ConfigEntry("files",
             self.global_config["files"], recursive=True
         )
-        self.config_params: ConfigEntry = ConfigEntry(
+        self.config_params: ConfigEntry = ConfigEntry("config-params",
             self.global_config["config-params"], recursive=True
         )
-        self.accounts: ConfigEntry = ConfigEntry(
+        self.accounts: ConfigEntry = ConfigEntry("accounts",
             self.global_config["accounts"], recursive=True
         )
         # when calling .get() on etb-config we iterate through these config entries.

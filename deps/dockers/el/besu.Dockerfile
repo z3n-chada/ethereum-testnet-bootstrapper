@@ -1,16 +1,16 @@
-from etb-client-builder:latest as base
+FROM etb-client-builder:latest as builder
 
-# build besu; no instrumentation
+ARG BRANCH="main"
 
 WORKDIR /usr/src
 
-from base as builder
+RUN git clone --depth=1 --branch="${BRANCH}" https://github.com/hyperledger/besu.git 
 
-ARG GIT_BRANCH="main"
+WORKDIR /usr/src/besu
 
-RUN git clone --progress https://github.com/hyperledger/besu.git && cd besu && git checkout ${GIT_BRANCH} && ./gradlew installDist
+RUN git log -n 1 --format=format:"%H" > /besu.version
+RUN ./gradlew installDist
 
-RUN cd besu && git log -n 1 --format=format:"%H" > /besu.version
 
 FROM scratch
 
