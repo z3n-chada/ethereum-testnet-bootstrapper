@@ -822,7 +822,7 @@ class ETBConfig(object):
             raise Exception(f"Fork {fork_name}  not defined in config. {fork_name}")
 
         consensus_fork = self.consensus_forks[fork_name]
-        consensus_fork_delay_seconds = (
+        return (
             consensus_fork.epoch
             * self.preset_base.SLOTS_PER_EPOCH.value
             * self.preset_base.SECONDS_PER_SLOT.value
