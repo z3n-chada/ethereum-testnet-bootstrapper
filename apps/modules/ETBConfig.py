@@ -213,7 +213,7 @@ class Instance(ConfigEntry):
         """
         entry = {
             "container_name": self.name,
-            "host_name": self.name,
+            "hostname": self.name,
             "image": f"{self.get('image')}:{self.get('tag')}",
             "volumes": docker_config.get("volumes"),
             "networks": {
