@@ -9,7 +9,7 @@ from .ETBConstants import (
     ForkVersion,
     TerminalBlockHash,
     TerminalBlockHashActivationEpoch,
-    MinimalPreset,
+    MinimalPreset, Epoch,
 )
 from .ETBUtils import Eth2TestnetGenesis
 
@@ -32,7 +32,7 @@ class ConsensusGenesisWriter(object):
 
         self.logger.info(f"writing {preset_name} config.yaml")
 
-        return f"""
+        config_file = f"""
 # Extends the {preset_name} preset
 PRESET_BASE: '{preset_name}'
 CONFIG_NAME: '{self.etb_config.get('config-name')}'
@@ -103,6 +103,15 @@ DEPOSIT_CHAIN_ID: {self.etb_config.get('chain-id')}
 DEPOSIT_NETWORK_ID: {self.etb_config.get('network-id')}
 DEPOSIT_CONTRACT_ADDRESS: {self.etb_config.config_params.get('deposit-contract-address')}
 """
+        # check if we are doing a deneb experiment, if so add the deneb related config params.
+        if self.etb_config.get('deneb-fork-epoch') != Epoch.FarFuture:
+            config_file += f"""
+# Misc
+# ---------------------------------------------------------------
+FIELD_ELEMENTS_PER_BLOB: {self.etb_config.get_preset_value('field-elements-per-blob')}
+MAX_BLOBS_PER_BLOCK: 4
+"""
+        return config_file
 
     def create_consensus_genesis_ssz(self):
         e2tg = Eth2TestnetGenesis(self.etb_config)
