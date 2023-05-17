@@ -21,8 +21,8 @@ ARG TEKU_BRANCH="4844-interop"
 ARG BESU_REPO="https://github.com/hyperledger/besu.git"
 ARG BESU_BRANCH="main"
 
-ARG GETH_REPO="https://github.com/mdehoog/go-ethereum.git"
-ARG GETH_BRANCH="eip-4844"
+ARG GETH_REPO="https://github.com/ethereum/go-ethereum.git"
+ARG GETH_BRANCH="master"
 
 ARG NETHERMIND_REPO="https://github.com/NethermindEth/nethermind.git"
 ARG NETHERMIND_BRANCH="master"
@@ -107,7 +107,7 @@ RUN git clone "${LIGHTHOUSE_REPO}" && \
     git log -n 1 --format=format:"%H" > /lighthouse.version
 
 RUN cd lighthouse && \
-    cargo build --release --manifest-path lighthouse/Cargo.toml --bin lighthouse
+    cargo build --release --manifest-path lighthouse/Cargo.toml --features spec-minimal --bin lighthouse
 
 # LODESTAR
 FROM etb-client-builder AS lodestar-builder
@@ -134,7 +134,7 @@ RUN git clone "${NIMBUS_ETH2_REPO}" && \
     make -j16 update
 
 RUN cd nimbus-eth2 && \
-    make -j16 nimbus_beacon_node NIMFLAGS="-d:disableMarchNative --cc:clang --clang.exe:clang-15 --clang.linkerexe:clang-15"
+    make -j16 nimbus_beacon_node NIMFLAGS="-d:const_preset=minimal -d:web3_consensus_const_preset=minimal -d:disableMarchNative --cc:clang --clang.exe:clang-15 --clang.linkerexe:clang-15"
 
 # TEKU
 FROM etb-client-builder AS teku-builder
@@ -158,7 +158,7 @@ RUN git clone "${PRYSM_REPO}" && \
     git checkout "${PRYSM_BRANCH}" && \
     git log -n 1 --format=format:"%H" > /prysm.version
 
-RUN cd prysm && bazel build //cmd/beacon-chain:beacon-chain //cmd/validator:validator
+RUN cd prysm && bazel build --config=minimal //cmd/beacon-chain:beacon-chain //cmd/validator:validator
 
 
 ############################# Execution  Clients  #############################
