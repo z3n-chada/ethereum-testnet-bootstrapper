@@ -2,6 +2,8 @@ from web3.auto import w3
 from .ETBConfig import ETBConfig, ForkVersion
 import logging
 
+from .ETBConstants import Epoch
+
 w3.eth.account.enable_unaudited_hdwallet_features()
 logger = logging.getLogger("bootstrapper_log")
 
@@ -53,7 +55,6 @@ class ExecutionGenesisWriter(object):
         }
         merge_fork_time = self.etb_config.get_consensus_fork_delay_seconds('bellatrix') + self.execution_genesis
         shanghai_fork_time = self.etb_config.get_consensus_fork_delay_seconds('capella') + self.execution_genesis
-        cancun_fork_time = self.etb_config.get_consensus_fork_delay_seconds('deneb') + self.execution_genesis
         config = {
             "chainId": self.etb_config.get("chain-id"),
             "homesteadBlock": 0,
@@ -70,9 +71,14 @@ class ExecutionGenesisWriter(object):
             "arrowGlacierBlock": int(merge_fork_time // self.etb_config.get("seconds-per-eth1-block")),
             "grayGlacierBlock": int(merge_fork_time // self.etb_config.get("seconds-per-eth1-block")),
             "shanghaiTime": shanghai_fork_time,
-            "cancunTime": cancun_fork_time,
             "terminalTotalDifficulty": self.etb_config.get_terminal_total_difficulty(),
         }
+
+        # deneb/next genesis
+        if self.etb_config.consensus_forks["deneb"].epoch != Epoch.FarFuture.value:
+            cancun_fork_time = self.etb_config.get_consensus_fork_delay_seconds('deneb') + self.execution_genesis
+            config["cancunTime"] = cancun_fork_time
+
         self.genesis["config"] = config
 
         if self.etb_config.get_genesis_fork_upgrade() < ForkVersion.Bellatrix:

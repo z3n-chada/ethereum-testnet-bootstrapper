@@ -731,6 +731,7 @@ class ETBConfig(object):
             "min-per-epoch-churn-limit": self.preset_base.MIN_PER_EPOCH_CHURN_LIMIT,
             "churn-limit-quotient": self.preset_base.CHURN_LIMIT_QUOTIENT,
             "proposer-score-boost": self.preset_base.PROPOSER_SCORE_BOOST,
+            "field-elements-per-blob": self.preset_base.FIELD_ELEMENTS_PER_BLOB,
         }
 
         for enum_override in PresetOverrides:
