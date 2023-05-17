@@ -17,6 +17,13 @@ class ExecutionGenesisWriter(object):
             + self.etb_config.get("execution-genesis-delay")
         )
 
+        if self.etb_config.consensus_forks['bellatrix'].epoch != 0:
+            raise Exception("We no longer support pre-merge networks.")
+
+        self.merge_fork_time = self.etb_config.get_consensus_fork_delay_seconds('bellatrix') + self.execution_genesis
+        self.shanghai_fork_time = self.etb_config.get_consensus_fork_delay_seconds('capella') + self.execution_genesis
+        self.cancun_fork_time = self.etb_config.get_consensus_fork_delay_seconds('deneb') + self.execution_genesis
+
     def get_allocs(self) -> dict:
         allocs = {}
         # premine allocations
@@ -53,8 +60,8 @@ class ExecutionGenesisWriter(object):
             "parentHash": "0x" + ("0" * 64),
             "timestamp": str(self.execution_genesis),
         }
-        merge_fork_time = self.etb_config.get_consensus_fork_delay_seconds('bellatrix') + self.execution_genesis
-        shanghai_fork_time = self.etb_config.get_consensus_fork_delay_seconds('capella') + self.execution_genesis
+        # merge_fork_time = self.etb_config.get_consensus_fork_delay_seconds('bellatrix') + self.execution_genesis
+        # shanghai_fork_time = self.etb_config.get_consensus_fork_delay_seconds('capella') + self.execution_genesis
         config = {
             "chainId": self.etb_config.get("chain-id"),
             "homesteadBlock": 0,
@@ -67,27 +74,19 @@ class ExecutionGenesisWriter(object):
             "istanbulBlock": 0,
             "berlinBlock": 0,
             "londonBlock": 0,
-            "mergeForkBlock": int(merge_fork_time // self.etb_config.get("seconds-per-eth1-block")),
-            "arrowGlacierBlock": int(merge_fork_time // self.etb_config.get("seconds-per-eth1-block")),
-            "grayGlacierBlock": int(merge_fork_time // self.etb_config.get("seconds-per-eth1-block")),
-            "shanghaiTime": shanghai_fork_time,
+            "mergeForkBlock": int(self.merge_fork_time // self.etb_config.get("seconds-per-eth1-block")),
+            "arrowGlacierBlock": int(self.merge_fork_time // self.etb_config.get("seconds-per-eth1-block")),
+            "grayGlacierBlock": int(self.merge_fork_time // self.etb_config.get("seconds-per-eth1-block")),
+            "shanghaiTime": self.shanghai_fork_time,
             "terminalTotalDifficulty": self.etb_config.get_terminal_total_difficulty(),
+            "terminalTotalDifficultyPassed": True,
         }
 
-        # deneb/next genesis
+        # for next based experiments
         if self.etb_config.consensus_forks["deneb"].epoch != Epoch.FarFuture.value:
-            cancun_fork_time = self.etb_config.get_consensus_fork_delay_seconds('deneb') + self.execution_genesis
-            config["cancunTime"] = cancun_fork_time
+            config["cancunTime"] = self.cancun_fork_time
 
         self.genesis["config"] = config
-
-        if self.etb_config.get_genesis_fork_upgrade() < ForkVersion.Bellatrix:
-            signer = self.etb_config.get("clique-signer")
-            self.genesis["extraData"] = f"0x{'0' * 64}{signer[2:]}{'0' * 130}"
-            self.genesis["config"]["clique"] = {
-                "period": self.etb_config.get("seconds-per-eth1-block"),
-                "epoch": 3000,
-            }
 
         return self.genesis
 
@@ -116,14 +115,17 @@ class ExecutionGenesisWriter(object):
                 "istanbulBlock": 0,
                 "berlinBlock": 0,
                 "londonBlock": 0,
-                "arrowGlacierBlock": self.etb_config.get_execution_merge_fork_block(),
-                "grayGlacierBlock": self.etb_config.get_execution_merge_fork_block(),
-                "mergeForkBlock": self.etb_config.get_execution_merge_fork_block(),
-                "shanghaiTime": self.etb_config.get_shanghai_time(),
-                "terminalTotalDifficulty": 0,
+                "mergeForkBlock": int(self.merge_fork_time // self.etb_config.get("seconds-per-eth1-block")),
+                "arrowGlacierBlock": int(self.merge_fork_time // self.etb_config.get("seconds-per-eth1-block")),
+                "grayGlacierBlock": int(self.merge_fork_time // self.etb_config.get("seconds-per-eth1-block")),
+                "shanghaiTime": self.shanghai_fork_time,
+                "terminalTotalDifficulty": self.etb_config.get_terminal_total_difficulty(),
                 "ethash": {},
             },
         }
+        # for next based experiments
+        if self.etb_config.consensus_forks["deneb"].epoch != Epoch.FarFuture.value:
+            self.genesis['config']["cancunTime"] = self.cancun_fork_time
 
         # besu doesn't use keystores like geth, however you can embed the accounts in the genesis.
         mnemonic = self.etb_config.get("eth1-account-mnemonic")
@@ -143,7 +145,7 @@ class ExecutionGenesisWriter(object):
 
     def create_nethermind_genesis(self) -> dict:
         self.genesis = {
-            "name": "kilnv2",
+            "name": "Local-ETB-Testnet",
             "engine": {},
             "params": {
                 "gasLimitBoundDivisor": "0x400",
@@ -181,10 +183,10 @@ class ExecutionGenesisWriter(object):
                 "eip3198Transition": "0x0",
                 "eip3529Transition": "0x0",
                 "eip3541Transition": "0x0",
-                "eip4895TransitionTimestamp": f"0x{self.etb_config.get_shanghai_time():08x}",
-                "eip3855TransitionTimestamp": f"0x{self.etb_config.get_shanghai_time():08x}",
-                "eip3651TransitionTimestamp": f"0x{self.etb_config.get_shanghai_time():08x}",
-                "eip3860TransitionTimestamp": f"0x{self.etb_config.get_shanghai_time():08x}",
+                "eip4895TransitionTimestamp": f"0x{self.shanghai_fork_time:08x}",
+                "eip3855TransitionTimestamp": f"0x{self.shanghai_fork_time:08x}",
+                "eip3651TransitionTimestamp": f"0x{self.shanghai_fork_time:08x}",
+                "eip3860TransitionTimestamp": f"0x{self.shanghai_fork_time:08x}",
                 "terminalTotalDifficulty": f"0x{self.etb_config.get_terminal_total_difficulty():08x}",
             },
             "genesis": {
@@ -216,6 +218,9 @@ class ExecutionGenesisWriter(object):
                 "difficultyBombDelays": {},
             }
         }
+        # for next based experiments
+        if self.etb_config.consensus_forks["deneb"].epoch != Epoch.FarFuture.value:
+            self.genesis['params']["eip4844TransitionTimestamp"] = f"0x{self.cancun_fork_time:08x}"
 
         # TODO: nethermind clique
         return self.genesis
