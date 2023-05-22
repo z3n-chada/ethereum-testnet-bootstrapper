@@ -21,7 +21,7 @@ ARG TEKU_BRANCH="master"
 ARG BESU_REPO="https://github.com/hyperledger/besu.git"
 ARG BESU_BRANCH="main"
 
-ARG GETH_REPO="https://github.com/mdehoog/go-ethereum.git"
+ARG GETH_REPO="https://github.com/ethereum/go-ethereum.git"
 ARG GETH_BRANCH="master"
 
 ARG NETHERMIND_REPO="https://github.com/NethermindEth/nethermind.git"

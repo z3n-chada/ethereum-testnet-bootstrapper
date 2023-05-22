@@ -22,7 +22,7 @@ ARG BESU_REPO="https://github.com/hyperledger/besu.git"
 ARG BESU_BRANCH="main"
 
 ARG GETH_REPO="https://github.com/ethereum/go-ethereum.git"
-ARG GETH_BRANCH="eip-4844"
+ARG GETH_BRANCH="master"
 
 ARG NETHERMIND_REPO="https://github.com/NethermindEth/nethermind.git"
 ARG NETHERMIND_BRANCH="master"
