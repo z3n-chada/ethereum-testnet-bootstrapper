@@ -22,7 +22,7 @@ ARG BESU_REPO="https://github.com/hyperledger/besu.git"
 ARG BESU_BRANCH="main"
 
 ARG GETH_REPO="https://github.com/ethereum/go-ethereum.git"
-ARG GETH_BRANCH="master"
+ARG GETH_BRANCH="eip-4844"
 
 ARG NETHERMIND_REPO="https://github.com/NethermindEth/nethermind.git"
 ARG NETHERMIND_BRANCH="master"
@@ -134,7 +134,7 @@ RUN git clone "${NIMBUS_ETH2_REPO}" && \
     make -j16 update
 
 RUN cd nimbus-eth2 && \
-    make -j16 nimbus_beacon_node NIMFLAGS="-d:const_preset=minimal -d:web3_consensus_const_preset=minimal -d:disableMarchNative --cc:clang --clang.exe:clang-15 --clang.linkerexe:clang-15"
+    make -j16 nimbus_beacon_node NIMFLAGS="-d:const_preset=minimal -d:web3_consensus_const_preset=minimal -d:FIELD_ELEMENTS_PER_BLOB=4 -d:disableMarchNative --cc:clang --clang.exe:clang-15 --clang.linkerexe:clang-15"
 
 # TEKU
 FROM etb-client-builder AS teku-builder

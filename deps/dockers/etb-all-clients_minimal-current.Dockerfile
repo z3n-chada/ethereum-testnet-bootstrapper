@@ -134,7 +134,7 @@ RUN git clone "${NIMBUS_ETH2_REPO}" && \
     make -j16 update
 
 RUN cd nimbus-eth2 && \
-    make -j16 nimbus_beacon_node NIMFLAGS="-d:const_preset=minimal -d:web3_consensus_const_preset=minimal -d:disableMarchNative --cc:clang --clang.exe:clang-15 --clang.linkerexe:clang-15"
+    make -j16 nimbus_beacon_node NIMFLAGS="-d:const_preset=minimal -d:web3_consensus_const_preset=minimal -d:FIELD_ELEMENTS_PER_BLOB=4 -d:disableMarchNative --cc:clang --clang.exe:clang-15 --clang.linkerexe:clang-15"
 
 
 # TEKU
