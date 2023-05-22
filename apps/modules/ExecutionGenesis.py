@@ -135,11 +135,7 @@ class ExecutionGenesisWriter(object):
             acct = w3.eth.account.from_mnemonic(
                 mnemonic, account_path=acc, passphrase=password
             )
-            self.genesis["alloc"][acct.address]["privateKey"] = acct.privateKey.hex()[
-                2:
-            ]
-
-        # TODO: besu clique.
+            self.genesis["alloc"][acct.address]["privateKey"] = acct.key.hex()[2:]
 
         return self.genesis
 
@@ -222,9 +218,7 @@ class ExecutionGenesisWriter(object):
         if self.etb_config.consensus_forks["deneb"].epoch != Epoch.FarFuture.value:
             self.genesis['params']["eip4844TransitionTimestamp"] = f"0x{self.cancun_fork_time:08x}"
 
-        # TODO: nethermind clique
         return self.genesis
-
 
 deposit_contract_json = {
     "balance": "0",
