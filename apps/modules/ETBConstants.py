@@ -34,6 +34,8 @@ class MinimalPreset(PresetEnum, Enum):
     CHURN_LIMIT_QUOTIENT = 32
     # fork choice
     PROPOSER_SCORE_BOOST = 40
+    # deneb
+    FIELD_ELEMENTS_PER_BLOB = 4
 
 
 class MainnetPreset(PresetEnum, Enum):
@@ -55,7 +57,8 @@ class MainnetPreset(PresetEnum, Enum):
     CHURN_LIMIT_QUOTIENT = 65536
     # fork choice
     PROPOSER_SCORE_BOOST = 40
-
+    # deneb
+    FIELD_ELEMENTS_PER_BLOB = 4096
 
 class PresetOverrides(str, Enum):
     """
@@ -76,7 +79,7 @@ class ForkVersion(int, Enum):
     Altair = 1
     Bellatrix = 2
     Capella = 3
-    EIP4844 = 4
+    Deneb = 4
 
 
 class TotalDifficultyStep(int, Enum):
