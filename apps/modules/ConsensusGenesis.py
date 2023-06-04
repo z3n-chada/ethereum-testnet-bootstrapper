@@ -1,17 +1,17 @@
 """
-    Contains all of the neccessary information and functionality to write the
+    Contains all the necessary information and functionality to write the
     consensus config.yaml and genesis.ssz.
 """
 import logging
 
 from .ETBConfig import ETBConfig
-from .ETBConstants import (
-    ForkVersion,
+from .Consensus import (
+    ForkVersionName,
     TerminalBlockHash,
     TerminalBlockHashActivationEpoch,
     MinimalPreset, Epoch,
 )
-from .ETBUtils import Eth2TestnetGenesis
+from .UtilityWrappers import Eth2TestnetGenesis
 
 
 class ConsensusGenesisWriter(object):

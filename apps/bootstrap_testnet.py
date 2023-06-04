@@ -3,7 +3,7 @@ import logging
 import sys
 
 from modules.TestnetBootstrapper import EthereumTestnetBootstrapper
-from modules.ETBUtils import create_logger
+from modules.UtilityWrappers import create_logger
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
