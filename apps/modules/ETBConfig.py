@@ -3,20 +3,18 @@ import pathlib
 import re
 
 from .Consensus import DEFINED_CONSENSUS_FORK_NAMES, ConsensusFork
-from .ETBConstants import (
+from .Consensus import (
     PresetEnum,
     MinimalPreset,
     MainnetPreset,
-    ForkVersion,
-    always_match_regex,
+    ForkVersionName,
+    # always_match_regex,
     Epoch,
-    TotalDifficultyStep,
-    PresetOverrides,
+    ConsensusConfigOverrides,
 )
 from ruamel import yaml
 from typing import List, Dict, Union, Any, Generator, Type
 from web3.auto import w3
-
 
 class PremineKeyPair(object):
     """
@@ -613,33 +611,18 @@ class ETBConfig(object):
         raise Exception("Should not occur.")
 
     # get data structures describing instances running on the network
-    def get_client_instances(
-        self,
-        client_name_filter: re.Pattern[str] = always_match_regex,
-        el_api_filter: re.Pattern[str] = always_match_regex,
-    ) -> List[ClientInstance]:
-        possible_clients = []
-        name_matched_clients = []
-        el_matched_clients = []
-        for collections in self.client_instance_collections.values():
-            for clients in collections:
-                possible_clients.append(clients)
+    def get_client_instances(self) -> List[ClientInstance]:
+        instances = []
+        for collection in self.client_instance_collections.values():
+            instances.extend(collection.__iter__())
+        return instances
 
-        # for speed
-        if (
-            client_name_filter == always_match_regex
-            and el_api_filter == always_match_regex
-        ):
-            return possible_clients
-        else:
-            for client in possible_clients:
-                if client_name_filter.search(client.name) is not None:
-                    name_matched_clients.append(client)
-            for client in name_matched_clients:
-                if el_api_filter.search(client.get("execution-http-apis")) is not None:
-                    el_matched_clients.append(client)
-
-        return el_matched_clients
+    def get_client_instances_by_name(self, client_name_regex: re.Pattern[str]) -> List[ClientInstance]:
+        """
+            Only return the client-instances that match the provided name regex.
+        """
+        all_instances = self.get_client_instances()
+        return [instance for instance in all_instances if client_name_regex.search(instance.name)]
 
     def get_generic_instances(self) -> List[Instance]:
         all_generic_instances = []
@@ -734,12 +717,13 @@ class ETBConfig(object):
             "field-elements-per-blob": self.preset_base.FIELD_ELEMENTS_PER_BLOB,
         }
 
-        for enum_override in PresetOverrides:
-            if sanitized_input == enum_override:
-                if self.config_params.has(enum_override):
-                    override = self.config_params.get(enum_override)
+        # The etb-config can override some of the config-parameters, check for those here.
+        for override in ConsensusConfigOverrides:
+            if sanitized_input == override:
+                if self.config_params.has(override):
+                    override = self.config_params.get(override)
                     self.logger.debug(
-                        f"Returning etb-config overwritten preset: {enum_override} : {override}"
+                        f"Returning etb-config overwritten preset: {override} : {override}"
                     )
                     return override
 
@@ -752,7 +736,7 @@ class ETBConfig(object):
 
         raise Exception(f"No preset value defined for vairable: {str_repr}")
 
-    def get_genesis_fork_upgrade(self) -> ForkVersion:
+    def get_genesis_fork_upgrade(self) -> ForkVersionName:
         """
         The genesis fork upgrade is the network fork on the start of the
         network. **NOT** the phase0 version used for signatures!
@@ -762,15 +746,15 @@ class ETBConfig(object):
         :return:
         """
         if self.get("deneb-fork-epoch") == 0:
-            return ForkVersion.Deneb
+            return ForkVersionName.Deneb
         if self.get("capella-fork-epoch") == 0:
-            return ForkVersion.Capella
+            return ForkVersionName.Capella
         if self.get("bellatrix-fork-epoch") == 0:
-            return ForkVersion.Bellatrix
+            return ForkVersionName.Bellatrix
         if self.get("altair-fork-epoch") == 0:
-            return ForkVersion.Altair
+            return ForkVersionName.Altair
         if self.get("phase0-fork-epoch") == 0:
-            return ForkVersion.Phase0
+            return ForkVersionName.Phase0
         else:
             raise Exception("No genesis-fork-epoch set to 0.")
 
@@ -780,7 +764,7 @@ class ETBConfig(object):
         If we aren't doing a bellatrix genesis then we use eth1-follow-distance
         :return: int(delay)
         """
-        if self.get_genesis_fork_upgrade() < ForkVersion.Bellatrix:
+        if self.get_genesis_fork_upgrade() < ForkVersionName.Bellatrix:
             return self.get_preset_value(
                 "eth1-follow-distance"
             ) * self.get_preset_value("seconds-per-eth1-block")
@@ -794,7 +778,7 @@ class ETBConfig(object):
         :return: block height as int.
         """
         # post-merge genesis
-        if self.get_genesis_fork_upgrade() >= ForkVersion.Bellatrix:
+        if self.get_genesis_fork_upgrade() >= ForkVersionName.Bellatrix:
             return 0
 
         # determine if we are doing a merge
@@ -852,15 +836,6 @@ class ETBConfig(object):
             f"Calculated shanghai time as cl epoch: {capella_fork_epoch} at time: {shanghai_time}"
         )
         return shanghai_time
-
-    def get_terminal_total_difficulty(self) -> int:
-        """
-        The chain total difficulty at the time of the bellatrix upgrade
-        :return: int(TTD)
-        """
-        ttd = self.get_execution_merge_fork_block() * TotalDifficultyStep.Clique.value
-        self.logger.debug(f"Calculate TTD: {ttd}")
-        return ttd
 
     def get_num_client_nodes(self) -> int:
         return len(self.get_client_instances())
