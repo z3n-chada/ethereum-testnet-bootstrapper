@@ -1,8 +1,8 @@
 from web3.auto import w3
-from .ETBConfig import ETBConfig, ForkVersion
+from .ETBConfig import ETBConfig, ForkVersionName
 import logging
 
-from .ETBConstants import Epoch
+from .Consensus import Epoch
 
 w3.eth.account.enable_unaudited_hdwallet_features()
 logger = logging.getLogger("bootstrapper_log")
@@ -78,7 +78,7 @@ class ExecutionGenesisWriter(object):
             "arrowGlacierBlock": int(self.merge_fork_time // self.etb_config.get("seconds-per-eth1-block")),
             "grayGlacierBlock": int(self.merge_fork_time // self.etb_config.get("seconds-per-eth1-block")),
             "shanghaiTime": self.shanghai_fork_time,
-            "terminalTotalDifficulty": self.etb_config.get_terminal_total_difficulty(),
+            "terminalTotalDifficulty": 0,
             "terminalTotalDifficultyPassed": True,
         }
 
@@ -119,7 +119,7 @@ class ExecutionGenesisWriter(object):
                 "arrowGlacierBlock": int(self.merge_fork_time // self.etb_config.get("seconds-per-eth1-block")),
                 "grayGlacierBlock": int(self.merge_fork_time // self.etb_config.get("seconds-per-eth1-block")),
                 "shanghaiTime": self.shanghai_fork_time,
-                "terminalTotalDifficulty": self.etb_config.get_terminal_total_difficulty(),
+                "terminalTotalDifficulty": 0,
                 "ethash": {},
             },
         }
@@ -183,7 +183,7 @@ class ExecutionGenesisWriter(object):
                 "eip3855TransitionTimestamp": f"0x{self.shanghai_fork_time:08x}",
                 "eip3651TransitionTimestamp": f"0x{self.shanghai_fork_time:08x}",
                 "eip3860TransitionTimestamp": f"0x{self.shanghai_fork_time:08x}",
-                "terminalTotalDifficulty": f"0x{self.etb_config.get_terminal_total_difficulty():08x}",
+                "terminalTotalDifficulty": f"0x{0:08x}",
             },
             "genesis": {
                 "seal": {
