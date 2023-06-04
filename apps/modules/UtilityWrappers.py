@@ -9,7 +9,7 @@ from .ETBConfig import ETBConfig
 from ruamel import yaml
 
 
-from .ETBConstants import ForkVersion, MinimalPreset
+from .Consensus import ForkVersionName, MinimalPreset
 
 
 def create_logger(
@@ -244,7 +244,7 @@ class Eth2TestnetGenesis(object):
     def write_genesis_ssz(self):
         # this is needed to generate the genesis.ssz file.
         self._dump_validator_yaml()
-        genesis_fork_version: ForkVersion = self.etb_config.get_genesis_fork_upgrade()
+        genesis_fork_version: ForkVersionName = self.etb_config.get_genesis_fork_upgrade()
         consensus_config = self.etb_config.files.get("consensus-config-file")
         state_out = self.etb_config.files.get("consensus-genesis-file")
 
@@ -265,21 +265,21 @@ class Eth2TestnetGenesis(object):
         ]
 
         # add preset-base args
-        if genesis_fork_version >= ForkVersion.Phase0:
+        if genesis_fork_version >= ForkVersionName.Phase0:
             cmd.append("--preset-phase0")
             cmd.append(preset_base_str)
 
-        if genesis_fork_version >= ForkVersion.Altair:
+        if genesis_fork_version >= ForkVersionName.Altair:
             cmd.append("--preset-altair")
             cmd.append(preset_base_str)
 
-        if genesis_fork_version >= ForkVersion.Bellatrix:
+        if genesis_fork_version >= ForkVersionName.Bellatrix:
             cmd.append("--preset-bellatrix")
             cmd.append(preset_base_str)
             cmd.append("--eth1-config")
             cmd.append(self.etb_config.files.get("geth-genesis-file"))
 
-        if genesis_fork_version >= ForkVersion.Capella:
+        if genesis_fork_version >= ForkVersionName.Capella:
             cmd.append("--preset-capella")
             cmd.append(preset_base_str)
 
