@@ -70,7 +70,7 @@ DENEB_FORK_VERSION: 0x{self.etb_config.get("deneb-fork-version"):08x}
 DENEB_FORK_EPOCH: {self.etb_config.get('deneb-fork-epoch')}
 
 
-TERMINAL_TOTAL_DIFFICULTY: {self.etb_config.get('terminal-total-difficulty')}
+TERMINAL_TOTAL_DIFFICULTY: 0
 TERMINAL_BLOCK_HASH: {TerminalBlockHash}
 TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH: {TerminalBlockHashActivationEpoch}
 
