@@ -18,14 +18,14 @@ from ruamel import yaml
 
 from .ConsensusGenesis import ConsensusGenesisWriter
 from .ETBConfig import ETBConfig, ClientInstance
-from .ETBUtils import write_checkpoint_file, Eth2ValTools
-from .ETBConstants import ForkVersion
+from .UtilityWrappers import write_checkpoint_file, Eth2ValTools
+from .Consensus import ForkVersionName
 from .ExecutionGenesis import ExecutionGenesisWriter
 from .ClientRequest import (
     eth_getBlockByNumber,
     admin_nodeInfo,
     perform_batched_request,
-    admin_addPeer,
+    admin_addPeer, ExecutionRPCRequest,
 )
 
 
@@ -101,7 +101,7 @@ class EthereumTestnetBootstrapper(object):
         self.pair_el_clients()
 
         # if needed we start the clique miners
-        if self.etb_config.get_genesis_fork_upgrade() < ForkVersion.Bellatrix:
+        if self.etb_config.get_genesis_fork_upgrade() < ForkVersionName.Bellatrix:
             # TODO figure out a more elegant way.
             self._start_clique_miners()
 
@@ -173,35 +173,45 @@ class EthereumTestnetBootstrapper(object):
         enr_path = Path(self.etb_config.get("consensus-bootnode-file"))
         enr_path.parents[0].mkdir(exist_ok=True)
 
-    def pair_el_clients(self):
+    def pair_el_clients(self, global_timeout=30):
         """
         Given a dict of enodes, iterate through it and pair the clients via
         the admin RPC interface.
         """
-        admin_api_filter = re.compile(r"(admin|ADMIN)")
-        clients = self.etb_config.get_client_instances(el_api_filter=admin_api_filter)
-        rpc_request = admin_nodeInfo(
-            self.logger, timeout=30
-        )  # some els are slow to come up.
+        admin_api_filter: re.Pattern[str] = re.compile(r"(admin|ADMIN)")
+        el_clients_to_pair: list[ClientInstance] = []
+        node_info_rpc_request = admin_nodeInfo(self.logger, timeout=global_timeout)
 
-        enodes = {}
-        for client, resp in perform_batched_request(rpc_request, clients):
-            error, result = resp
-            if error is None:
-                enodes[client] = rpc_request.retrieve_response(result)["enode"]
+        client_instances = self.etb_config.get_client_instances()
+        for instance in client_instances:
+            if admin_api_filter.search(instance.get("execution-http-apis")):
+                el_clients_to_pair.append(instance)
+            else:
+                self.logger.warning(f"Execution client for {instance.name} does not support the admin API.")
+                self.logger.info(f"Skipping execution pairing for instance: {instance.name}")
+
+        enodes: dict[ClientInstance, str] = {}
+        el_client: ClientInstance
+        rpc_request_result: admin_nodeInfo
+        for el_client, rpc_request_result in perform_batched_request(node_info_rpc_request, el_clients_to_pair):
+            if rpc_request_result.valid_response:
+                enodes[el_client] = rpc_request_result.get_enode()
             else:
                 self.logger.error(
-                    f"Failed to get enode from client: {client.name}. Exception: {error}"
+                    f"Failed to get enode from client: {el_client.name}. Exception: {rpc_request_result.last_seen_exception}"
                 )
-                raise error
+                raise rpc_request_result.last_seen_exception
+
+        self.logger.debug(f"Fetched the following enodes: {enodes} from the execution clients.")
 
         # now peer the clients with themselves.
         for client, enode in enodes.items():
-            add_enode_rpc_request = admin_addPeer(enode, self.logger)
-            for c in clients:
-                if c.name != client.name:
-                    err, result = add_enode_rpc_request.perform_request(client)
-                    if not err is None:
+            add_enode_rpc_request = admin_addPeer(enode=enode, logger=self.logger, timeout=global_timeout)
+            for el_to_pair in el_clients_to_pair:
+                # don't pair clients with themselves.
+                if el_to_pair.name != client.name:
+                    err = add_enode_rpc_request.perform_request(client)
+                    if err is not None:
                         self.logger.error(f"admin_addPeer failed with {err}")
 
     def get_contract_deployment_block(self) -> tuple[str, int]:
@@ -210,27 +220,30 @@ class EthereumTestnetBootstrapper(object):
             the 0th block for the contract deployment.
         :return: (block_number, block_hash)
         """
-        el_http_regex = re.compile(r"(eth|ETH)")
-        possible_clients = self.etb_config.get_client_instances(
-            el_api_filter=el_http_regex
-        )
-        if not len(possible_clients) > 0:
+        el_eth_regex = re.compile(r"(eth|ETH)")
+        plausible_instances: list[ClientInstance] = []
+        for instance in self.etb_config.get_client_instances():
+            if el_eth_regex.search(instance.get("execution-http-apis")):
+                plausible_instances.append(instance)
+
+        if len(plausible_instances) == 0:
             raise Exception("No clients have an EL that supports the eth http-api")
 
-        client = random.choice(possible_clients)
-        rpc = eth_getBlockByNumber("0x0", self.logger)
-        err, response = rpc.perform_request(client)
-        if err is None:
-            block = rpc.retrieve_response(response)
-            block_number = block["number"]
-            block_hash = block["hash"]
-            self.logger.debug(f"Got block {block_number} with hash: {block_hash}")
-            return block_hash, int(block_number, 16)
-        else:
+        target_instance = random.choice(plausible_instances)
+        self.logger.debug("Using instance: {target_instance.name} to get the contract deployment block.")
+        get_block_rpc_request = eth_getBlockByNumber("0x0", self.logger)
+        err = get_block_rpc_request.perform_request(target_instance)
+        if err is not None:
             self.logger.error(
                 f"failed to get the contract deployment block with: {err}"
             )
             raise err
+
+        block = get_block_rpc_request.retrieve_response()
+        block_number = block["number"]
+        block_hash = block["hash"]
+        self.logger.debug(f"Got block {block_number} with hash: {block_hash}")
+        return block_hash, int(block_number, 16)
 
     def write_contract_deployment_block_files(self):
         """

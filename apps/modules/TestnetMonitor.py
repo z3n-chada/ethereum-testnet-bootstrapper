@@ -13,7 +13,7 @@ from typing import Callable, Any
 # from .BeaconAPI import perform_api_request_v2, APIRequestV2
 from .ClientRequest import beacon_getGenesis
 from .ETBConfig import ETBConfig, ClientInstance
-from .ETBUtils import create_logger
+from .UtilityWrappers import create_logger
 
 
 class ActionIntervalType(Enum):
@@ -137,9 +137,9 @@ class TestnetMonitor(object):
         api_request = beacon_getGenesis(timeout=10)
         while curr_try != max_retries:
             curr_try += 1
-            err, resp = api_request.perform_request(cl_client)
-            if err is None:
-                genesis = api_request.retrieve_response(resp)
+            err = api_request.perform_request(cl_client)
+            if api_request.valid_response:
+                genesis = api_request.retrieve_response()
                 return int(genesis["genesis_time"])
 
         self.logger.error(
