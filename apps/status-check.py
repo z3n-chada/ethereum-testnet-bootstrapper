@@ -34,176 +34,6 @@ from modules.ClientRequest import perform_batched_request, beacon_getBlockV2
 # from modules.BeaconAPI import BeaconAPI, ETBConsensusBeaconAPI
 from modules.ETBConfig import ETBConfig, ClientInstance
 
-# from modules.TestnetHealthMetrics import UniqueConsensusHeads
-
-
-# class TestnetStatusChecker(object):
-#     """
-#     Status Checker checks the network at important intervals and outputs
-#     the current heads of the clients approx. every slot
-#
-#     0. consensus genesis time. This is when we start monitoring.
-#     1. phase0, we make sure that all the clients in the experiment came up
-#         if not then we signal to terminate.
-#     2. phase1, we start the experiment
-#     3. phase2, we end the experiment
-#     4. phase3, we check to see if the network healed.
-#     """
-#
-#     def __init__(self, args):
-#         self.etb_config = ETBConfig(args.config)
-#         self.now = self.etb_config.get("bootstrap-genesis")
-#         self.consensus_genesis_delay = self.etb_config.get_consensus_genesis_delay()
-#         self.no_terminate = args.no_terminate
-#         self.etb_beacon_api = ETBConsensusBeaconAPI(
-#             self.etb_config,
-#             non_error=True,
-#             timeout=args.beaconapi_timeout,
-#             retry_delay=1,
-#         )
-#
-#         self.health_metric = UniqueConsensusHeads()
-#
-#         self.secs_per_eth2_slot = self.etb_config.preset_base.SECONDS_PER_SLOT.value
-#
-#         self.genesis_time = self.etb_config.get("bootstrap-genesis") + self.consensus_genesis_delay
-#
-#         self.phase0_time = (
-#             self.genesis_time + args.phase0_slot * self.secs_per_eth2_slot
-#         )
-#         self.phase1_time = (
-#             self.genesis_time + args.phase1_slot * self.secs_per_eth2_slot
-#         )
-#         self.phase2_time = (
-#             self.genesis_time + args.phase2_slot * self.secs_per_eth2_slot
-#         )
-#         self.phase3_time = (
-#             self.genesis_time + args.phase3_slot * self.secs_per_eth2_slot
-#         )
-#         # number of checks just in case we fall on a boundry.
-#         self.number_of_checks = args.num_checks
-#         self.check_delay = args.check_delay
-#
-#         # formatting for output
-#         self.log_prefix = args.log_prefix
-#         # if a status check passes
-#         self.pass_prefix = args.pass_prefix
-#         # if a status check fails
-#         self.fail_prefix = args.fail_prefix
-#         # signal an early termination.
-#         self.terminate_experiment_string = args.terminate_experiment_string
-#
-#     def update_health_metric(self):
-#         curr_check = 0
-#         while curr_check < self.number_of_checks:
-#             unique_heads = self.health_metric.perform_metric(self.etb_beacon_api)
-#             if len(unique_heads.keys()) == 1:
-#                 return unique_heads
-#             curr_check += 1
-#             time.sleep(self.check_delay)
-#         return unique_heads
-#
-#     def testnet_healthy(self):
-#         curr_check = 0
-#
-#         unique_heads = self.update_health_metric()
-#         if len(unique_heads.keys()) == 1:
-#             print(f"{self.pass_prefix} : {self.health_metric}", flush=True)
-#             return True
-#         print(f"{self.fail_prefix} : {self.health_metric}", flush=True)
-#         return False
-#
-#     def start_experiment(self):
-#         print(f"{self.log_prefix}: start_faults", flush=True)
-#         # import experiment modules here
-#
-#     def stop_experiment(self):
-#         print(f"{self.log_prefix}: stop_faults", flush=True)
-#
-#     def wait_until(self, log_prefix, t, do_check_heads=False):
-#         """
-#         Wait in units of secs_per_slot, unless the time left is less than
-#         that.
-#
-#         Optionally print out the health metric inbetween waits.
-#         """
-#         while int(time.time()) < t:
-#             now = int(time.time())
-#             time_left = t - now
-#             print(
-#                 f"status-check: {log_prefix}.. {time_left} seconds remain",
-#                 flush=True,
-#             )
-#             if time_left > self.secs_per_eth2_slot:
-#                 wait_time = self.secs_per_eth2_slot
-#                 if do_check_heads:
-#                     self.update_health_metric()
-#                     print(self.health_metric.__repr__(), flush=True)
-#                     # accommodate the time it took to run metric.
-#                     skew = int(time.time()) - now
-#                     skew_wait = self.secs_per_eth2_slot - skew
-#                     if skew_wait > 0:
-#                         time.sleep(skew_wait)
-#                 else:
-#                     time.sleep(wait_time)
-#
-#             else:
-#                 time.sleep(1)
-#
-#     def start_indefinite_checker(self):
-#         while True:
-#             self.update_health_metric()
-#             print(self.health_metric.__repr__(), flush=True)
-#             time.sleep(self.secs_per_eth2_slot)
-#
-#     def start_status_checker(self):
-#         print(f"starting the status checker, delaying {int(time.time()) - self.genesis_time} seconds for consensus genesis.")
-#         self.wait_until("genesis", int(self.genesis_time))
-#         print(f"{self.log_prefix}: Consensus Genesis Occurred", flush=True)
-#
-#         if self.no_terminate:
-#             print("Running checker in indefinite mode.")
-#             self.start_indefinite_checker()
-#         # wait until phase0 to ensure all is working.
-#         self.wait_until("phase0", self.phase0_time, do_check_heads=True)
-#         if self.testnet_healthy():
-#             print(f"{self.log_prefix}: Phase0 passed.", flush=True)
-#             print(f"{self.health_metric.__repr__()}", flush=True)
-#         else:
-#             print(f"{self.log_prefix}: Phase0 failed.", flush=True)
-#             print(f"{self.health_metric.__repr__()}", flush=True)
-#             print(f"{self.log_prefix}: terminate")
-#
-#         self.wait_until("phase1", self.phase1_time, do_check_heads=True)
-#         self.start_experiment()
-#
-#         self.wait_until("phase2", self.phase2_time, do_check_heads=True)
-#         self.stop_experiment()
-#         print(f"{self.log_prefix}: Phase2 elapsed", flush=True)
-#
-#         self.wait_until("phase3", self.phase3_time, do_check_heads=True)
-#         if self.testnet_healthy():
-#             print(f"{self.log_prefix}: Phase3 passed.", flush=True)
-#         else:
-#             print(f"{self.log_prefix}: Phase3 failed.", flush=True)
-
-"""
-        unique_resps = {}
-        for name, response in all_responses.items():
-            if response in unique_resps:
-                unique_resps[response].append(name)
-            else:
-                unique_resps[response] = [name]
-
-        num_heads = len(unique_resps.keys())
-
-        if num_heads != 1:
-            self.result = f"found {num_heads-1} forks: {unique_resps}"
-        else:
-            slot, state_root, graffiti = list(unique_resps.keys())[0]
-            self.result = f"found {num_heads-1} forks: {slot}:{state_root}:{graffiti}"
-"""
-
 """
     get_heads_status_check_slot is used for indefinite testnets to continuously
     print out the current state of the network heads. Its fast but less
@@ -227,11 +57,11 @@ def get_heads_status_check_slot(clients_to_monitor: list[ClientInstance]) -> str
 
     state_root_to_blk: dict[str, dict] = {}
 
-    rpc_request = beacon_getBlockV2()
-    for client, result in perform_batched_request(rpc_request, clients_to_monitor):
-        error, response = result
-        if error is None:
-            block = rpc_request.retrieve_response(response)
+    client_instance: ClientInstance
+    getBlock_result: beacon_getBlockV2
+    for client_instance, getBlock_result in perform_batched_request(beacon_getBlockV2(), clients_to_monitor):
+        if getBlock_result.valid_response:
+            block = getBlock_result.retrieve_response()
             slot = block["slot"]
             state_root = str(block["state_root"])
             graffiti = (
@@ -245,13 +75,13 @@ def get_heads_status_check_slot(clients_to_monitor: list[ClientInstance]) -> str
                 "graffiti": graffiti,
             }
             if state_root not in unique_responses:
-                unique_responses[state_root] = [client.name]
+                unique_responses[state_root] = [client_instance.name]
                 state_root_to_blk[state_root] = blk_report
             else:
-                unique_responses[state_root].append(client.name)
+                unique_responses[state_root].append(client_instance.name)
 
         else:
-            unreachable_clients.append(client.name)
+            unreachable_clients.append(client_instance.name)
 
     num_forks = len(unique_responses.keys()) - 1
     if len(unreachable_clients) > 0:
@@ -295,11 +125,11 @@ def check_for_consensus(
         unreachable_clients = []
         unique_responses: dict[str, list[str]] = {}
         state_root_to_blk: dict[str, dict] = {}
-        rpc_request = beacon_getBlockV2()
-        for client, result in perform_batched_request(rpc_request, clients_to_monitor):
-            error, response = result
-            if error is None:
-                block = rpc_request.retrieve_response(response)
+        client_instance: ClientInstance
+        getBlock_result: beacon_getBlockV2
+        for client_instance, getBlock_result in perform_batched_request(beacon_getBlockV2(), clients_to_monitor):
+            if getBlock_result.valid_response:
+                block = getBlock_result.retrieve_response()
                 slot = block["slot"]
                 state_root = str(block["state_root"])
                 graffiti = (
@@ -313,13 +143,13 @@ def check_for_consensus(
                     "graffiti": graffiti,
                 }
                 if state_root not in unique_responses:
-                    unique_responses[state_root] = [client.name]
+                    unique_responses[state_root] = [client_instance.name]
                     state_root_to_blk[state_root] = blk_report
                 else:
-                    unique_responses[state_root].append(client.name)
+                    unique_responses[state_root].append(client_instance.name)
 
             else:
-                unreachable_clients.append(client.name)
+                unreachable_clients.append(client_instance.name)
         if len(unreachable_clients) == 0 and len(list(unique_responses.keys())) == 1:
             found_consensus = True
 
