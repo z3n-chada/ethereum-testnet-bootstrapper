@@ -85,7 +85,7 @@ config-params:
 accounts:
   eth1-account-mnemonic: "cat swing flag economy stadium alone churn speed unique patch report train"
   eth1-passphrase: "testnet-password"
-  # if we are using a clique network, the first premine is signer
+
   eth1-premine:
       "m/44'/60'/0'/0/0" : "100000000"
       "m/44'/60'/0'/0/1" : "100000000"

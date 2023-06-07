@@ -85,7 +85,7 @@ config-params:
 accounts:
   eth1-account-mnemonic: "cat swing flag economy stadium alone churn speed unique patch report train"
   eth1-passphrase: "testnet-password"
-  # if we are using a clique network, the first premine is signer
+
   eth1-premine:
       "m/44'/60'/0'/0/0" : "100000000"
       "m/44'/60'/0'/0/1" : "100000000"
@@ -483,6 +483,13 @@ generic-instances:
     entrypoint: "python3 /source/apps/status-check.py --config /data/etb-config.yaml --no-terminate"
 #    entrypoint: "python3 /source/apps/status-check.py --config /data/etb-config.yaml --phase0-slot 96 --phase1-slot 104 --phase2-slot 120 --phase3-slot 128"
     # root state is 12 (first deposits are processed here) start fuzzing epoch is 13, capella is 14, stop at 15. Healed by 16.
+
+  node-watch:
+    image: "ethereum-testnet-bootstrapper"
+    tag: "latest"
+    start-ip-address: "10.0.20.211"
+    num-nodes: 1
+    entrypoint: "python3 /source/apps/node-watch.py --config /data/etb-config.yaml"
 
   # spam regular deposits
   validator-operation-fuzzer:
