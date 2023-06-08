@@ -322,3 +322,14 @@ class beacon_getGenesis(ConsensusBeaconAPIRequest):
             request_protocol=RequestProtocol.HTTP,
             timeout=timeout
         )
+
+class beacon_getFinalityCheckpoints(ConsensusBeaconAPIRequest):
+    # https://ethereum.github.io/beacon-APIs/#/Beacon/getStateFinalityCheckpoints
+    def __init__(self, state_id="head", logger: logging.Logger = None, timeout: int = 5):
+        payload = f"/eth/v1/beacon/states/{state_id}/finality_checkpoints"
+        super().__init__(
+            payload,
+            logger=logger,
+            request_protocol=RequestProtocol.HTTP,
+            timeout=timeout
+        )
