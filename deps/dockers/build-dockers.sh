@@ -26,11 +26,5 @@ function container_builder() {
 log_step "building minimal-current"
 build_image "etb-all-clients:minimal-current" "etb-all-clients_minimal-current.Dockerfile"
 
-log_step "building minimal-next"
-build_image "etb-all-clients:minimal-next" "etb-all-clients_minimal-next.Dockerfile"
-
 log_step "building mainnet-current"
 build_image "etb-all-clients:mainnet-current" "etb-all-clients_mainnet-current.Dockerfile"
-
-log_step "building mainnet-next"
-build_image "etb-all-clients:mainnet-next" "etb-all-clients_mainnet-next.Dockerfile"
