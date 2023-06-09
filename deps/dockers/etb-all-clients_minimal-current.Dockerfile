@@ -30,6 +30,10 @@ ARG NETHERMIND_BRANCH="master"
 # All of the fuzzers we will be using
 ARG TX_FUZZ_REPO="https://github.com/MariusVanDerWijden/tx-fuzz.git"
 ARG TX_FUZZ_BRANCH="master"
+
+# Metrics gathering
+ARG BEACON_METRICS_GAZER_REPO="https://github.com/dapplion/beacon-metrics-gazer.git"
+ARG BEACON_METRICS_GAZER_BRANCH="master"
 ###############################################################################
 # Builder to build all of the clients.
 FROM debian:bullseye-slim AS etb-client-builder
@@ -56,6 +60,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libc6-dev \
     libsnappy-dev \
     gradle \
+    pkg-config \
+    libssl-dev \
     git
 
 # set up dotnet (nethermind)
@@ -203,6 +209,8 @@ RUN cd nethermind && \
 FROM etb-client-builder AS misc-builder
 ARG TX_FUZZ_BRANCH
 ARG TX_FUZZ_REPO
+ARG BEACON_METRICS_GAZER_REPO
+ARG BEACON_METRICS_GAZER_BRANCH
 
 RUN go install github.com/wealdtech/ethereal/v2@latest \
     && go install github.com/wealdtech/ethdo@latest \
@@ -213,7 +221,14 @@ RUN git clone "${TX_FUZZ_REPO}" && \
     git checkout "${TX_FUZZ_BRANCH}"
 
 RUN cd tx-fuzz && \
-    cd cmd/livefuzzer && go build
+    cd cmd/livefuzzer && go build \
+
+RUN git clone "${BEACON_METRICS_GAZER_REPO}" && \
+    cd beacon-metrics-gazer && \
+    git checkout "${BEACON_METRICS_GAZER_BRANCH}"
+
+RUN cd beacon-metrics-gazer && \
+    cargo build --release
 ########################### etb-all-clients runner  ###########################
 FROM debian:bullseye-slim
 
@@ -252,12 +267,15 @@ RUN wget --no-check-certificate https://apt.llvm.org/llvm.sh && \
 
 ENV LLVM_CONFIG=llvm-config-15
 
-# misc tools
+# misc tools used in etb
 COPY --from=misc-builder /root/go/bin/ethereal /usr/local/bin/ethereal
 COPY --from=misc-builder /root/go/bin/ethdo /usr/local/bin/ethdo
 COPY --from=misc-builder /root/go/bin/eth2-val-tools /usr/local/bin/eth2-val-tools
-# misc fuzzers
+# tx-fuzz
 COPY --from=misc-builder /git/tx-fuzz/cmd/livefuzzer/livefuzzer /usr/local/bin/livefuzzer
+# beacon-metrics-gazer
+COPY --from=misc-builder /git/beacon-metrics-gazer/target/release/beacon-metrics-gazer /usr/local/bin/beacon-metrics-gazer
+
 # consensus clients
 COPY --from=nimbus-eth2-builder /git/nimbus-eth2/build/nimbus_beacon_node /usr/local/bin/nimbus_beacon_node
 COPY --from=nimbus-eth2-builder /nimbus.version /nimbus.version
