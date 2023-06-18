@@ -1,8 +1,6 @@
 """
-    Python wrapper meant to be used with the kurtosis tx-fuzz docker.
-    The modified tx-fuzzer uses the following args:
-
-    ./tx-fuzz.bin RPC_IP:RPC_URL command (spam) "comma,seperated,private,keys" "comma,seperated,addresses"
+    Meant to launch tx-fuzz: https://github.com/MariusVanDerWijden/tx-fuzz
+    Usage: ./tx-fuzz.bin --rpc RPC_IP:RPC_URL COMMAND (spam) --pk "comma,seperated,private,keys" --seed RAND_SEED
 """
 import argparse
 import logging
@@ -14,22 +12,35 @@ import subprocess
 from web3.auto import w3
 from pathlib import Path
 
-from modules.ETBUtils import create_logger
+from modules.UtilityWrappers import create_logger
 from modules.TestnetMonitor import TestnetMonitor
 from modules.ETBConfig import ETBConfig, ClientInstance
 
 w3.eth.account.enable_unaudited_hdwallet_features()
 
 
-class TxFuzzer(object):
+class TxFuzz(object):
+    """
+    Class to represent a livefuzzer instance.
+    """
+
     def __init__(self, etb_config,
                  logger: logging.Logger = None,
                  target_ip: str = None,
                  target_port: int = None,
                  fuzz_mode: str = "spam",
                  start_slot: int = None,
-                 fuzzer_path: str = "/usr/local/bin/tx-fuzz",
+                 fuzzer_path: str = "/usr/local/bin/livefuzzer",
                  ):
+        """
+            :param etb_config: ETBConfig object
+            :param logger: logger to use or construct one if None
+            :param target_ip: ip address of the client instance to submit txs to
+            :param target_port: rpc-port of the client instance to submit txs to
+            :param fuzz_mode: mode to run tx-fuzz in (spam by default)
+            :param start_slot: CL slot to start the livefuzzer at (default to 2nd epoch)
+            :param fuzzer_path: path to the livefuzzer binary (default: /usr/local/bin/livefuzzer)
+        """
 
         if logger is None:
             self.logger = logging.getLogger()
@@ -37,25 +48,27 @@ class TxFuzzer(object):
             self.logger = logger
         self.etb_config: ETBConfig = etb_config
         self.testnet_monitor = TestnetMonitor(self.etb_config, logger=logger)
+        # grab the client instance to attach to.
         if target_ip is None or target_port is None:
             client: ClientInstance = random.choice(self.etb_config.get_client_instances())
             self.target_ip = client.get_ip_address()
             self.target_port = client.get("execution-http-port")
-            self.logger.info(f"Using random client for tx-fuzz: {self.target_ip}:{self.target_port}")
         else:
             self.target_ip = target_ip
             self.target_port = target_port
-            self.logger.info(f"Using supplied client for tx-fuzz: {self.target_ip}:{self.target_port}")
+
         if start_slot is None:
-            # somewhere between 2 and 4 epochs
-            self.start_slot = random.randint(self.etb_config.epoch_to_slot(2), self.etb_config.epoch_to_slot(4))
-            self.logger.info(f"Using random start slot for tx-fuzz: {self.start_slot}")
+            self.start_slot = self.etb_config.epoch_to_slot(2)
         else:
             self.start_slot = start_slot
-            self.logger.info(f"Using supplied start slot for tx-fuzz: {self.start_slot}")
 
         self.fuzz_mode = fuzz_mode
         self.fuzzer_path = fuzzer_path
+        self.logger.info("tx-fuzzer initialized with the following parameters:")
+        self.logger.info(f"execution client: {self.target_ip}:{self.target_ip}")
+        self.logger.info(f"start slot: {self.start_slot}")
+        self.logger.info(f"fuzz mode: {self.fuzz_mode}")
+        self.logger.info(f"fuzzer path: {self.fuzzer_path}")
 
     def get_keys(self):
         pub_keys = []
@@ -66,18 +79,20 @@ class TxFuzzer(object):
         return pub_keys, priv_keys
 
     def launch_tx_fuzzer(self):
-        public_keys, private_keys = self.get_keys()
+        _, private_keys = self.get_keys()
 
         cmd = [
             self.fuzzer_path,
-            f"http://{self.target_ip}:{self.target_port}",
             self.fuzz_mode,
+            "--rpc",
+            f"http://{self.target_ip}:{self.target_port}",
+            "--sk",
             ",".join(private_keys),
-            ",".join(public_keys),
         ]
 
         self.testnet_monitor.wait_for_slot(self.start_slot)
-        self.logger.info(f"tx-fuzzer launching: {cmd}")
+        self.logger.info("starting tx-fuzzer")
+        self.logger.debug(f"{cmd}")
         subprocess.run(cmd)
 
 
@@ -141,27 +156,27 @@ if __name__ == "__main__":
         print("tx-fuzzer waiting for etb-config to become available.")
         time.sleep(1)
 
-    _args = parser.parse_args()
+    args = parser.parse_args()
 
-    _logger = create_logger("tx-fuzz", "debug")
-    _etb_config = ETBConfig(_args.config, _logger)
+    logger = create_logger("tx-fuzz", "debug")
+    etb_config = ETBConfig(args.config, logger)
 
-    if _args.seed is not None:
-        _logger.info(f"Using user supplied random seed: {_args.seed}")
-        random.seed(_args.seed)
+    if args.seed is not None:
+        logger.info(f"Using user supplied random seed: {args.seed}")
+        random.seed(args.seed)
 
     else:
         rand = os.urandom(10)
         seed = int.from_bytes(rand, "big")
-        _logger.info(f"setting random seed to: {seed}")
+        logger.info(f"setting random seed to: {seed}")
         random.seed(seed)
 
-    tfl = TxFuzzer(_etb_config,
-                   target_ip=_args.target_ip,
-                   target_port=_args.target_port,
-                   fuzz_mode=_args.fuzz_mode,
-                   start_slot=_args.start_slot,
-                   fuzzer_path=_args.tx_fuzz_path,
-                   logger=_logger)
+    tfl = TxFuzz(etb_config,
+                 target_ip=args.target_ip,
+                 target_port=args.target_port,
+                 fuzz_mode=args.fuzz_mode,
+                 start_slot=args.start_slot,
+                 fuzzer_path=args.tx_fuzz_path,
+                 logger=logger)
 
     tfl.launch_tx_fuzzer()

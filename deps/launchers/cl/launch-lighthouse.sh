@@ -18,7 +18,7 @@ env_vars=(
   "IP_ADDRESS"
   "IP_SUBNET"
   "JWT_SECRET_FILE"
-  "TESTNET_DIR"
+  "COLLECTION_DIR"
   "NUM_CLIENT_NODES"
   "EXECUTION_ENGINE_HTTP_PORT"
   "EXECUTION_ENGINE_WS_PORT"
@@ -38,17 +38,17 @@ while [ ! -f "$CONSENSUS_BOOTNODE_FILE" ]; do
   sleep 1
 done
 
-bootnode_enr=`cat $CONSENSUS_BOOTNODE_FILE`
-
 while [ ! -f "$CONSENSUS_CHECKPOINT_FILE" ]; do
   echo "Waiting for consensus checkpoint file: $CONSENSUS_CHECKPOINT_FILE"
     sleep 1
 done
 
+bootnode_enr=`cat $CONSENSUS_BOOTNODE_FILE`
+
 echo "Launching lighthouse."
 
 lighthouse \
-      --testnet-dir="$TESTNET_DIR" \
+      --testnet-dir="$COLLECTION_DIR" \
       bn \
       --datadir="$CONSENSUS_NODE_DIR" \
       --staking \
@@ -71,7 +71,7 @@ lighthouse \
 
 sleep 10
 lighthouse \
-      --testnet-dir="$TESTNET_DIR" \
+      --testnet-dir="$COLLECTION_DIR" \
       vc \
       --validators-dir "$CONSENSUS_NODE_DIR/keys" \
       --secrets-dir "$CONSENSUS_NODE_DIR/secrets" \

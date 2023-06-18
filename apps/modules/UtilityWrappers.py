@@ -9,7 +9,7 @@ from .ETBConfig import ETBConfig
 from ruamel import yaml
 
 
-from .Consensus import ForkVersionName, MinimalPreset
+from .Consensus import ForkVersionName, MinimalPreset, ConsensusFork
 
 
 def create_logger(
@@ -102,7 +102,7 @@ class Eth2ValTools(object):
 
     def generate_keystores(
         self,
-        out_path: str,
+        out_path: pathlib.Path,
         min_ndx: int,
         max_ndx: int,
         mnemonic: str,
@@ -133,7 +133,7 @@ class Eth2ValTools(object):
             "--source-mnemonic",
             mnemonic,
             "--out-loc",
-            out_path,
+            str(out_path),
         ]
 
         if prysm:
@@ -225,10 +225,8 @@ class Eth2TestnetGenesis(object):
     def _dump_validator_yaml(self):
         self._cleanup()
 
-        mnemonic = self.etb_config.accounts.get("validator-mnemonic")
-        num_deposits = self.etb_config.config_params.get(
-            "min-genesis-active-validator-count"
-        )
+        mnemonic = self.etb_config.testnet_config.consensus_layer.validator_mnemonic
+        num_deposits = self.etb_config.testnet_config.consensus_layer.min_genesis_active_validator_count
 
         with open(self.validator_dump_yaml, "w") as f:
             yaml.dump(
@@ -244,18 +242,19 @@ class Eth2TestnetGenesis(object):
     def write_genesis_ssz(self):
         # this is needed to generate the genesis.ssz file.
         self._dump_validator_yaml()
-        genesis_fork_version: ForkVersionName = self.etb_config.get_genesis_fork_upgrade()
-        consensus_config = self.etb_config.files.get("consensus-config-file")
-        state_out = self.etb_config.files.get("consensus-genesis-file")
+        preset = self.etb_config.testnet_config.consensus_layer.preset_base
+        genesis_fork: ConsensusFork = self.etb_config.testnet_config.consensus_layer.get_genesis_fork()
+        consensus_config = str(self.etb_config.files.consensus_config_file)
+        state_out = str(self.etb_config.files.consensus_genesis_file)
 
-        if self.etb_config.preset_base == MinimalPreset:
+        if preset == MinimalPreset:
             preset_base_str = "minimal"
         else:
             preset_base_str = "mainnet"
 
         cmd = [
             "eth2-testnet-genesis",
-            f"{genesis_fork_version.name.lower()}",
+            f"{genesis_fork.name.name.lower()}",
             "--mnemonics",
             "/tmp/validators.yaml",
             "--config",
@@ -264,27 +263,27 @@ class Eth2TestnetGenesis(object):
             state_out,
         ]
 
-        # add preset-base args
-        if genesis_fork_version >= ForkVersionName.Phase0:
+        # add preset args.
+        if genesis_fork.name >= ForkVersionName.phase0:
             cmd.append("--preset-phase0")
             cmd.append(preset_base_str)
 
-        if genesis_fork_version >= ForkVersionName.Altair:
+        if genesis_fork.name >= ForkVersionName.altair:
             cmd.append("--preset-altair")
             cmd.append(preset_base_str)
 
-        if genesis_fork_version >= ForkVersionName.Bellatrix:
+        if genesis_fork.name >= ForkVersionName.bellatrix:
             cmd.append("--preset-bellatrix")
             cmd.append(preset_base_str)
             cmd.append("--eth1-config")
-            cmd.append(self.etb_config.files.get("geth-genesis-file"))
+            cmd.append(str(self.etb_config.files.geth_genesis_file))
 
-        if genesis_fork_version >= ForkVersionName.Capella:
+        if genesis_fork.name >= ForkVersionName.capella:
             cmd.append("--preset-capella")
             cmd.append(preset_base_str)
 
         self.logger.debug(f"ConsensusGenesis: running eth2-testnet-genesis:\n{cmd}")
-
+        print(cmd)
         out = subprocess.run(cmd, capture_output=True)
         if len(out.stderr) > 0:
             raise Exception(f"Exception consensus genesis ssz: {out.stderr}")

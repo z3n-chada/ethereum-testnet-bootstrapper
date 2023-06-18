@@ -221,7 +221,7 @@ RUN git clone "${TX_FUZZ_REPO}" && \
     git checkout "${TX_FUZZ_BRANCH}"
 
 RUN cd tx-fuzz && \
-    cd cmd/livefuzzer && go build \
+    cd cmd/livefuzzer && go build
 
 RUN git clone "${BEACON_METRICS_GAZER_REPO}" && \
     cd beacon-metrics-gazer && \

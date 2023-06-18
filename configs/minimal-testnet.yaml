@@ -5,97 +5,62 @@ docker:
     ip-subnet: "10.0.20.0/24"
     volumes: ['./data:/data/', './:/source/']
 
-# static files used by the bootstrapper, clients, and other modules
-files:
-  # all files with respect to docker path
-  testnet-root: '/data/'
-
-  # execution genesis files.
-  geth-genesis-file: "/data/geth-genesis.json"
-  besu-genesis-file: "/data/besu-genesis.json"
-  nether-mind-genesis-file: "/data/nethermind-genesis.json" # nethermind cares about envargs
-
-  consensus-config-file: "/data/consensus-config.yaml"
-  consensus-genesis-file: "/data/genesis.ssz"
-  consensus-bootnode-file: "/data/eth2-bootnode-enr.dat"
-
-  etb-config-file: "/data/etb-config.yaml"
-  testnet-dir: "/data/local_testnet" # where client setups occur
-  docker-compose-file:  "/source/docker-compose.yaml" #wrt to docker config
-
-  # this file is created when all testnet directories have been written.
-  consensus-checkpoint-file: "/data/consensus-clients-ready"
-  #this file is written with its time for the first execution client to come up.
-  execution-checkpoint-file: "/data/execution-clients-ready"
-  # execution client bootnode/bootstrapper. Contains enode+\n for all bootstrap
-  consensus-bootnode-checkpoint-file: "/data/consensus-bootnodes-ready"
-  # contract deployment block hash
-  deposit-contract-deployment-block-hash-file: "/data/deposit_contract_block_hash.txt"
-  # contract deployment block number
-  deposit-contract-deployment-block-number-file: "/data/deposit_contract_block.txt"
-  # notify all clients the etb-config file is ready.
-  etb-config-checkpoint-file: "/data/etb-config-file-ready"
-
-# configuration parameters for the testnet (EL + CL)
-config-params:
+# testnet-configuration parameters
+testnet-config:
   deposit-contract-address: "0x8c594691c0e592ffa21f153a16ae41db5befcaaa"
-  # used for configuring execution genesis
+
+  # execution layer parameters
   execution-layer:
     seconds-per-eth1-block: 14
-    execution-genesis-delay: 0
     chain-id: 1337
     network-id: 1337
 
-    # the first execution node that comes alive to bootstrap the network.
-    execution-bootstrapper: "geth-bootstrapper"
+    # account information
+    account-mnemonic: "cat swing flag economy stadium alone churn speed unique patch report train"
+    keystore-passphrase: "testnet-password"  # passphrase for any keystore files.
 
+    # premine-eth account values in ETH
+    premines:
+      "m/44'/60'/0'/0/0": 100000000
+      "m/44'/60'/0'/0/1": 100000000
+      "m/44'/60'/0'/0/2": 100000000
+      "m/44'/60'/0'/0/3": 100000000
 
   # used for generating the consensus config placed in /data/eth2-config.yaml
   consensus-layer:
     preset-base: 'minimal'
     config-name: "local-minimal-testnet"
 
-    #config param overrides
     min-genesis-active-validator-count: 60 # custom pre-seeded into genesis state.
+
+    # optional config param overrides
     min-validator-withdrawability-delay: 2 # increase the withdrawal speed
     shard-committee-period: 2 # increase the withdrawal speed
 
-    forks:
-      # forks that aren't in far-future will be considered as possible end forks for experiments.
+    # the validator mnemonic to use for all validators
+    validator-mnemonic: "ocean style run case glory clip into nature guess jacket document firm fiscal hello kite disagree symptom tide net coral envelope wink render festival"
 
-      phase0-fork-version: 0x01000666
-      phase0-fork-epoch: 0
+    # forks
+    #   omitted fork-epochs are assumed to be far-future
+    #   omitted fork-versions are assumed to be 1 + the previous fork-version
 
-      altair-fork-version: 0x02000666
-      altair-fork-epoch: 0
+    phase0-fork-version: 0x01000666
+    phase0-fork-epoch: 0
 
-      bellatrix-fork-version: 0x03000666
-      bellatrix-fork-epoch: 0
+    altair-fork-version: 0x02000666
+    altair-fork-epoch: 0
 
-      capella-fork-version: 0x04000666
-      capella-fork-epoch: 0
+    bellatrix-fork-version: 0x03000666
+    bellatrix-fork-epoch: 0
 
-      deneb-fork-version: 0x05000666
-      deneb-fork-epoch: 18446744073709551615 # far future
+    capella-fork-version: 0x04000666
+    capella-fork-epoch: 10
 
-      sharding-fork-version: 0x06000666
-      sharding-fork-epoch: 18446744073709551615 # far future
+    deneb-fork-version: 0x05000666
+#    deneb-fork-epoch: 18446744073709551615 # far future
 
-# accounts used
-accounts:
-  eth1-account-mnemonic: "cat swing flag economy stadium alone churn speed unique patch report train"
-  eth1-passphrase: "testnet-password"
-
-  eth1-premine:
-      "m/44'/60'/0'/0/0" : "100000000"
-      "m/44'/60'/0'/0/1" : "100000000"
-      "m/44'/60'/0'/0/2" : "100000000"
-      "m/44'/60'/0'/0/3" : "100000000"
-
-  eth1-withdrawal-address: "0xF29Ff96aaEa6C9A1fBa851f74737f3c069d4f1a9"
-
-  validator-mnemonic: "ocean style run case glory clip into nature guess jacket document firm fiscal hello kite disagree symptom tide net coral envelope wink render festival"
-#  withdrawl-mnemonic: "scatter supreme field crazy unveil chronic favorite middle front umbrella mutual gentle word wild economy dress whale whip method office report eternal garment parrot"
+    sharding-fork-version: 0x06000666
+#    sharding-fork-epoch: 18446744073709551615 # far future
 
 # configuration options used for execution clients
 execution-configs:
@@ -174,7 +139,7 @@ consensus-configs:
   teku-consensus-client:
     client: "teku"
     launcher: "/source/deps/launchers/cl/launch-teku.sh"
-    log-level: "DEBUG"
+    log-level: "INFO"
 
     num-validators: 4       # number of validators for every client node
 
@@ -211,24 +176,7 @@ consensus-configs:
     beacon-metric-port: 8000 # start port used for beacon node metrics.
     validator-metric-port: 9000 # start port used for validator client metrics.
 
-  teku-consensus-client-whale:
-    client: "teku"
-    launcher: "/source/deps/launchers/cl/launch-teku.sh"
-    log-level: "DEBUG"
-
-    num-validators: 10      # number of validators for every client node
-
-    p2p-port: 4000    # start port used for discovery
-    beacon-api-port: 5000   # start port used for the beacon rest API
-    beacon-rpc-port: 5500
-    validator-rpc-port: 6500
-    beacon-metric-port: 8000 # start port used for beacon node metrics.
-    validator-metric-port: 9000 # start port used for validator client metrics.
-
-# ETBClients
-# These clients have both an execution and consensus client pair running
 client-instances:
-
 ###############################################################################
 ####### All Consensus Clients paired with a Geth Execution Client. ############
 ###############################################################################
@@ -378,7 +326,7 @@ client-instances:
 
     validator-offset-start: 36
 
-# Nethermind clients
+  # Nethermind clients
 
   prysm-nethermind:
     # docker-compose
@@ -451,65 +399,35 @@ client-instances:
 
     validator-offset-start: 56
 
-  # clients to catch the extra deposits
-  teku-whale:
-    # docker-compose
-    image: "etb-all-clients"
-    tag: "minimal-current"
-    start-ip-address: "10.0.20.160"
-    num-nodes: 1
-
-    # consensus-info
-    consensus-config: "teku-consensus-client-whale"
-    execution-config: "geth-execution-config"
-
-    validator-offset-start: 60
-
 # generic instances that run fuzzers/health checks/etc.
 generic-instances:
-  # the bootstrapper that builds the network.
+# the bootstrapper that builds the network.
   ethereum-testnet-bootstrapper:
     image: "ethereum-testnet-bootstrapper"
     tag: "latest"
-    start-ip-address: "10.0.20.202"
+    start-ip-address: "10.0.20.201"
     num-nodes: 1
-    entrypoint: "/source/entrypoint.sh --config /data/etb-config.yaml --bootstrap-testnet"
+    entrypoint: "/source/entrypoint.sh --bootstrap-testnet --log-level info"
 
-  status-check:
-    image: "ethereum-testnet-bootstrapper"
-    tag: "latest"
-    start-ip-address: "10.0.20.207"
-    num-nodes: 1
-    entrypoint: "python3 /source/apps/status-check.py --config /data/etb-config.yaml --no-terminate"
-#    entrypoint: "python3 /source/apps/status-check.py --config /data/etb-config.yaml --phase0-slot 96 --phase1-slot 104 --phase2-slot 120 --phase3-slot 128"
-    # root state is 12 (first deposits are processed here) start fuzzing epoch is 13, capella is 14, stop at 15. Healed by 16.
-
-  node-watch:
-    image: "ethereum-testnet-bootstrapper"
-    tag: "latest"
-    start-ip-address: "10.0.20.211"
-    num-nodes: 1
-    entrypoint: "python3 /source/apps/node-watch.py --config /data/etb-config.yaml"
-
-  # spam regular deposits
-  validator-operation-fuzzer:
-    image: "etb-all-clients"
-    tag: "minimal-current"
-    start-ip-address: "10.0.20.208"
-    num-nodes: 1
-    entrypoint: "python3 /source/apps/validator-operation-spammer.py --config /data/etb-config.yaml --only-valid-deposits"
-
-
+  # required instance, bootnode to connect all CL clients together
   eth2-bootnode:
     image: "ethereum-testnet-bootstrapper"
     tag: "latest"
-    start-ip-address: "10.0.20.201"
+    start-ip-address: "10.0.20.202"
     entrypoint: "/source/deps/launchers/bootnodes/launch-eth2-bootnode.sh"
-    num-nodes: 1 #should always be 1.
+    num-nodes: 1 # this is a special case, we only want one instance of this.
 
     additional-env:
       consensus-bootnode-start-ip-addr: "10.0.20.201"
       consensus-bootnode-private-key: "bc971f814d7bd37f7502cc67408c4f2c5a06e1b3d48dc041e42b5478154df1a8" # private key for the bootnode to use
       consensus-bootnode-enr-port: 9001 #port in the enr
       consensus-bootnode-api-port: 6000 # port for web api.
-      consensus-bootnode-enr-file: "/data/eth2-bootnode-enr.dat" # this must match the file at the top.
+      consensus-bootnode-enr-file: "/data/consensus-bootnodes.txt" # file to write the enr to.
+
+  # not required, but useful for debugging. This watches the network and shows the head & checkpoints of the CLs.
+  node-watch:
+    image: "ethereum-testnet-bootstrapper"
+    tag: "latest"
+    start-ip-address: "10.0.20.203"
+    num-nodes: 1
+    entrypoint: "python3 /source/apps/node-watch.py --log-level info"

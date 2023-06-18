@@ -10,7 +10,7 @@ env_vars=(
   "CONSENSUS_CONFIG_FILE"
   "CONSENSUS_GENESIS_FILE"
   "CONSENSUS_GRAFFITI"
-  "CONSENSUS_NODE_DIR"
+  "CONSENSUS_NODE_DIR"  # node_dir
   "CONSENSUS_P2P_PORT"
   "CONSENSUS_VALIDATOR_METRIC_PORT"
   "CONSENSUS_VALIDATOR_RPC_PORT"
@@ -18,7 +18,7 @@ env_vars=(
   "IP_ADDRESS"
   "IP_SUBNET"
   "JWT_SECRET_FILE"
-  "TESTNET_DIR"
+  "COLLECTION_DIR"
   "NUM_CLIENT_NODES"
   "EXECUTION_ENGINE_HTTP_PORT"
   "EXECUTION_ENGINE_WS_PORT"
@@ -38,22 +38,20 @@ while [ ! -f "$CONSENSUS_BOOTNODE_FILE" ]; do
   sleep 1
 done
 
-bootnode_enr=`cat $CONSENSUS_BOOTNODE_FILE`
-
 while [ ! -f "$CONSENSUS_CHECKPOINT_FILE" ]; do
   echo "Waiting for consensus checkpoint file: $CONSENSUS_CHECKPOINT_FILE"
     sleep 1
 done
 
-
+# by this time we can be sure the bootnode file has been completely written.
 bootnode_enr=`cat $CONSENSUS_BOOTNODE_FILE`
 
 teku \
     --logging="$CONSENSUS_LOG_LEVEL" \
     --log-color-enabled=false \
     --log-destination=CONSOLE \
-    --network="$TESTNET_DIR/config.yaml" \
-    --initial-state="$TESTNET_DIR/genesis.ssz" \
+    --network="$CONSENSUS_CONFIG_FILE" \
+    --initial-state="$CONSENSUS_GENESIS_FILE" \
     --data-path="$CONSENSUS_NODE_DIR" \
     --data-storage-mode=PRUNE \
     --p2p-enabled=true \

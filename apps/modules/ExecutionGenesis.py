@@ -1,28 +1,45 @@
+from typing import Any
+
 from web3.auto import w3
 from .ETBConfig import ETBConfig, ForkVersionName
 import logging
 
-from .Consensus import Epoch
+from .Consensus import Epoch, ConsensusFork
 
 w3.eth.account.enable_unaudited_hdwallet_features()
 logger = logging.getLogger("bootstrapper_log")
 
 
 class ExecutionGenesisWriter(object):
-    def __init__(self, global_config):
-        self.etb_config: ETBConfig = global_config
-        self.genesis = {}
-        self.execution_genesis = (
-            self.etb_config.get_bootstrap_genesis_time()
-            + self.etb_config.get("execution-genesis-delay")
-        )
+    def __init__(self, etb_config: ETBConfig):
+        self.etb_config: ETBConfig = etb_config
+        self.genesis: dict[str, Any] = {}
 
-        if self.etb_config.consensus_forks['bellatrix'].epoch != 0:
-            raise Exception("We no longer support pre-merge networks.")
+        print(f"got genesis time: {self.etb_config.genesis_time}")
 
-        self.merge_fork_time = self.etb_config.get_consensus_fork_delay_seconds('bellatrix') + self.execution_genesis
-        self.shanghai_fork_time = self.etb_config.get_consensus_fork_delay_seconds('capella') + self.execution_genesis
-        self.cancun_fork_time = self.etb_config.get_consensus_fork_delay_seconds('deneb') + self.execution_genesis
+        # the genesis fork of the testnet defines what the offsets in el genesis should be.
+
+        genesis_fork: ConsensusFork = self.etb_config.testnet_config.consensus_layer.get_genesis_fork()
+
+        # removed support for pre bellatrix
+        if genesis_fork.name < ForkVersionName.bellatrix:
+            raise Exception("Pre-merge forks no longer supported.")
+
+        self.merge_fork_time = self.etb_config.get_consensus_fork_delay_seconds('bellatrix') + self.etb_config.genesis_time
+        self.merge_fork_block = 0 # genesis.
+
+        self.shanghai_fork_time = self.etb_config.get_consensus_fork_delay_seconds('capella') + self.etb_config.genesis_time
+        if genesis_fork.name >= ForkVersionName.capella:
+            self.shanghai_fork_block = 0
+        else:
+            self.shanghai_fork_block = int(self.shanghai_fork_time // self.etb_config.testnet_config.execution_layer.seconds_per_eth1_block)
+
+        self.cancun_fork_time = self.etb_config.get_consensus_fork_delay_seconds('deneb') + self.etb_config.genesis_time
+        if genesis_fork.name >= ForkVersionName.deneb:
+            self.cancun_fork_block = 0
+        else:
+            self.cancun_fork_block = int(self.cancun_fork_time // self.etb_config.testnet_config.execution_layer.seconds_per_eth1_block)
+
 
     def get_allocs(self) -> dict:
         allocs = {}
@@ -33,17 +50,18 @@ class ExecutionGenesisWriter(object):
             }
 
         # account allocations
-        mnemonic = self.etb_config.get("eth1-account-mnemonic")
-        password = self.etb_config.get("eth1-passphrase")
-        premines = self.etb_config.get("eth1-premine")
+        mnemonic = self.etb_config.testnet_config.execution_layer.account_mnemonic
+        password = self.etb_config.testnet_config.execution_layer.keystore_passphrase
+        premines = self.etb_config.testnet_config.execution_layer.premines
+
         for acc in premines:
             acct = w3.eth.account.from_mnemonic(
                 mnemonic, account_path=acc, passphrase=password
             )
-            allocs[acct.address] = {"balance": premines[acc] + "0" * 18}
+            allocs[acct.address] = {"balance": str(premines[acc]) + "0" * 18}
 
         # deposit contract
-        allocs[self.etb_config.get("deposit-contract-address")] = deposit_contract_json
+        allocs[self.etb_config.testnet_config.deposit_contract_address] = deposit_contract_json
 
         return allocs
 
@@ -58,12 +76,12 @@ class ExecutionGenesisWriter(object):
             "nonce": "0x1234",
             "mixhash": "0x" + ("0" * 64),
             "parentHash": "0x" + ("0" * 64),
-            "timestamp": str(self.execution_genesis),
+            "timestamp": str(self.etb_config.genesis_time),
         }
-        # merge_fork_time = self.etb_config.get_consensus_fork_delay_seconds('bellatrix') + self.execution_genesis
-        # shanghai_fork_time = self.etb_config.get_consensus_fork_delay_seconds('capella') + self.execution_genesis
+
+        seconds_per_eth1_block = self.etb_config.testnet_config.execution_layer.seconds_per_eth1_block
         config = {
-            "chainId": self.etb_config.get("chain-id"),
+            "chainId": self.etb_config.testnet_config.execution_layer.chain_id,
             "homesteadBlock": 0,
             "eip150Block": 0,
             "eip155Block": 0,
@@ -74,16 +92,16 @@ class ExecutionGenesisWriter(object):
             "istanbulBlock": 0,
             "berlinBlock": 0,
             "londonBlock": 0,
-            "mergeForkBlock": int(self.merge_fork_time // self.etb_config.get("seconds-per-eth1-block")),
-            "arrowGlacierBlock": int(self.merge_fork_time // self.etb_config.get("seconds-per-eth1-block")),
-            "grayGlacierBlock": int(self.merge_fork_time // self.etb_config.get("seconds-per-eth1-block")),
+            "mergeForkBlock": self.merge_fork_block,
+            "arrowGlacierBlock": self.merge_fork_block,
+            "grayGlacierBlock": self.merge_fork_block,
             "shanghaiTime": self.shanghai_fork_time,
             "terminalTotalDifficulty": 0,
             "terminalTotalDifficultyPassed": True,
         }
 
         # for next based experiments
-        if self.etb_config.consensus_forks["deneb"].epoch != Epoch.FarFuture.value:
+        if self.etb_config.testnet_config.consensus_layer.deneb_fork.epoch != Epoch.FarFuture.value:
             config["cancunTime"] = self.cancun_fork_time
 
         self.genesis["config"] = config
@@ -92,6 +110,7 @@ class ExecutionGenesisWriter(object):
 
     def create_besu_genesis(self) -> dict:
         # "baseFeePerGas": self.ec["base-fee-per-gas"],
+        seconds_per_eth1_block = self.etb_config.testnet_config.execution_layer.seconds_per_eth1_block
         self.genesis = {
             "alloc": self.get_allocs(),
             "coinbase": "0x0000000000000000000000000000000000000000",
@@ -102,9 +121,9 @@ class ExecutionGenesisWriter(object):
             "nonce": "0x1234",
             "mixhash": "0x0000000000000000000000000000000000000000000000000000000000000000",
             "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
-            "timestamp": str(self.execution_genesis),
+            "timestamp": str(self.etb_config.genesis_time),
             "config": {
-                "chainId": self.etb_config.get("chain-id"),
+                "chainId": self.etb_config.testnet_config.execution_layer.chain_id,
                 "homesteadBlock": 0,
                 "eip150Block": 0,
                 "eip155Block": 0,
@@ -115,22 +134,22 @@ class ExecutionGenesisWriter(object):
                 "istanbulBlock": 0,
                 "berlinBlock": 0,
                 "londonBlock": 0,
-                "mergeForkBlock": int(self.merge_fork_time // self.etb_config.get("seconds-per-eth1-block")),
-                "arrowGlacierBlock": int(self.merge_fork_time // self.etb_config.get("seconds-per-eth1-block")),
-                "grayGlacierBlock": int(self.merge_fork_time // self.etb_config.get("seconds-per-eth1-block")),
+                "mergeForkBlock": self.merge_fork_block,
+                "arrowGlacierBlock": self.merge_fork_block,
+                "grayGlacierBlock": self.merge_fork_block,
                 "shanghaiTime": self.shanghai_fork_time,
                 "terminalTotalDifficulty": 0,
                 "ethash": {},
             },
         }
         # for next based experiments
-        if self.etb_config.consensus_forks["deneb"].epoch != Epoch.FarFuture.value:
+        if self.etb_config.testnet_config.consensus_layer.deneb_fork.epoch != Epoch.FarFuture.value:
             self.genesis['config']["cancunTime"] = self.cancun_fork_time
 
         # besu doesn't use keystores like geth, however you can embed the accounts in the genesis.
-        mnemonic = self.etb_config.get("eth1-account-mnemonic")
-        password = self.etb_config.get("eth1-passphrase")
-        premines = self.etb_config.get("eth1-premine")
+        mnemonic = self.etb_config.testnet_config.execution_layer.account_mnemonic
+        password = self.etb_config.testnet_config.execution_layer.keystore_passphrase
+        premines = self.etb_config.testnet_config.execution_layer.premines
         for acc in premines:
             acct = w3.eth.account.from_mnemonic(
                 mnemonic, account_path=acc, passphrase=password
@@ -149,7 +168,7 @@ class ExecutionGenesisWriter(object):
                 "accountStartNonce": "0x0",
                 "maximumExtraDataSize": "0xffff",
                 "minGasLimit": "0x1388",
-                "networkID": hex(int(self.etb_config.get("chain-id"))),
+                "networkID": hex(int(self.etb_config.testnet_config.execution_layer.chain_id)),
                 "MergeForkIdTransition": "0x0",
                 "eip150Transition": "0x0",
                 "eip158Transition": "0x0",
@@ -194,7 +213,7 @@ class ExecutionGenesisWriter(object):
                 },
                 "difficulty": "0x01",
                 "author": "0x0000000000000000000000000000000000000000",
-                "timestamp": hex(self.execution_genesis),
+                "timestamp": hex(self.etb_config.genesis_time),
                 "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
                 "extraData": "",
                 "gasLimit": "0x400000",
@@ -215,7 +234,7 @@ class ExecutionGenesisWriter(object):
             }
         }
         # for next based experiments
-        if self.etb_config.consensus_forks["deneb"].epoch != Epoch.FarFuture.value:
+        if self.etb_config.testnet_config.consensus_layer.deneb_fork.epoch != Epoch.FarFuture.value:
             self.genesis['params']["eip4844TransitionTimestamp"] = f"0x{self.cancun_fork_time:08x}"
 
         return self.genesis

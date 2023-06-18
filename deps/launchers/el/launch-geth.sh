@@ -49,20 +49,10 @@ geth init \
 ##    echo "$ETH1_PASSPHRASE" > "$GETH_PASSWORD_FILE"
 ##fi
 #
-##if [ "$TX_FUZZ_ENABLED" = "true" ]; then
-##    $TX_FUZZ_LAUNCHER &
-##fi
-##
-## geth is either the bootnode, or it should use the bootnode.
-#if [ -n "$EXECUTION_BOOTNODE_PRIVATE_KEY" ]; then
-#    ADDITIONAL_ARGS="$ADDITIONAL_ARGS --nodekeyhex=$EXECUTION_BOOTNODE_PRIVATE_KEY"
-#elif [ -n "$EXECUTION_BOOTNODE" ]; then
-#    ADDITIONAL_ARGS="$ADDITIONAL_ARGS --bootnodes=$EXECUTION_BOOTNODE"
-#fi
-
 # Now start geth.
-#echo "Starting geth"
-#
+echo "Starting geth"
+
+# --keystore '/source/apps/data/geth-keystores/' \
 geth \
   --datadir="$EXECUTION_NODE_DIR" \
   --networkid="$CHAIN_ID" \
@@ -86,5 +76,4 @@ geth \
   --netrestrict="$IP_SUBNET" \
   --syncmode=full \
   --vmodule=rpc=5 \
-  --keystore '/source/apps/data/geth-keystores/' \
   --discovery.dns=""

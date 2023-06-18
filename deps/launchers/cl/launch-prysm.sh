@@ -18,7 +18,7 @@ env_vars=(
   "IP_ADDRESS"
   "IP_SUBNET"
   "JWT_SECRET_FILE"
-  "TESTNET_DIR"
+  "COLLECTION_DIR"
   "NUM_CLIENT_NODES"
   "EXECUTION_ENGINE_HTTP_PORT"
   "EXECUTION_ENGINE_WS_PORT"
@@ -29,6 +29,8 @@ for var in "${env_vars[@]}" ; do
         echo "PRYSM error in geth var check."
         echo "$var not set"
         exit 1
+    else
+        echo "Using $var = ${env_vars[var]}"
     fi
 done
 
@@ -47,8 +49,8 @@ beacon-chain \
   --log-file="$CONSENSUS_NODE_DIR/beacon.log" \
   --accept-terms-of-use=true \
   --datadir="$CONSENSUS_NODE_DIR" \
-  --chain-config-file="$TESTNET_DIR/config.yaml" \
-  --genesis-state="$TESTNET_DIR/genesis.ssz" \
+  --chain-config-file="$CONSENSUS_CONFIG_FILE" \
+  --genesis-state="$CONSENSUS_GENESIS_FILE" \
   --bootstrap-node="$(< "$CONSENSUS_BOOTNODE_FILE")" \
   --verbosity="$CONSENSUS_LOG_LEVEL" \
   --p2p-host-ip="$IP_ADDRESS" \
@@ -73,7 +75,7 @@ validator \
   --log-file="$CONSENSUS_NODE_DIR/validator.log" \
   --accept-terms-of-use=true \
   --datadir="$CONSENSUS_NODE_DIR" \
-  --chain-config-file="$TESTNET_DIR/config.yaml" \
+  --chain-config-file="$CONSENSUS_CONFIG_FILE" \
   --beacon-rpc-provider="127.0.0.1:$CONSENSUS_BEACON_RPC_PORT" \
   --monitoring-host=0.0.0.0 --monitoring-port="$CONSENSUS_VALIDATOR_METRIC_PORT" \
   --graffiti="$CONSENSUS_GRAFFITI" \

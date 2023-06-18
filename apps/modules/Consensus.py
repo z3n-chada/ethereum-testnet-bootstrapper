@@ -74,8 +74,8 @@ class MainnetPreset(PresetEnum, Enum):
 
 # Consensus values related to the merge, note that we only support post merge
 # testnets, however some clients still use these values for genesis.
-TerminalBlockHash = "0x0000000000000000000000000000000000000000000000000000000000000000"
-TerminalBlockHashActivationEpoch = Epoch.FarFuture.value
+TerminalBlockHash: str = "0x0000000000000000000000000000000000000000000000000000000000000000"
+TerminalBlockHashActivationEpoch: int = Epoch.FarFuture.value
 
 
 class ConsensusConfigOverrides(str, Enum):
@@ -94,7 +94,7 @@ class ConsensusConfigOverrides(str, Enum):
 
 
 # The full list of possible consensus forks.
-DEFINED_CONSENSUS_FORK_NAMES = ["phase0", "altair", "bellatrix", "capella", "deneb"]
+DEFINED_CONSENSUS_FORK_NAMES = ["phase0", "altair", "bellatrix", "capella", "deneb", "sharding"]
 
 
 class ForkVersionName(int, Enum):
@@ -102,11 +102,12 @@ class ForkVersionName(int, Enum):
         The code names for the forks. These are used in the etb-config files to
         define when forks happen.
     """
-    Phase0 = 0
-    Altair = 1
-    Bellatrix = 2
-    Capella = 3
-    Deneb = 4
+    phase0 = 0
+    altair = 1
+    bellatrix = 2
+    capella = 3
+    deneb = 4
+    sharding = 5
 
 
 class ConsensusFork(object):
@@ -114,12 +115,13 @@ class ConsensusFork(object):
         Abstraction for a consensus fork.
     """
 
-    def __init__(self, fork_name: str, fork_version: int, fork_epoch: int):
-        if fork_name not in DEFINED_CONSENSUS_FORK_NAMES:
-            raise ValueError(f"fork_name must be one of {DEFINED_CONSENSUS_FORK_NAMES}")
-        self.name = fork_name
-        self.version = fork_version
-        self.epoch = fork_epoch
+    def __init__(self, fork_name: ForkVersionName, fork_version: int, fork_epoch: int):
+        self.name: ForkVersionName = fork_name
+        self.version: int = fork_version
+        self.epoch: int = fork_epoch
 
     def __str__(self):
-        return f"{self.name}: 0x{self.version:02x} @ {self.epoch}"
+        return f"{self.name.name}: 0x{self.version:02x} @ {self.epoch}"
+
+    def __repr__(self):
+        return self.__str__()

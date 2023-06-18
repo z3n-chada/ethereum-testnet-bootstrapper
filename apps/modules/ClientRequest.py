@@ -10,7 +10,7 @@ from enum import Enum
 from typing import Union
 
 import requests
-from .ETBConfig import ETBConfig, ClientInstance
+from .ETBConfig import ClientInstance
 
 
 class RequestType(str, Enum):
@@ -108,7 +108,7 @@ class ExecutionRPCRequest(ClientRequest):
         start = int(time.time())
         end = start + self.timeout
         path = self.payload["method"]
-        request_repr = instance.get_full_execution_http_jsonrpc_path()
+        request_repr = instance.get_execution_jsonrpc_path()
 
         while int(time.time()) <= end:
             try:
@@ -176,7 +176,7 @@ class ConsensusBeaconAPIRequest(ClientRequest):
     def perform_request(self, client: ClientInstance) -> (Exception, requests.Response):
         start = int(time.time())
         end = start + self.timeout
-        request_repr = f"{client.get_full_beacon_api_path()}{self.payload}"
+        request_repr = f"{client.get_consensus_beacon_api_path()}{self.payload}"
 
         while int(time.time()) <= end:
             try:
@@ -218,6 +218,13 @@ def perform_request_proxy(job: tuple[ClientRequest, ClientInstance]):
 
 
 def perform_batched_request(req: ClientRequest, clients: list[ClientInstance]):
+    """
+        Perform a request on a list of clients asynchronously, returns a list
+        of tuples of (client, request)
+    @param req: ClientRequest The request to perform
+    @param clients: list[ClientInstance) of client instances.
+    @return:
+    """
     request_iter = [req for x in range(len(clients))]
     with ThreadPoolExecutor(max_workers=len(clients)) as executor:
         results = executor.map(perform_request_proxy, zip(request_iter, clients))
@@ -272,6 +279,7 @@ class admin_addPeer(ExecutionRPCRequest):
         Add a peer to the node.
         enode: The enode of the peer to add.
     """
+
     def __init__(
             self, enode: str, logger: logging.Logger = None, _id: int = 1, timeout=5
     ):
@@ -322,6 +330,7 @@ class beacon_getGenesis(ConsensusBeaconAPIRequest):
             request_protocol=RequestProtocol.HTTP,
             timeout=timeout
         )
+
 
 class beacon_getFinalityCheckpoints(ConsensusBeaconAPIRequest):
     # https://ethereum.github.io/beacon-APIs/#/Beacon/getStateFinalityCheckpoints

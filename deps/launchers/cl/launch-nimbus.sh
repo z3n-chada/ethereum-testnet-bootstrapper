@@ -18,7 +18,7 @@ env_vars=(
   "IP_ADDRESS"
   "IP_SUBNET"
   "JWT_SECRET_FILE"
-  "TESTNET_DIR"
+  "COLLECTION_DIR"
   "NUM_CLIENT_NODES"
   "EXECUTION_ENGINE_HTTP_PORT"
   "EXECUTION_ENGINE_WS_PORT"
@@ -51,7 +51,7 @@ nimbus_beacon_node \
     --non-interactive \
     --data-dir="$CONSENSUS_NODE_DIR" \
     --log-file="$CONSENSUS_NODE_DIR/beacon-log.txt" --log-level="$CONSENSUS_LOG_LEVEL" \
-    --network="$TESTNET_DIR/" \
+    --network="$COLLECTION_DIR/" \
     --secrets-dir="$CONSENSUS_NODE_DIR/secrets" --validators-dir="$CONSENSUS_NODE_DIR/keys" \
     --rest \
     --rest-address="0.0.0.0" --rest-port="$CONSENSUS_BEACON_API_PORT" \

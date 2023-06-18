@@ -1,20 +1,19 @@
 import logging
 import pathlib
-import re
+import time
 
-from .Consensus import DEFINED_CONSENSUS_FORK_NAMES, ConsensusFork
+from .Consensus import ConsensusFork, TerminalBlockHash
 from .Consensus import (
     PresetEnum,
     MinimalPreset,
     MainnetPreset,
     ForkVersionName,
-    # always_match_regex,
     Epoch,
-    ConsensusConfigOverrides,
 )
 from ruamel import yaml
 from typing import List, Dict, Union, Any, Generator, Type
 from web3.auto import w3
+
 
 class PremineKeyPair(object):
     """
@@ -41,854 +40,986 @@ class PremineKeyPair(object):
     Performs the heavy lifting of parsing and consuming configs for ETB.
 """
 
+"""
+    The following classes represent the various configuration entries found withing an 
+    etb-config file.
+"""
 
-class ConfigEntry(object):
+
+class Config(object):
     """
-    A wrapper around some entries in a config file that allows access via
-    has and get to reduce boilerplate code.
-
-    we use the recursive definition for nested fields that do *not* contain
-    instances.
-    """
-
-    def __init__(self, config_key, data: dict, recursive=False):
-        self.config_key = config_key
-        self.invalid_keys = []
-        self.required_keys = []
-        self.ignored_keys = []
-        self.config_entry = {}
-        if recursive:
-            self._validate_and_populate(data)
-        else:
-            self.config_entry = self._validate_and_parse(data)
-
-    def _validate_and_parse(self, config_entry: dict) -> dict:
-        """
-        Ensures the data contained in this config follows spec.
-        :return: the entry.
-        """
-        entry = {}
-        for k, v in config_entry.items():
-            if k in self.invalid_keys:
-                raise Exception(f"Invalid entry {k} in config-entry")
-            elif k not in self.ignored_keys:
-
-                entry[k] = config_entry[k]
-                # do it recursively
-            else:
-                pass
-        missing_keys = [k for k in self.required_keys if k not in entry]
-        if len(missing_keys) != 0:
-            raise Exception(f"{type(self).__name__} does not contain all required keys: {', '.join(missing_keys)}")
-        return entry
-
-    # recursive entries
-    def _validate_and_populate(self, config_entry: dict):
-        bad_keys = ["image", "additional-env"]  # make sure this is not an instance
-        for k, v in config_entry.items():
-            if k in bad_keys:
-                raise Exception("Cannot recursive config entry setup for Instances.")
-            if k in self.config_entry.keys():
-                print(f"found duplicate {k}")
-                print(f"current key_list:{self.config_entry.keys()}")
-                raise Exception(
-                    f"Duplicate key {k} found in {self.config_entry.keys()} already."
-                )
-            else:
-                self.config_entry[k] = v
-                if isinstance(v, dict):
-                    self._validate_and_populate(v)
-
-    def has(self, key):
-        # first check for overloaded getters.
-        if hasattr(self, f"get_{key.replace('-', '_')}"):
-            return True
-
-        # now check the config entry
-        if key in self.config_entry:
-            return True
-
-        # last check if the dict of the object itself.
-        return key in self.__dict__
-
-    def get(self, key):
-
-        if hasattr(self, f"get_{key.replace('-', '_')}"):
-            return getattr(self, f'get_{key.replace("-", "_")}')()
-
-        elif key in self.config_entry.keys():
-            return self.config_entry[key]
-
-        # last check for the dict
-        if key in self.__dict__:
-            return self.__dict__[key]
-
-        else:
-            raise Exception(f"Entry has no config entry: {key}")
-
-    def items(self):
-        return self.config_entry.items()
-
-    def keys(self):
-        return self.config_entry.keys()
-
-
-class ConsensusConfigEntry(ConfigEntry):
-    def __init__(self, data: dict):
-        self.required_keys = [
-            "client",
-            "launcher",
-            "log-level",
-            "num-validators",
-            "p2p-port",
-            "beacon-api-port",
-            "beacon-rpc-port",
-            "validator-rpc-port",
-            "beacon-metric-port",
-            "validator-metric-port",
-        ]
-        self.invalid_keys = []
-        self.ignored_keys = []
-        self.config_entry = super()._validate_and_parse(data)
-
-
-class ExecutionConfigEntry(ConfigEntry):
-    def __init__(self, data: dict):
-        self.required_keys = [
-            "client",
-            "launcher",
-            "log-level",
-            "http-apis",
-            "http-port",
-            "ws-port",
-            "ws-apis",
-            "engine-http-port",
-            "engine-ws-port",
-            "metric-port",
-        ]
-        self.invalid_keys = []
-        self.ignored_keys = []
-        self.config_entry = super()._validate_and_parse(data)
-
-
-class Instance(ConfigEntry):
-    """
-    Contains a representation of a docker container that will be running
-    in the local testnet.
+        Represents a config object. The only difference between this
+        and a regular object is the easy mapping of fields that use
+        hyphens v.s. underscores.
     """
 
-    def __init__(self, root_name: str, ndx: int, config: dict):
-        self.config_entry = config
-        self.root_name = root_name
-        self.name = f"{root_name}-{ndx}"
-        self.ndx = ndx
+    def __init__(self, name: str):
+        self.name: str = name
 
-        # environment variables that need to be populated in docker container
-        self.defined_env_vars = ["ip-address"]
+    def __contains__(self, item):
+        return hasattr(self, item.replace('-', '_'))
 
-    def get_ip_address(self) -> str:
-        prefix = (
-            ".".join(self.config_entry.get("start-ip-address").split(".")[:3]) + "."
-        )
-        base = int(self.config_entry.get("start-ip-address").split(".")[-1])
-        return prefix + str(base + int(self.ndx))
+    def __getitem__(self, item: str):
+        return getattr(self, item.replace('-', '_'))
 
-    def get_env_vars(self) -> Dict[str, Union[str, int, float]]:
-        env_vars = {}
-        for var in self.defined_env_vars:
-            env_vars[var.replace("-", "_").upper()] = self.get(var)
-        # add any env_vars from the additional env section.
-        if self.has("additional-env"):
-            for k, v in self.get("additional-env").items():
-                env_vars[k.replace("-", "_").upper()] = v
+    def __setitem__(self, key, value):
+        setattr(self, key.replace('-', '_'), value)
 
-        return env_vars
 
-    def get_docker_repr(self, docker_config: ConfigEntry) -> dict:
-        """
-        Get the docker-compose representation of this service.
-        :return:
-        """
-        entry = {
-            "container_name": self.name,
-            "hostname": self.name,
-            "image": f"{self.get('image')}:{self.get('tag')}",
-            "volumes": docker_config.get("volumes"),
-            "networks": {
-                docker_config.get("network-name"): {
-                    "ipv4_address": self.get_ip_address()
-                }
-            },
+class DockerConfig(Config):
+    """
+        The docker config specified in etb. This is used to construct the docker-compose.yaml
+
+        This is found in ETBCOnfig -> docker
+        The required fields are:
+            - network-name: the name of the docker network to use/create
+            - ip-subnet: the ip-subnet of the testnet
+
+        The implicit fields are:
+            - volumes: the volumes to mount in the docker-compose file
+                ['./data:/data', './:/source/']
+    """
+
+    def __init__(self, config: dict):
+        super().__init__("docker-config")
+
+        required_fields = ["network-name", "ip-subnet"]
+
+        for k in required_fields:
+            if k not in config:
+                raise ValueError(f"docker-config is missing required field {k}")
+
+        self.network_name: str = config["network-name"]
+        self.ip_subnet: str = config["ip-subnet"]
+        self.volumes: List[str] = ['./data:/data', './:/source/']
+
+
+class FilesConfig(Config):
+    """Files used in the ETBConfig. These are implicit and not specified in the ETBConfig file.
+
+        They are put here for documentation purposes and should be referenced this way.
+
+        all files are listed wrt to the running testnet containers. These files are mapped in
+        with the root being the ethereum-testnet-bootstrapper dir.
+
+            e.g. testnet-root: /data/ implies that a docker container has it mapped at /data
+                and the folder is placed at {ethereum-testnet-bootstrapper}/data
+
+        testnet-root: the root directory of the testnet
+        geth-genesis-file: the location of the genesis file for geth clients.
+        besu-genesis-file: the location of the genesis file for besu clients.
+        nether-mind-genesis-file: the location of the genesis file for nethermind clients.
+
+        consensus-config-file: the location of the consensus config file.
+        consensus-genesis-file: the location of the genesis beaconstate ssz
+        consensus-bootnode-file: the location of the file containing bootnode enrs for consensus clients.
+
+        etb-config-file: the location of this file in the testnet. (copied in by the launcher)
+        testnet-dir: the location of the testnet directories for client instances
+        docker-compose-file: where the docker-compose.yaml file is written to.
+
+        consensus-checkpoint-file: this file is created when its time for consensus clients to start.
+        execution-checkpoint-file: this file is created when its time for execution clients to start.
+        consensus-bootnode-checkpoint-file: this file is created when the consensus bootnodes should start.
+
+        deposit-contract-deployment-block-hash-file: the file containing the hash of the EL block where the
+            deposit contract was deployed.
+        deposit-contract-deployment-block-number-file: the file containing the number of the EL block where the
+            deposit contract was deployed.
+    """
+
+    def __init__(self):
+        super().__init__("files")
+
+        fields = {
+            "testnet-root": "/data/",
+            "geth-genesis-file": "/data/geth-genesis.json",
+            "besu-genesis-file": "/data/besu-genesis.json",
+            "nether-mind-genesis-file": "/data/nethermind-genesis.json",
+            "consensus-config-file": "/data/config.yaml",
+            "consensus-genesis-file": "/data/genesis.ssz",
+            "consensus-bootnode-file": "/data/consensus-bootnodes.txt",
+            "etb-config-file": "/data/etb-config.yaml",
+            "local-testnet-dir": "/data/local-testnet/",
+            "docker-compose-file": "/source/docker-compose.yaml",  # used by host so use /source/
+            "etb-config-checkpoint-file": "/data/etb-config-checkpoint.txt",
+            "consensus-checkpoint-file": "/data/consensus-checkpoint.txt",
+            "execution-checkpoint-file": "/data/execution-checkpoint.txt",
+            "consensus-bootnode-checkpoint-file": "/data/consensus-bootnode-checkpoint.txt",
+            "deposit-contract-deployment-block-hash-file": "/data/deposit-contract-deployment-block-hash.txt",
+            "deposit-contract-deployment-block-number-file": "/data/deposit-contract-deployment-block-number.txt",
         }
-        if self.has("entrypoint"):
-            entry["entrypoint"] = self.get("entrypoint").split()
+
+        # el genesis files
+        self.geth_genesis_file: pathlib.Path = pathlib.Path(fields["geth-genesis-file"])
+        self.besu_genesis_file: pathlib.Path = pathlib.Path(fields["besu-genesis-file"])
+        self.nether_mind_genesis_file: pathlib.Path = pathlib.Path(fields["nether-mind-genesis-file"])
+        # consensus genesis files
+        self.consensus_config_file: pathlib.Path = pathlib.Path(fields["consensus-config-file"])
+        self.consensus_genesis_file: pathlib.Path = pathlib.Path(fields["consensus-genesis-file"])
+        # consensus bootnode files
+        self.consensus_bootnode_file: pathlib.Path = pathlib.Path(fields["consensus-bootnode-file"])
+        # etb specific files
+        self.etb_config_file: pathlib.Path = pathlib.Path(fields["etb-config-file"])
+        self.testnet_root: pathlib.Path = pathlib.Path(fields["testnet-root"])
+        self.local_testnet_dir: pathlib.Path = pathlib.Path(fields["local-testnet-dir"])
+        self.docker_compose_file: pathlib.Path = pathlib.Path(fields["docker-compose-file"])
+        # checkpoint files
+        self.etb_config_checkpoint_file: pathlib.Path = pathlib.Path(fields["etb-config-checkpoint-file"])
+        self.consensus_checkpoint_file: pathlib.Path = pathlib.Path(fields["consensus-checkpoint-file"])
+        self.execution_checkpoint_file: pathlib.Path = pathlib.Path(fields["execution-checkpoint-file"])
+        self.consensus_bootnode_checkpoint_file: pathlib.Path = pathlib.Path(
+            fields["consensus-bootnode-checkpoint-file"])
+        # deposit contract deployment files
+        self.deposit_contract_deployment_block_hash_file: pathlib.Path = pathlib.Path(fields["deposit-contract"
+                                                                                             "-deployment-block-hash"
+                                                                                             "-file"])
+        self.deposit_contract_deployment_block_number_file: pathlib.Path = pathlib.Path(fields["deposit-contract"
+                                                                                               "-deployment-block"
+                                                                                               "-number-file"])
+
+        self.checkpoints = {
+            "etb-config-checkpoint": self.etb_config_checkpoint_file,
+            "consensus-checkpoint": self.consensus_checkpoint_file,
+            "execution-checkpoint": self.execution_checkpoint_file,
+            "consensus-bootnode-checkpoint": self.consensus_bootnode_checkpoint_file,
+        }
+
+
+class TestnetConfig(Config):
+    """
+        Testnet configuration found in ETBConfig -> testnet-config
+
+        testnet-config:
+            execution-layer: ExecutionLayerTestnetConfig
+            consensus-layer: ConsensusLayerTestnetConfig
+            deposit-contract-address: [str]
+    """
+
+    def __init__(self, config: dict):
+        super().__init__("testnet-config")
+
+        self.execution_layer: ExecutionLayerTestnetConfig = ExecutionLayerTestnetConfig(config["execution-layer"])
+        self.consensus_layer: ConsensusLayerTestnetConfig = ConsensusLayerTestnetConfig(config["consensus-layer"])
+        self.deposit_contract_address: str = config["deposit-contract-address"]  # hash as str.
+
+
+class ExecutionLayerTestnetConfig(Config):
+    def __init__(self, config: dict):
+        super().__init__("execution-testnet-config")
+
+        required_fields = [
+            "seconds-per-eth1-block",
+            "chain-id",
+            "network-id",
+            "account-mnemonic",
+            "keystore-passphrase",
+            "premines",
+        ]
+
+        for k in required_fields:
+            if k not in config:
+                raise Exception(f"Missing required field {k} for ExecutionLayerTestnetConfig: {self.name}")
+
+        self.seconds_per_eth1_block: int = config["seconds-per-eth1-block"]
+        self.chain_id: int = config["chain-id"]
+        self.network_id: int = config["network-id"]
+        self.account_mnemonic: str = config["account-mnemonic"]
+        self.keystore_passphrase: str = config["keystore-passphrase"]
+        self.premines: dict[str, int] = {}
+        for acct, balance in config["premines"].items():
+            self.premines[acct] = balance
+
+
+class ConsensusLayerTestnetConfig(Config):
+    """
+        Represents the consensus layer testnet config found in
+        ETBConfig -> testnet-config -> consensus-layer
+    """
+
+    def __init__(self, config: dict):
+        super().__init__("consensus-testnet-config")
+
+        required_fields = [
+            "preset-base",
+            "config-name",
+            "min-genesis-active-validator-count",
+
+            "validator-mnemonic",
+
+            # these are required but handled separately.
+            "phase0-fork-epoch",
+            "phase0-fork-version",
+            "altair-fork-epoch",
+            "altair-fork-version",
+            "bellatrix-fork-epoch",
+            "bellatrix-fork-version",
+        ]
+
+        for k in required_fields:
+            if k not in config:
+                raise Exception(f"Missing required field {k} for ConsensusLayerTestnetConfig: {self.name}")
+
+        self.preset_base: PresetEnum
+        if config["preset-base"] == "minimal":
+            self.preset_base = MinimalPreset
+        elif config["preset-base"] == "mainnet":
+            self.preset_base = MainnetPreset
         else:
-            entry["entrypoint"] = ["/bin/sh", "-c"]
+            raise Exception(f"Unknown preset-base {config['preset-base']}")
 
-        if self.has("docker-command"):
-            entry["command"] = self.get("docker-command")
+        self.config_name: str = config["config-name"]
+        self.min_genesis_active_validator_count: int = config["min-genesis-active-validator-count"]
+        self.validator_mnemonic: str = config["validator-mnemonic"]
 
-        env_vars = self.get_env_vars()
+        # optional fields that may be overridden in the etb-config file.
+        self.min_validator_withdrawability_delay: int = self.preset_base.MIN_VALIDATOR_WITHDRAWABILITY_DELAY.value
+        self.shard_committee_period: int = self.preset_base.SHARD_COMMITTEE_PERIOD.value
 
-        if len(env_vars.keys()) > 0:
-            entry["environment"] = env_vars
+        self.phase0_fork: ConsensusFork
+        self.altair_fork: ConsensusFork
+        self.bellatrix_fork: ConsensusFork
+        self.capella_fork: ConsensusFork
+        self.deneb_fork: ConsensusFork
+        self.sharding_fork: ConsensusFork
 
-        return entry
+        if "min-validator-withdrawability-delay" in config:
+            self.min_validator_withdrawability_delay: int = config["min-validator-withdrawability-delay"]
+
+        if "shard-committee-period" in config:
+            self.shard_committee_period: int = config["shard-committee-period"]
+
+        self.phase0_fork, self.altair_fork, self.bellatrix_fork, self.capella_fork, self.deneb_fork, self.sharding_fork = self._get_forks_from_config(
+            config)
+
+        # implicit values
+        self.terminal_block_hash: str = TerminalBlockHash
+        self.terminal_block_hash_activation_epoch: int = Epoch.FarFuture.value
+
+    def _get_forks_from_config(self, config: dict) -> tuple:
+        """
+            Processes the forks in the config and returns a tuple of all ConsensusForks for the testnet
+        """
+        required_forks = [
+            "phase0",
+            "altair",
+            "bellatrix",
+            "capella",
+        ]
+
+        optional_forks = [
+            "deneb",
+            "sharding",
+        ]
+
+        for fork in required_forks:
+            if f"{fork}-fork-epoch" not in config and f"{fork}-fork-version" not in config:
+                raise Exception(f"Missing required fork fields for {fork} in ConsensusLayerTestnetConfig: {self.name}")
+
+        fork_version_map = {
+            "phase0": ForkVersionName.phase0,
+            "altair": ForkVersionName.altair,
+            "bellatrix": ForkVersionName.bellatrix,
+            "capella": ForkVersionName.capella,
+            "deneb": ForkVersionName.deneb,
+            "sharding": ForkVersionName.sharding,
+        }
+
+        forks = []
+        for fork in required_forks:
+            forks.append(ConsensusFork(fork_name=fork_version_map[fork],
+                                       fork_version=config[f"{fork}-fork-version"],
+                                       fork_epoch=config[f"{fork}-fork-epoch"]))
+
+        for fork in optional_forks:
+            if f"{fork}-fork-version" in config:
+                version = config[f"{fork}-fork-version"]
+            else:
+                version = forks[-1].version + 1
+
+            if f"{fork}-fork-epoch" in config:
+                epoch = config[f"{fork}-fork-epoch"]
+            else:
+                epoch = Epoch.FarFuture.value
+
+            forks.append(ConsensusFork(fork_name=fork_version_map[fork],
+                                       fork_version=version,
+                                       fork_epoch=epoch))
+
+        return tuple(forks)
+
+    def get_genesis_fork(self) -> ConsensusFork:
+        """
+            Returns the current CL fork for genesis.
+        @return:
+        """
+        if self.sharding_fork.epoch == 0:
+            return self.sharding_fork
+        if self.deneb_fork.epoch == 0:
+            return self.deneb_fork
+        if self.capella_fork.epoch == 0:
+            return self.capella_fork
+        if self.bellatrix_fork.epoch == 0:
+            return self.bellatrix_fork
+        if self.altair_fork.epoch == 0:
+            return self.altair_fork
+        if self.phase0_fork.epoch == 0:
+            return self.phase0_fork
 
 
-class InstanceCollection(ConfigEntry):
+class ExecutionInstanceConfig(Config):
     """
-    Describes a collection of instances.
+        Represents the execution configs for an execution instance.
+
+        These are found in the ETBConfig -> execution-configs
+        The fields are as follows:
+            - name: str
+            - client: str
+            - log-level: str
+            - p2p-port: int
+            - http-apis: str (comma seperated list)
+            - http-port: int
+            - ws-apis: str (comma seperated list)
+            - ws-port: int
+            - engine-http-port: int
+            - engine-ws-port: int
+            - metric-port: int
     """
 
-    def __init__(self, name: str, entry: dict):
-        # config entry code
+    def __init__(self, name: str, config: dict):
+        super().__init__(name)
 
-        self.required_keys = [
+        self.client: str = config["client"]
+        self.launcher: pathlib.Path = config["launcher"]
+        self.log_level: str = config["log-level"]
+        self.p2p_port: int = config["p2p-port"]
+        self.http_apis: List[str] = [x.strip() for x in config["http-apis"].split(',')]
+        self.http_port: int = config["http-port"]
+        self.ws_apis: List[str] = [x.strip() for x in config["ws-apis"].split(',')]
+        self.ws_port: int = config["ws-port"]
+        self.engine_http_port: int = config["engine-http-port"]
+        self.engine_ws_port: int = config["engine-ws-port"]
+        self.metric_port: int = config["metric-port"]
+
+    def get_env_vars(self) -> dict[str, str]:
+        """Returns the environment variables used by the execution client that
+            can be derived from the config.
+
+            This includes all the fields in the config. We prefix with
+            EXECUTION to avoid collisions with other env vars.
+        @return: env_vars as dict.
+        """
+        return {
+            "EXECUTION_CLIENT": self.client,
+            "EXECUTION_LAUNCHER": str(self.launcher),
+            "EXECUTION_LOG_LEVEL": self.log_level,
+            "EXECUTION_P2P_PORT": self.p2p_port,
+            "EXECUTION_HTTP_APIS": ",".join(self.http_apis),
+            "EXECUTION_HTTP_PORT": self.http_port,
+            "EXECUTION_WS_APIS": ",".join(self.ws_apis),
+            "EXECUTION_WS_PORT": self.ws_port,
+            "EXECUTION_ENGINE_HTTP_PORT": self.engine_http_port,
+            "EXECUTION_ENGINE_WS_PORT": self.engine_ws_port,
+            "EXECUTION_METRIC_PORT": self.metric_port,
+        }
+
+
+class ConsensusInstanceConfig(Config):
+    """
+        Represents the execution configs for a consensus instance.
+
+        These are found in the ETBConfig -> consensus-configs
+        The fields are as follows:
+            - client: str
+            - launcher: str (path)
+            - log-level: str
+            - p2p-port: int
+            - beacon-api-port: int
+            - beacon-rpc-port: int
+            - beacon-metric-port: int
+            # - validator-api-port: int
+            - validator-rpc-port: int
+            - validator-metric-port: int
+            - num-validators: int
+    """
+
+    def __init__(self, name: str, config: dict):
+        super().__init__(name)
+
+        self.client: str = config["client"]
+        self.launcher: pathlib.Path = pathlib.Path(config["launcher"])
+        self.log_level: str = config["log-level"]
+        self.p2p_port: int = config["p2p-port"]
+        self.beacon_api_port: int = config["beacon-api-port"]
+        self.beacon_rpc_port: int = config["beacon-rpc-port"]
+        self.beacon_metric_port: int = config["beacon-metric-port"]
+        # self.validator_api_port: int = config["validator-api-port"]
+        self.validator_rpc_port: int = config["validator-rpc-port"]
+        self.validator_metric_port: int = config["validator-metric-port"]
+        self.num_validators: int = config["num-validators"]
+
+    def get_env_vars(self) -> dict[str, str]:
+        """Returns the environment variables used by the consensus client that
+            can be derived from the config.
+
+            This includes all the fields in the config. We prefix with
+            CONSENSUS to avoid collisions with other env vars.
+        @return: env_vars as dict.
+        """
+        return {
+            "CONSENSUS_CLIENT": self.client,
+            "CONSENSUS_LAUNCHER": str(self.launcher),
+            "CONSENSUS_LOG_LEVEL": self.log_level,
+            "CONSENSUS_P2P_PORT": self.p2p_port,
+            "CONSENSUS_BEACON_API_PORT": self.beacon_api_port,
+            "CONSENSUS_BEACON_RPC_PORT": self.beacon_rpc_port,
+            "CONSENSUS_BEACON_METRIC_PORT": self.beacon_metric_port,
+            # "CONSENSUS_VALIDATOR_API_PORT": self.validator_api_port,
+            "CONSENSUS_VALIDATOR_RPC_PORT": self.validator_rpc_port,
+            "CONSENSUS_VALIDATOR_METRIC_PORT": self.validator_metric_port,
+        }
+
+
+class InstanceCollectionConfig(Config):
+    """
+        Represents a config for a single instance. This includes everything
+        that is required to the minimum fields for a docker-compose entry.
+
+        All instances must include:
+            - image
+            - tag
+            - start-ip-address
+            - num-nodes
+
+        They may also specify:
+            - entrypoint
+            - additional-env
+    """
+
+    def __init__(self, name: str, config: dict):
+        super().__init__(name)
+
+        required_fields = [
             "image",
             "tag",
             "start-ip-address",
             "num-nodes",
         ]
-        self.ignored_keys = [
-            # 'entrypoint',  # handled in inherited classes
-        ]
-        self.invalid_keys = []
-        self.config_entry = super()._validate_and_parse(entry)
-        # instance code
-        self.name = name
-        self.num_nodes: int = self.config_entry.get("num-nodes")
 
-    def __iter__(self):
-        for x in range(self.get("num-nodes")):
-            yield Instance(self.name, x, self.config_entry)
-
-
-class ClientInstance(Instance, ConfigEntry):
-    """
-    Represents a single instance with a CL and EL node.
-    Inherits ConfigEntry for get and has abstractions
-    """
-
-    def __init__(
-        self,
-        root_name: str,
-        ndx: int,
-        config: dict,
-        cl_config: ConsensusConfigEntry,
-        el_config: ExecutionConfigEntry,
-        files_config_entry: ConfigEntry,
-    ):
-        super().__init__(root_name, ndx, config)
-        self.consensus_config: ConsensusConfigEntry = cl_config
-        self.execution_config: ExecutionConfigEntry = el_config
-        self.etb_files_config: ConfigEntry = (
-            files_config_entry  # used to derive various path information.
-        )
-
-        consensus_env_vars = [
-            # env vars defined in the consensus config
-            "consensus-client",
-            "consensus-launcher",
-            "consensus-config-file",
-            "consensus-genesis-file",
-            "consensus-num-validators",
-            "consensus-p2p-port",
-            "consensus-beacon-rpc-port",
-            "consensus-beacon-api-port",
-            "consensus-beacon-metric-port",
-            "consensus-validator-rpc-port",
-            "consensus-validator-metric-port",
-            "consensus-log-level",
-            # env vars that are derived.
-            "consensus-node-dir",
-            "consensus-graffiti",
-        ]
-
-        execution_env_vars = [
-            "execution-client",
-            "execution-launcher",
-            "execution-genesis-file",
-            "execution-log-level",
-            "execution-http-apis",
-            "execution-ws-apis",
-            "execution-http-port",
-            "execution-ws-port",
-            "execution-engine-http-port",
-            "execution-engine-ws-port",
-            "execution-p2p-port",
-            "execution-metric-port",
-            # env vars that are derived
-            "execution-node-dir",
-        ]
-
-        shared_env_vars = [
-            "jwt-secret-file",
-            "testnet-dir",
-        ]
-
-        # prysm only cases
-        prysm_env_vars = [
-            "validator-password",
-            "wallet-password-path",
-        ]
-
-        for k in consensus_env_vars:
-            self.defined_env_vars.append(k)
-        for k in execution_env_vars:
-            self.defined_env_vars.append(k)
-        for k in shared_env_vars:
-            self.defined_env_vars.append(k)
-        if self.get("consensus-client") == "prysm":
-            for k in prysm_env_vars:
-                self.defined_env_vars.append(k)
-
-    def has(self, key):
-        # first check for overloaded getters.
-        if hasattr(self, f"get_{key.replace('-', '_')}"):
-            return True
-
-        # now check the config entry
-        if key in self.config_entry:
-            return True
-
-        # in order to fetch the has/get from consensus and execution configs
-        split_key = key.split("-")
-        if split_key[0] == "consensus":
-            return self.consensus_config.has("-".join(split_key[1:]))
-
-        if split_key[0] == "execution":
-            return self.execution_config.has("-".join(split_key[1:]))
-        # lastly check if the dict of the object itself.
-        return key in self.__dict__
-
-    def get(self, key):
-
-        if not self.has(key):
-            raise Exception(f"Entry has no config entry: {key}")
-
-        if hasattr(self, f"get_{key.replace('-', '_')}"):
-            return getattr(self, f'get_{key.replace("-", "_")}')()
-
-        elif key in self.config_entry.keys():
-            return self.config_entry[key]
-
-        # in order to fetch the has/get from consensus and execution configs
-        split_key = key.split("-")
-        if split_key[0] == "consensus":
-            return self.consensus_config.get("-".join(split_key[1:]))
-
-        if split_key[0] == "execution":
-            return self.execution_config.get("-".join(split_key[1:]))
-
-        # last check for the dict
-        elif key in self.__dict__:
-            return self.__dict__[key]
-
-        else:
-            raise Exception("Should not occur.")
-
-    def get_docker_command(self) -> list:
-        return [f"{self.get('execution-launcher')} & {self.get('consensus-launcher')}"]
-
-    # generic overrides
-    def get_testnet_dir(self) -> str:
-        return f"{self.etb_files_config.get('testnet-dir')}/{self.root_name}"
-
-    def get_jwt_secret_file(self) -> str:
-        return f"{self.get_testnet_dir()}/jwt-secret"
-
-    # consensus related overrides
-    def get_consensus_config_file(self) -> str:
-        return f"{self.get_testnet_dir()}/config.yaml"
-
-    def get_consensus_genesis_file(self) -> str:
-        return f"{self.get_testnet_dir()}/genesis.ssz"
-
-    def get_consensus_graffiti(self) -> str:
-        return f"{self.name}"
-
-    def get_consensus_node_dir(self) -> str:
-        return f"{self.etb_files_config.get('testnet-dir')}/{self.root_name}/node_{self.ndx}"
-
-    def get_full_beacon_api_path(self) -> str:
-        # Returns the full path to the clients consensus beacon api port
-        return f"http://{self.get_ip_address()}:{self.get('consensus-beacon-api-port')}"
-
-    # prysm only overrides
-    def get_wallet_password_path(self) -> str:
-        return f"{self.get_consensus_node_dir()}/wallet-password.txt"
-
-    def get_validator_password(self) -> str:
-        return "testnet-password"
-
-    # execution related overrides
-    def get_execution_genesis_file(self) -> str:
-        if self.get("execution-client") == "nethermind":
-            # be careful with the env vars.
-            return self.etb_files_config.get("nether-mind-genesis-file")
-        return self.etb_files_config.get(f"{self.get('execution-client')}-genesis-file")
-
-    def get_execution_node_dir(self) -> str:
-        return f"{self.get_consensus_node_dir()}/{self.get('execution-client')}"
-
-    def get_full_execution_http_jsonrpc_path(self, protocol="http") -> str:
-        # Returns the full path to the clients execution jsonrpc port
-        client_req_str = f"execution-{protocol}-port"
-        return f"{protocol}://{self.get_ip_address()}:{self.get(client_req_str)}"
-
-
-class ClientInstanceCollection(InstanceCollection):
-    def __init__(
-        self,
-        name: str,
-        entry: dict,
-        cl_config: ConsensusConfigEntry,
-        el_config: ExecutionConfigEntry,
-        files_config_entry: ConfigEntry,
-    ):
-        super().__init__(name, entry)
-        self.cl_config: ConsensusConfigEntry = cl_config
-        self.el_config: ExecutionConfigEntry = el_config
-        self.files_config_entry: ConfigEntry = files_config_entry
-
-    def __iter__(self) -> Generator[ClientInstance, Any, None]:
-        for x in range(self.get("num-nodes")):
-            yield ClientInstance(
-                self.name,
-                x,
-                self.config_entry,
-                self.cl_config,
-                self.el_config,
-                self.files_config_entry,
-            )
-
-    # when creating client dirs we need to know the root for the client instance dirs.
-    def get_root_client_testnet_dir(self) -> str:
-        return f"{self.files_config_entry.get('testnet-dir')}/{self.name}"
-
-
-class ETBConfig(object):
-    """
-    Super Object that allows complex queries on etb-configs that
-    return a variety of data and representations of data.
-    """
-
-    def __init__(self, path: str, logger: logging.Logger = None):
-        if logger is None:
-            self.logger = logging.getLogger(__name__)
-        else:
-            self.logger: logging.Logger = logger
-
-        self.global_config: dict = {}
-
-        # parse the config file and create data structures.
-        config_path = pathlib.Path(path)
-        if config_path.exists():
-            self.logger.debug(f"Opening etb-config file: {config_path}")
-            with open(config_path, "r") as f:
-                try:
-                    self.global_config = yaml.safe_load(f.read())
-                except Exception as e:
-                    self.logger.error("Error parsing etb-config yaml.")
-                    raise Exception("Unable to parse yaml file.")
-        else:
-            self.logger.error(f"No etb-config file in path: {path}")
-            raise Exception(f"No file found at: {path}")
-
-        self.docker: ConfigEntry = ConfigEntry("docker",
-            self.global_config["docker"], recursive=True
-        )
-        self.files: ConfigEntry = ConfigEntry("files",
-            self.global_config["files"], recursive=True
-        )
-        self.config_params: ConfigEntry = ConfigEntry("config-params",
-            self.global_config["config-params"], recursive=True
-        )
-        self.accounts: ConfigEntry = ConfigEntry("accounts",
-            self.global_config["accounts"], recursive=True
-        )
-        # when calling .get() on etb-config we iterate through these config entries.
-        # ensure we do not have duplicates.
-        intersection = set(
-            self.docker.keys()
-            & self.files.keys()
-            & self.config_params.keys()
-            & self.accounts.keys()
-        )
-
-        if len(intersection) > 0:
-            raise Exception(
-                "Duplicate key entries in etb-config across dockers, files, config-params, and accounts."
-            )
-
-        # process all the instances.
-        self.consensus_configs: dict[str, ConsensusConfigEntry] = {}
-        for cc, entry in self.global_config["consensus-configs"].items():
-            self.consensus_configs[cc] = ConsensusConfigEntry(entry)
-
-        self.execution_configs: dict[str, ExecutionConfigEntry] = {}
-        for ec, entry in self.global_config["execution-configs"].items():
-            self.execution_configs[ec] = ExecutionConfigEntry(entry)
-
-        self.client_instance_collections: dict[str, ClientInstanceCollection] = {}
-        for ci, entry in self.global_config["client-instances"].items():
-            # grab the referenced consensus configs.
-            cl_key = entry["consensus-config"]
-            el_key = entry["execution-config"]
-            if cl_key not in self.consensus_configs:
-                raise Exception(
-                    f"Reference to consensus config {cl_key} not in consensus-configs section."
-                )
-            if el_key not in self.execution_configs:
-                raise Exception(
-                    f"Reference to execution config {cl_key} not in execution-configs section."
-                )
-            cl_config = self.consensus_configs[cl_key]
-            el_config = self.execution_configs[el_key]
-            self.client_instance_collections[ci] = ClientInstanceCollection(
-                ci, entry, cl_config, el_config, self.files
-            )
-
-        self.generic_instance_collections: dict[str, InstanceCollection] = {}
-        for gi, entry in self.global_config["generic-instances"].items():
-            self.generic_instance_collections[gi] = InstanceCollection(gi, entry)
-
-        # set useful members that describe the testnet.
-        self.preset_base: Type[
-            Union[MainnetPreset, MinimalPreset]
-        ] = self.get_preset_base()
-        # in case we need to perform actions for clique network.
-        self.clique_signer_instance_name: Union[None, str] = None
-
-        # consensus forks
-        self.consensus_forks: dict[str, ConsensusFork] = {}
-        for fork_name in DEFINED_CONSENSUS_FORK_NAMES:
-            if not self.has(f"{fork_name}-fork-version"):
-                raise Exception(f"Missing {fork_name}-fork-version in config-file.")
-
-            fork_version = self.get(f"{fork_name}-fork-version")
-            fork_epoch = self.get(f"{fork_name}-fork-epoch")
-            self.consensus_forks[fork_name] = ConsensusFork(fork_name, fork_version, fork_epoch)
-
-    # define a get and has construct for ease of use in modules.
-    def has(self, key) -> bool:
-        exists_in_config_entries = (
-            key in self.docker.keys()
-            or key in self.files.keys()
-            or key in self.config_params.keys()
-            or key in self.accounts.keys()
-        )
-
-        if exists_in_config_entries:
-            return True
-
-        # etb-config can also be used like a ConfigEntry
-        if hasattr(self, f"get_{key.replace('-', '_')}"):
-            return True
-
-        return False
-
-    def get(self, key):
-        if not self.has(key):
-            raise Exception(f"etb-config doesn't have result for key: {key}")
-
-        if hasattr(self, f"get_{key.replace('-', '_')}"):
-            return getattr(self, f'get_{key.replace("-", "_")}')()
-
-        if self.files.has(key):
-            return self.files.get(key)
-
-        if self.docker.has(key):
-            return self.docker.get(key)
-
-        if self.config_params.has(key):
-            return self.config_params.get(key)
-
-        if self.accounts.has(key):
-            return self.accounts.get(key)
-
-        raise Exception("Should not occur.")
-
-    # get data structures describing instances running on the network
-    def get_client_instances(self) -> List[ClientInstance]:
-        instances = []
-        for collection in self.client_instance_collections.values():
-            instances.extend(collection.__iter__())
-        return instances
-
-    def get_client_instances_by_name(self, client_name_regex: re.Pattern[str]) -> List[ClientInstance]:
+        for k in required_fields:
+            if k not in config:
+                raise Exception(f"Missing required field {k} for InstanceCollectionConfig: {name}")
+
+        self.additional_env: dict[str, str] = {}
+
+        self.image: str = config["image"]
+        self.tag: str = config["tag"]
+        self.start_ip_address: str = config["start-ip-address"]
+        self.num_nodes: int = config["num-nodes"]
+        self.entrypoint: Union[pathlib.Path, None] = None
+
+        if "entrypoint" in config:
+            self.entrypoint: pathlib.Path = pathlib.Path(config["entrypoint"])
+
+        # special case for additional env
+        if "additional-env" in config:
+            for key, value in config["additional-env"].items():
+                if key in self.additional_env:
+                    raise Exception(f"Duplicate key {key} in additional-env for {name}")
+                self.additional_env[key] = value
+
+    def get_env_vars(self) -> dict[str, str]:
+        """Returns the environment variables used by the instance that can be
+            derived from the config.
+
+            This includes all additional-env fields in the etb-config
+        @return: env_vars as dict.
         """
-            Only return the client-instances that match the provided name regex.
+        env_dict: dict[str, str] = {}
+        # some contain additional env vars.
+        for key, value in self.additional_env.items():
+            env_dict[key.replace("-", "_").upper()] = value
+
+        return env_dict
+
+
+class ClientInstanceCollectionConfig(InstanceCollectionConfig):
+    """
+        Represents a config for a collection of client instances. These are the entries
+        found in ETBConfig -> client-instances
+
+        client-instances:
+            name:
+              InstanceCollectionConfig
+              consensus-config: [key of consensus-config]
+              execution-config: [key of execution-config]
+              validator-offset-start: [int]
+    """
+
+    def __init__(self,
+                 name: str,
+                 config: dict,
+                 consensus_config: ConsensusInstanceConfig,
+                 execution_config: ExecutionInstanceConfig
+                 ):
+        InstanceCollectionConfig.__init__(self, name, config)
+
+        fields = ["validator-offset-start"]
+
+        for k in fields:
+            if k not in config:
+                raise Exception(f"Missing required field {k} for ClientInstanceCollectionConfig: {name}")
+
+        self.validator_offset_start: int = config["validator-offset-start"]
+
+        self.consensus_config: ConsensusInstanceConfig = consensus_config
+        self.execution_config: ExecutionInstanceConfig = execution_config
+
+        self.collection_dir: pathlib.Path = FilesConfig().local_testnet_dir / self.name
+
+    def get_env_vars(self) -> dict[str, str]:
+        """Returns the environment variables used by client instances that can
+            be derived from the config.
+
+            This includes all the additional env vars from the config and the
+            fields in the consensus-config and execution-config.
+        @return: env_vars as dict.
         """
-        all_instances = self.get_client_instances()
-        return [instance for instance in all_instances if client_name_regex.search(instance.name)]
+        env_dict: dict[str, str] = InstanceCollectionConfig.get_env_vars(self)
+        env_dict.update(self.consensus_config.get_env_vars())
+        env_dict.update(self.execution_config.get_env_vars())
+        return env_dict
+
+
+"""
+    The following classes represent the various instances that run within a testnet. These include
+    generic docker containers with specified entrypoints (see generic-instances) and the various
+    client-instances that represent full nodes (see client-instances).
+"""
+
+
+class Instance(object):
+    """
+        Represents a generic instance. These are the entries found in ETBConfig -> generic-instances
+
+        This object is used to represent one instance from the generic instance collections specified
+        in ETBConfig -> generic-instances
+    """
+
+    def __init__(self, collection_name: str, ndx: int, collection_config: InstanceCollectionConfig):
+        self.collection_name: str = collection_name
+        self.ndx: int = ndx
+        self.name = f"{collection_name}-{ndx}"
+        self.collection_config: InstanceCollectionConfig = collection_config
+
+        self.ip_address: str = self.get_ip_address()
+
+    def __repr__(self):
+        return f"{self.name} ({self.ip_address})"
+
+    def __eq__(self, other):
+        """
+            Instances will all have unique names.
+        @param other: Instance to compare
+        @return: True if the names are equal
+        """
+        return self.name == other.name
+
+    def __neq__(self, other):
+        return not self.__eq__(other)
+
+    def __hash__(self):
+        return hash(self.name)
+
+    def get_ip_address(self) -> str:
+        prefix = (
+                ".".join(self.collection_config.start_ip_address.split(".")[:3]) + "."
+        )
+        base = int(self.collection_config.start_ip_address.split(".")[-1])
+        return prefix + str(base + int(self.ndx))
+
+    def get_env_vars(self) -> dict:
+        """
+            Returns a dict of all non-global env vars that should be set for this instance.
+        @return: 
+        """
+        # all instances get the following env vars
+        env_dict = {
+            "IP_ADDRESS": self.ip_address,
+        }
+        # some contain additional env vars.
+        env_dict.update(self.collection_config.get_env_vars())
+        return env_dict
+
+    def get_docker_compose_repr(self, docker_config: DockerConfig, global_env_vars: dict) -> dict:
+        """
+            Returns a dict that represents this instance in a docker-compose file.
+        @param docker_config: docker config for the experiment (see ETBConfig -> docker)
+        @param global_env_vars: global env vars that should be set for all instances (passed by ETBConfig)
+        @return: the full dict that represents this instance in a docker-compose file.
+        """
+
+        entry = {
+            "container_name": self.name,
+            "hostname": self.name,
+            "image": f"{self.collection_config.image}:{self.collection_config.tag}",
+            "volumes": docker_config.volumes,
+            "networks": {
+                docker_config.network_name: {
+                    "ipv4_address": self.ip_address
+                }
+            },
+        }
+        if self.collection_config.entrypoint is not None:
+            entry["entrypoint"] = str(self.collection_config.entrypoint).split()
+        else:
+            entry["entrypoint"] = ["/bin/sh", "-c"]
+
+        if hasattr(self, "docker-command"):
+            entry["command"] = self["docker-command"]
+
+        # don't modify the global env vars
+        env_vars = global_env_vars.copy()
+
+        for key, value in self.get_env_vars().items():
+            env_vars[key] = value
+
+        entry["environment"] = env_vars
+
+        return entry
+
+
+class ClientInstance(Instance):
+    """
+        Represents a client instance. These are the entries found in ETBConfig -> client-instances
+
+        This object is used to represent one instance from the client instance collections specified
+        in ETBConfig -> client-instances
+
+        ClientInstance:
+            - root_name: str
+            - ndx: int
+            - collection_config: ClientInstanceCollectionConfig
+            - consensus_config: ConsensusInstanceConfig
+            - execution_config: ExecutionInstanceConfig
+            Where all the network config is stored for this collection.
+            - collection_dir: pathlib.Path (/data/local_testnet/collection-name/)
+            The location where the node-specific data is stored.
+            - node_dir: pathlib.Path (/testnet_dir/node_ndx/)
+            The location where the EL data is stored.
+            - el_dir: pathlib.Path (/node_dir/el_client/)
+            - jwt_secret_file: pathlib.Path (/node_dir/jwt_secret)
+    """
+
+    def __init__(self, root_name: str, ndx: int, collection_config: ClientInstanceCollectionConfig):
+        Instance.__init__(self, root_name, ndx, collection_config)
+        # useful for typing.
+        self.collection_config: ClientInstanceCollectionConfig = collection_config
+        self.consensus_config: ConsensusInstanceConfig = self.collection_config.consensus_config
+        self.execution_config: ExecutionInstanceConfig = self.collection_config.execution_config
+
+        # when clients are started in docker_compose we do a docker-command to start both EL and CL.
+        self.docker_command = [f"{self.execution_config.launcher} & {self.consensus_config.launcher}"]
+
+        # the etb-client will also pass in some additional attrs for this object to use.
+        self.collection_dir: pathlib.Path = FilesConfig().local_testnet_dir / self.collection_name
+        self.node_dir: pathlib.Path = FilesConfig().local_testnet_dir / self.collection_name / f"node_{ndx}"
+        self.el_dir: pathlib.Path = self.node_dir / self.execution_config.client
+        self.jwt_secret_file: pathlib.Path = self.node_dir / "jwt_secret"
+
+        # prysm specific
+        self.wallet_password_path: Union[None, pathlib.Path] = None
+        self.validator_password: Union[None, str] = None
+
+        if self.consensus_config.client == "prysm":
+            self.wallet_password_path = self.node_dir / "wallet-password.txt"
+            if "validator-password" not in self.collection_config.additional_env:
+                raise Exception(f"prysm config {self.collection_name} validator-password not set in additional-env.")
+            self.validator_password = self.collection_config.additional_env["validator-password"]
+
+    def get_docker_compose_repr(self, docker_config: DockerConfig, global_env_vars: dict) -> dict:
+        """
+            Returns a dict that represents this instance in a docker-compose file.
+            The client instance docker-repr is a bit different from the generic instance docker-repr
+            as it has a bunch of information relevant to the EL and CL launcher arguments.
+        @param docker_config: 
+        @param global_env_vars: 
+        @return: 
+        """
+        entry = super().get_docker_compose_repr(docker_config, global_env_vars)
+        # client instances need some additional env vars.
+        client_specific_env_vars = {
+            "JWT_SECRET_FILE": str(self.jwt_secret_file),
+            "CONSENSUS_NODE_DIR": str(self.node_dir),
+            "COLLECTION_DIR": str(self.collection_dir),
+            "CONSENSUS_CONFIG_FILE": str(self.collection_dir / "config.yaml"),
+            "CONSENSUS_GENESIS_FILE": str(self.collection_dir / "genesis.ssz"),
+            "EXECUTION_NODE_DIR": str(self.el_dir),
+            "CONSENSUS_GRAFFITI": f"{self.name}",
+        }
+
+        # client instances launch both EL and CL in the same container.
+        entry["command"] = self.docker_command
+        # add the client specific env vars to the global env vars.
+        entry["environment"].update(client_specific_env_vars)
+
+        return entry
+
+    def get_execution_jsonrpc_path(self, protocol: str = "http") -> str:
+        """
+            Returns the http path for the jsonrpc interface for this instance.
+            Defaults to http
+        @return: <protocol>://<ip_address>:<rpc_port>
+        """
+        if protocol == "http":
+            return f"http://{self.ip_address}:{self.execution_config.http_port}"
+        elif protocol == "ws":
+            return f"ws://{self.ip_address}:{self.execution_config.ws_port}"
+        else:
+            raise Exception(f"Invalid protocol: {protocol}")
+
+    def get_consensus_beacon_api_path(self) -> str:
+        """
+            Returns the http path for the beacon api for this instance.
+        """
+        return f"http://{self.ip_address}:{self.consensus_config.beacon_api_port}"
+
+
+# TODO: which forks are enabled. (CL <-> EL tie in when FarFuture is used.) //EL overflow when far future is used.
+
+class ETBConfig(Config):
+    """
+        Represents the ETBConfig file. This is the main config file for the testnet.
+
+        This object can be used to get various information about a running testnet.
+    """
+
+    def __init__(self, path: pathlib.Path, logger: logging.Logger = None):
+        """
+            The logger is an optional param to pass logging from a module into this object.
+        @param path: path to the etb-config file.
+        @param logger: optional logger to use
+        """
+        super().__init__("etb-config")
+
+        if path.exists():
+            with open(path, "r") as f:
+                self._config = yaml.safe_load(f)
+        else:
+            raise FileNotFoundError(f"Could not find etb-config file at {path}")
+
+        self.config_path: pathlib.Path = path  # where the config file is located.
+        self.num_client_nodes: int = 0  # the total number of client nodes in the testnet.
+
+        self.files: FilesConfig = FilesConfig()
+        self.docker: DockerConfig = DockerConfig(self._config['docker'])
+        self.testnet_config: TestnetConfig = TestnetConfig(self._config['testnet-config'])
+
+        self.execution_configs: dict[str, ExecutionInstanceConfig] = {}
+        for conf in self._config["execution-configs"]:
+            self.execution_configs[conf] = ExecutionInstanceConfig(name=conf,
+                                                                   config=self._config["execution-configs"][conf])
+
+        self.consensus_configs: dict[str, ConsensusInstanceConfig] = {}
+        for conf in self._config['consensus-configs']:
+            self.consensus_configs[conf] = ConsensusInstanceConfig(name=conf,
+                                                                   config=self._config['consensus-configs'][conf])
+
+        # instances should all have the same name, if they don't raise an exception.
+        _generic_instance_names: dict[str, None] = {}
+
+        self.generic_instances: dict[str, list[Instance]] = {}
+        self.generic_collections: list[InstanceCollectionConfig] = []
+        for name in self._config['generic-instances']:
+            collection_config: InstanceCollectionConfig
+            collection_config = InstanceCollectionConfig(name=name, config=self._config['generic-instances'][name])
+            self.generic_collections.append(collection_config)
+            self.generic_instances[name] = []
+            for ndx in range(collection_config.num_nodes):
+                instance: Instance = Instance(collection_name=name, ndx=ndx, collection_config=collection_config)
+                if instance.name in _generic_instance_names:
+                    raise Exception(f"Found duplicate instance name: {instance}")
+                _generic_instance_names[instance.name] = None
+                self.generic_instances[name].append(instance)
+
+        self.client_instances: dict[str, list[ClientInstance]] = {}
+        self.client_collections: list[ClientInstanceCollectionConfig] = []
+        for name in self._config['client-instances']:
+            el_config: ExecutionInstanceConfig
+            cl_config: ConsensusInstanceConfig
+            collection_config: ClientInstanceCollectionConfig
+
+            el_config = self.execution_configs[self._config['client-instances'][name]['execution-config']]
+            cl_config = self.consensus_configs[self._config['client-instances'][name]['consensus-config']]
+            collection_config = ClientInstanceCollectionConfig(name=name,
+                                                               config=self._config['client-instances'][name],
+                                                               consensus_config=cl_config,
+                                                               execution_config=el_config)
+            self.client_collections.append(collection_config)
+
+            self.client_instances[name] = []
+            for ndx in range(collection_config.num_nodes):
+                self.num_client_nodes += 1  # update the client node count.
+                instance: ClientInstance = ClientInstance(root_name=name, ndx=ndx, collection_config=collection_config)
+                if instance.name in _generic_instance_names:
+                    raise Exception(f"Found duplicate instance name: {instance}")
+                _generic_instance_names[instance.name] = None
+                self.client_instances[name].append(instance)
+
+        # dynamic entries set during bootstrap.
+        if "dynamic-entries" not in self._config:
+            self._config["dynamic-entries"] = {}
+
+        self.genesis_time: Union[None, int] = None
+
+        # are we opening ETB config after a testnet has been bootstrapped?
+        if "genesis-time" in self._config["dynamic-entries"]:
+            self.genesis_time = int(self._config["dynamic-entries"]["genesis-time"])
 
     def get_generic_instances(self) -> List[Instance]:
-        all_generic_instances = []
-        for collections in self.generic_instance_collections.values():
-            for instances in collections:
-                all_generic_instances.append(instances)
-        return all_generic_instances
+        generic_instances: list[Instance] = []
+        for gi in self.generic_instances.values():
+            generic_instances.extend(gi)
+        return generic_instances
+
+    def get_client_instances(self) -> List[ClientInstance]:
+        client_instances: list[ClientInstance] = []
+        for ci in self.client_instances.values():
+            client_instances.extend(ci)
+        return client_instances
 
     def get_docker_compose_repr(self) -> dict:
         """
-        Takes all the information contained in the config file and flattens
-        it into a suitable representation for a docker-compose file.
-        :return: docker-compose compatible yaml
+            Returns a dictionary representation of the docker-compose.yml file.
+        @return: 
         """
-        # env-vars that are added to every service in the docker
-        global_env_vars_to_get = [
-            # checkpoint files
-            "etb-config-checkpoint-file",
-            "consensus-checkpoint-file",
-            "execution-checkpoint-file",
-            "consensus-bootnode-checkpoint-file",
-            "consensus-bootnode-file",
-            # misc globals
-            "ip-subnet",
-            "num-client-nodes",
-            # execution vars only contained in etb-config
-            "chain-id",
-            "network-id",
-        ]
+        global_env_vars: dict[str] = {
+            "ETB_CONFIG_CHECKPOINT_FILE": str(self.files.etb_config_checkpoint_file),
+            "CONSENSUS_CHECKPOINT_FILE": str(self.files.consensus_checkpoint_file),
+            "EXECUTION_CHECKPOINT_FILE": str(self.files.execution_checkpoint_file),
+            "CONSENSUS_BOOTNODE_CHECKPOINT_FILE": str(self.files.consensus_bootnode_checkpoint_file),
+            "CONSENSUS_BOOTNODE_FILE": str(self.files.consensus_bootnode_file),
+            "IP_SUBNET": str(self.docker.ip_subnet),
+            "NUM_CLIENT_NODES": self.num_client_nodes,
+            "CHAIN_ID": self.testnet_config.execution_layer.chain_id,
+            "NETWORK_ID": self.testnet_config.execution_layer.network_id,
+        }
 
-        global_env_vars = {}
-        for var in global_env_vars_to_get:
-            global_env_vars[var.replace("-", "_").upper()] = self.get(var)
+        execution_genesis_map: dict[str, str] = {
+            "geth": str(self.files.geth_genesis_file),
+            "besu": str(self.files.besu_genesis_file),
+            "nethermind": str(self.files.nether_mind_genesis_file),
+        }
 
-        services = {}
-        for generic_instances in self.get_generic_instances():
-            services[generic_instances.name] = generic_instances.get_docker_repr(
-                self.docker
-            )
-            for k, v in global_env_vars.items():
-                services[generic_instances.name]["environment"][k] = v
+        services: dict = {}
+        for gi in self.get_generic_instances():
+            services[gi.name] = gi.get_docker_compose_repr(docker_config=self.docker, global_env_vars=global_env_vars)
 
-        for client_instances in self.get_client_instances():
-            services[client_instances.name] = client_instances.get_docker_repr(
-                self.docker
-            )
-            for k, v in global_env_vars.items():
-                services[client_instances.name]["environment"][k] = v
+        for ci in self.get_client_instances():
+            ci_docker_repr = ci.get_docker_compose_repr(docker_config=self.docker, global_env_vars=global_env_vars)
+            # now add the runtime specific env vars.
+            if ci.execution_config.client not in execution_genesis_map:
+                raise Exception("Unknown execution client: {ci.execution_config.client}")
+            ci_docker_repr["environment"]["EXECUTION_GENESIS_FILE"] = execution_genesis_map[ci.execution_config.client]
+            services[ci.name] = ci_docker_repr
 
         return {
             "services": services,
             "networks": {
-                self.docker.get("network-name"): {
+                self.docker.network_name: {
                     "driver": "bridge",
-                    "ipam": {"config": [{"subnet": self.docker.get("ip-subnet")}]},
+                    "ipam": {"config": [{"subnet": self.docker.ip_subnet}]}
                 }
-            },
+            }
         }
 
-    # get information about the testnet
-    def get_preset_base(self) -> Type[Union[MainnetPreset, MinimalPreset]]:
-        preset_base = self.config_params.get("preset-base")
-        if preset_base == "minimal":
-            return MinimalPreset
-        if preset_base == "mainnet":
-            return MainnetPreset
-
-        raise Exception("Invalid preset-base in consensus config-parameters.")
-
-    def get_preset_value(self, str_repr: str) -> int:
+    # useful operations.
+    def epoch_to_slot(self, epoch: int) -> int:
         """
-            Get the value of a preset. Some can be overwritten, so check
-            those first before returning the defaul.
-        :param str_repr: preset variable
-        :return: int(value)
+            Converts an epoch to a slot.
+        @param epoch:
+        @return: slot
         """
-        sanitized_input = str_repr.replace("_", "-").lower()
-        defined_lookups = {
-            "slots-per-epoch": self.preset_base.SLOTS_PER_EPOCH,
-            "epochs-per-eth1-voting-period": self.preset_base.EPOCHS_PER_ETH1_VOTING_PERIOD,
-            "seconds-per-slot": self.preset_base.SECONDS_PER_SLOT,
-            "seconds-per-eth1-block": self.preset_base.SECONDS_PER_ETH1_BLOCK,
-            "min-validator-withdrawability-delay": self.preset_base.MIN_VALIDATOR_WITHDRAWABILITY_DELAY,
-            "shard-committee-period": self.preset_base.SHARD_COMMITTEE_PERIOD,
-            "eth1-follow-distance": self.preset_base.ETH1_FOLLOW_DISTANCE,
-            "inactivity-score-bias": self.preset_base.INACTIVITY_SCORE_BIAS,
-            "inactivity-score-recovery-rate": self.preset_base.INACTIVITY_SCORE_RECOVERY_RATE,
-            "ejection-balance": self.preset_base.EJECTION_BALANCE,
-            "min-per-epoch-churn-limit": self.preset_base.MIN_PER_EPOCH_CHURN_LIMIT,
-            "churn-limit-quotient": self.preset_base.CHURN_LIMIT_QUOTIENT,
-            "proposer-score-boost": self.preset_base.PROPOSER_SCORE_BOOST,
-            "field-elements-per-blob": self.preset_base.FIELD_ELEMENTS_PER_BLOB,
+        return epoch * self.testnet_config.consensus_layer.preset_base.SLOTS_PER_EPOCH.value
+
+    def epoch_to_time(self, epoch: int) -> int:
+        """
+            Converts an epoch to a time using the testnet genesis time.
+        @param epoch:
+        @return:
+        """
+        return self.slot_to_time(self.epoch_to_slot(epoch))
+
+    def slot_to_epoch(self, slot: int) -> int:
+        """
+            Converts a slot to an epoch.
+        @param slot:
+        @return: epoch
+        """
+        return slot // self.testnet_config.consensus_layer.preset_base.SLOTS_PER_EPOCH.value
+
+    def slot_to_time(self, slot: int) -> int:
+        """
+            Converts a slot to a time using the testnet genesis time.
+        @param slot: time delta in slot form.
+        @return: time as int.
+        """
+        return self.genesis_time + (slot * self.testnet_config.consensus_layer.preset_base.SECONDS_PER_SLOT.value)
+
+    def get_consensus_fork_delay_seconds(self, fork_name: str) -> int:
+        """
+            Returns the number of seconds between genesis and consensus fork.
+        @param fork_name: The fork to get the delay for.
+        @return: int: how many seconds past genesis the fork should occur.
+        """
+        epoch_map: dict[str, int] = {
+            "phase0": self.testnet_config.consensus_layer.phase0_fork.epoch,
+            "altair": self.testnet_config.consensus_layer.altair_fork.epoch,
+            "bellatrix": self.testnet_config.consensus_layer.bellatrix_fork.epoch,
+            "capella": self.testnet_config.consensus_layer.capella_fork.epoch,
+            "deneb": self.testnet_config.consensus_layer.deneb_fork.epoch,
+            "sharding": self.testnet_config.consensus_layer.sharding_fork.epoch,
         }
+        if fork_name not in epoch_map:
+            raise Exception(f"Unknown fork name: {fork_name}")
 
-        # The etb-config can override some of the config-parameters, check for those here.
-        for override in ConsensusConfigOverrides:
-            if sanitized_input == override:
-                if self.config_params.has(override):
-                    override = self.config_params.get(override)
-                    self.logger.debug(
-                        f"Returning etb-config overwritten preset: {override} : {override}"
-                    )
-                    return override
+        fork_epoch: int = epoch_map[fork_name]
+        return fork_epoch * self.testnet_config.consensus_layer.preset_base.SECONDS_PER_SLOT.value * self.testnet_config.consensus_layer.preset_base.SLOTS_PER_EPOCH.value
 
-        if sanitized_input in defined_lookups:
-            value = defined_lookups[sanitized_input].value
-            self.logger.debug(
-                f"returning default preset for {sanitized_input} : {value}"
-            )
-            return value
-
-        raise Exception(f"No preset value defined for vairable: {str_repr}")
-
-    def get_genesis_fork_upgrade(self) -> ForkVersionName:
+    # modify the dynamic entries. You shouldn't need to use these.
+    def set_genesis_time(self, genesis_time: int):
         """
-        The genesis fork upgrade is the network fork on the start of the
-        network. **NOT** the phase0 version used for signatures!
-
-        This is used for the TestnetBootstrapper to identify how the network
-        should come up.
-        :return:
+            Sets the genesis time for the network in the dynamic_entries.
+        @param genesis_time: The time that the bootstrapper started the testnet.
+        @return:
         """
-        if self.get("deneb-fork-epoch") == 0:
-            return ForkVersionName.Deneb
-        if self.get("capella-fork-epoch") == 0:
-            return ForkVersionName.Capella
-        if self.get("bellatrix-fork-epoch") == 0:
-            return ForkVersionName.Bellatrix
-        if self.get("altair-fork-epoch") == 0:
-            return ForkVersionName.Altair
-        if self.get("phase0-fork-epoch") == 0:
-            return ForkVersionName.Phase0
-        else:
-            raise Exception("No genesis-fork-epoch set to 0.")
+        self._config["dynamic-entries"]["genesis-time"] = genesis_time
+        self.genesis_time = genesis_time
 
-    def get_consensus_genesis_delay(self) -> int:
+    # write an updated version of the config.
+    def write_config(self):
         """
-        Calculate the consensus genesis delay.
-        If we aren't doing a bellatrix genesis then we use eth1-follow-distance
-        :return: int(delay)
+            Writes the config to the correct file. This should only be done by the bootstrapper.
+        @return:
         """
-        if self.get_genesis_fork_upgrade() < ForkVersionName.Bellatrix:
-            return self.get_preset_value(
-                "eth1-follow-distance"
-            ) * self.get_preset_value("seconds-per-eth1-block")
-        else:
-            return 0
-
-    def get_execution_merge_fork_block(self) -> int:
-        """
-        Based on the configuration parameters for fork version epochs
-        calculate the merge fork block height for the execution layer
-        :return: block height as int.
-        """
-        # post-merge genesis
-        if self.get_genesis_fork_upgrade() >= ForkVersionName.Bellatrix:
-            return 0
-
-        # determine if we are doing a merge
-        if self.config_params.get("bellatrix-fork-epoch") == Epoch.FarFuture.value():
-            return Epoch.FarFuture.value()
-
-        # pre bellatrix genesis with configured merge.
-        merge_slot = (
-            self.config_params.get("bellatrix-fork-epoch")
-            * self.preset_base.SLOTS_PER_EPOCH.value
-        )
-        merge_time = (
-            merge_slot * self.preset_base.SECONDS_PER_SLOT.value
-        ) + self.get_consensus_genesis_delay()
-        merge_el_block = int(merge_time // self.get("seconds-per-eth1-block"))
-
-        self.logger.debug(f"time to merge: {merge_time} -> eth1-block {merge_el_block}")
-        return merge_el_block
-
-    def get_consensus_fork_delay_seconds(self, fork_name) -> int:
-        """
-        Given a consensus fork calculate the time that it will occur relative
-        to the genesis of the beacon chain.
-        """
-        if fork_name not in self.consensus_forks.keys():
-            raise Exception(f"Fork {fork_name}  not defined in config. {fork_name}")
-
-        consensus_fork = self.consensus_forks[fork_name]
-        return (
-            consensus_fork.epoch
-            * self.preset_base.SLOTS_PER_EPOCH.value
-            * self.preset_base.SECONDS_PER_SLOT.value
-        ) + self.get_consensus_genesis_delay()
+        if self.files.etb_config_checkpoint_file.exists():
+            raise Exception("Cannot write config file while checkpoint file exists.")
+        with open(self.files.etb_config_file, "w") as f:
+            yaml.safe_dump(self._config, f)
 
 
-    def get_bootstrap_genesis_time(self) -> int:
-        if "bootstrap-genesis" in self.global_config:
-            return self.global_config["bootstrap-genesis"]
+def get_etb_config(logger: logging.Logger = None) -> ETBConfig:
+    """
+        Returns the path to the etb-config.yaml file for running containers on the network.
+    @return: network config: ETBConfig
+    """
+    path = FilesConfig().etb_config_file
+    checkpoint = FilesConfig().etb_config_checkpoint_file
+    if logger is not None:
+        logging.info("Getting ETBConfig for testnet.")
+    while not checkpoint.exists():
+        time.sleep(1)
+        if logger is not None:
+            logging.debug(f"Waiting for checkpoint: {checkpoint}")
+    return ETBConfig(path, logger=logger)
 
-        raise Exception("Tried getting bootstrap genesis before bootstrapping.")
-
-    def get_shanghai_time(self) -> int:
-        """
-        the ELs have shangaiTime which should correspond with CAPELLA_FORK_EPOCH
-        :return: shanghaiTime
-        """
-        capella_fork_epoch = self.config_params.get("capella-fork-epoch")
-        capella_delta = (
-            capella_fork_epoch
-            * self.preset_base.SLOTS_PER_EPOCH.value
-            * self.preset_base.SECONDS_PER_SLOT.value
-        ) + self.get_consensus_genesis_delay()
-        shanghai_time = self.get_bootstrap_genesis_time() + capella_delta
-        self.logger.debug(
-            f"Calculated shanghai time as cl epoch: {capella_fork_epoch} at time: {shanghai_time}"
-        )
-        return shanghai_time
-
-    def get_num_client_nodes(self) -> int:
-        return len(self.get_client_instances())
-
-    def get_premine_keypairs(self) -> list[PremineKeyPair]:
-
-        """
-        Returns a dict with eth1 premind keys: {pubkey: privkey}
-        :return: {premine : (public, private)}
-        """
-        pkps = []
-        for acc in self.accounts.get("eth1-premine"):
-            pkp = PremineKeyPair(
-                acc,
-                self.accounts.get("eth1-passphrase"),
-                self.accounts.get("eth1-account-mnemonic"),
-            )
-            pkps.append(pkp)
-
-        return pkps
-
-    def get_number_of_unaccounted_validator_deposits(self) -> int:
-        """
-        Returns the number of validator deposits that are not accounted for in the genesis state.
-        :return: int
-        """
-        total_validator_count = 0
-        for client in self.get_client_instances():
-            client_validator_count = client.consensus_config.get("num-validators")
-            total_validator_count += client_validator_count
-        self.logger.debug(f"total client validator indexes: {total_validator_count}")
-        return total_validator_count - self.config_params.get(
-            "min-genesis-active-validator-count"
-        )
-
-    # setters for modifying the etb-config file exposed to nodes.
-    def set_bootstrap_genesis_time(self, bootstrap_genesis_time: int):
-        self.global_config["bootstrap-genesis"] = bootstrap_genesis_time
-
-    # save off information about the etb-config file.
-    def write_etb_config_to_testnet_dir(self):
-        """
-        Write the etb-config file with all the modified fields to testnet dir.
-        This allows other modules to use the same parameters from the bootstrapper.
-        :return:
-        """
-        with open(self.files.get("etb-config-file"), "w") as f:
-            self.logger.debug(
-                f"Dumping etb-config global_config to file: {self.files.get('etb-config-file')}"
-            )
-            yaml.safe_dump(self.global_config, f)
-
-    # quick conversions
-    def epoch_to_slot(self, epoch: int):
-        """epoch -> slot"""
-        return epoch * self.preset_base.SLOTS_PER_EPOCH.value

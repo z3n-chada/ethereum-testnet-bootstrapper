@@ -1,9 +1,10 @@
 import argparse
-import logging
-import sys
+import pathlib
 
+from modules.Utils import logging_levels, get_logger
 from modules.TestnetBootstrapper import EthereumTestnetBootstrapper
-from modules.UtilityWrappers import create_logger
+
+logger = get_logger(log_level="debug", name="testnet_bootstrapper")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -11,13 +12,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "--config",
         dest="config",
-        required=True,
+        required=False,
         help="Which config file to use to create a testnet.",
     )
 
     parser.add_argument(
-        "--clear-last-run",
-        dest="clear_last_run",
+        "--clean",
+        dest="clean",
         action="store_true",
         default=False,
         help="Clear the last run.",
@@ -47,17 +48,30 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-    logger = create_logger("testnet_bootstrapper", args.log_level)
-    etb = EthereumTestnetBootstrapper(args.config, logger)
 
-    if args.clear_last_run:
-        etb.clear_last_run()
+    if args.log_level not in logging_levels:
+        raise ValueError(f"Invalid logging level: {args.log_level} ({logging_levels.keys()})")
+    logger.setLevel(args.log_level.upper())
+    logger.info("testnet_bootstrapper has started.")
+
+    etb = EthereumTestnetBootstrapper(logger=logger)
+
+    if args.clean:
+        etb.clean()
         logger.debug("testnet_bootstrapper has finished cleaning up.")
 
     if args.init_testnet:
-        etb.init_testnet()
+        # make sure we are going from source.
+        if args.config.split("/")[0] != "source":
+            logger.debug("prepending source to the config path in order to map in the config file.")
+            config_path = pathlib.Path(f"source/{args.config}")
+        else:
+            config_path = pathlib.Path(args.config)
+        etb.init_testnet(config_path)
         logger.debug("testnet_bootstrapper has finished init-ing the testnet.")
 
     if args.bootstrap_testnet:
-        etb.bootstrap_testnet()
+        # the config path lies in /source/data/etb-config.yaml
+        config_path = pathlib.Path("source/data/etb-config.yaml")
+        etb.bootstrap_testnet(config_path)
         logger.debug("testnet_bootstrapper has finished bootstrapping the testnet.")
