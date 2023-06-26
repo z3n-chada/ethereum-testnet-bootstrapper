@@ -1,0 +1,97 @@
+"""
+    Meant to launch tx-fuzz: https://github.com/MariusVanDerWijden/tx-fuzz
+    Usage: ./tx-fuzz.bin --rpc RPC_IP:RPC_URL COMMAND (spam) --pk "comma,seperated,private,keys" --seed RAND_SEED
+"""
+import argparse
+import logging
+import os
+import pathlib
+import random
+import time
+import subprocess
+
+from web3.auto import w3
+from pathlib import Path
+
+from etb.config.ETBConfig import ETBConfig, ClientInstance, get_etb_config
+from etb.interfaces.TestnetMonitor import TestnetMonitor
+from etb.common.Utils import get_logger, PremineKey
+from etb.interfaces.external.LiveFuzzer import LiveFuzzer
+
+w3.eth.account.enable_unaudited_hdwallet_features()
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "--fuzz-mode",
+        dest="fuzz_mode",
+        default="spam",
+        help="tx-fuzz mode to use",
+    )
+
+    parser.add_argument(
+        "--target-ip",
+        dest="target_ip",
+        default=None,
+        required=False,
+        help="target ip address to use for spamming",
+    )
+
+    parser.add_argument(
+        "--target-port",
+        dest="target_port",
+        default=None,
+        type=int,
+        required=False,
+        help="target port to use for spamming",
+    )
+
+    parser.add_argument(
+        "--epoch-delay",
+        dest="epoch_delay",
+        type=int,
+        default=None,
+        help="what CL epoch to start spamming at",
+    )
+
+    parser.add_argument(
+        "--tx-fuzz-path",
+        dest="tx_fuzz_path",
+        default="/usr/local/bin/tx-fuzz",  # defined in the etb-all-clients.Dockerfile
+        help="path to the tx-fuzz binary",
+    )
+
+    logger = get_logger(name="tx-fuzz", log_level="debug")
+    etb_config: ETBConfig = get_etb_config(logger)
+    testnet_monitor = TestnetMonitor(etb_config, logger=logger)
+
+    args = parser.parse_args()
+    live_fuzzer_interface = LiveFuzzer(logger, binary_path=pathlib.Path(args.tx_fuzz_path))
+
+    # process args.
+    if args.target_ip is None or args.target_port is None:
+        client: ClientInstance = random.choice(etb_config.get_client_instances())
+        args.target_ip = client.get_ip_address()
+        args.target_port = client.execution_config.http_port
+
+    rpc_path = f"http://{args.target_ip}:{args.target_port}"
+
+    # get the private keys to use.
+    mnemonic = etb_config.testnet_config.execution_layer.account_mnemonic
+    account_pass = etb_config.testnet_config.execution_layer.keystore_passphrase
+    premine_accts = etb_config.testnet_config.execution_layer.premines
+
+    private_keys = []
+    for acc in premine_accts:
+        private_keys.append(PremineKey(mnemonic=mnemonic,account=acc, passphrase=account_pass).private_key)
+
+    logger.debug(f"private keys: {private_keys}")
+
+    logger.info(f"Waiting for start epoch {args.epoch_delay}")
+    testnet_monitor.wait_for_epoch(args.epoch_delay)
+
+    live_fuzzer_interface.start_fuzzer(rpc_path=rpc_path,
+                                       fuzz_mode=args.fuzz_mode,
+                                       private_key=random.choice(private_keys))
+

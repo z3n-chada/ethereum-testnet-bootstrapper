@@ -1,10 +1,10 @@
 from typing import Any
 
 from web3.auto import w3
-from .ETBConfig import ETBConfig, ForkVersionName
+from ..config.ETBConfig import ETBConfig, ForkVersionName
 import logging
 
-from .Consensus import Epoch, ConsensusFork
+from ..common.Consensus import Epoch, ConsensusFork
 
 w3.eth.account.enable_unaudited_hdwallet_features()
 logger = logging.getLogger("bootstrapper_log")

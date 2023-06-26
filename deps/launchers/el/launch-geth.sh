@@ -43,16 +43,9 @@ geth init \
     --datadir "$EXECUTION_NODE_DIR" \
     "$EXECUTION_GENESIS_FILE"
 
-
-# TODO: look into these
-##if [ -n "$GETH_PASSWORD_FILE" ]; then
-##    echo "$ETH1_PASSPHRASE" > "$GETH_PASSWORD_FILE"
-##fi
-#
 # Now start geth.
 echo "Starting geth"
 
-# --keystore '/source/apps/data/geth-keystores/' \
 geth \
   --datadir="$EXECUTION_NODE_DIR" \
   --networkid="$CHAIN_ID" \

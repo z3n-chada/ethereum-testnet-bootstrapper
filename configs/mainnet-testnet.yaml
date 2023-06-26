@@ -417,4 +417,12 @@ generic-instances:
     tag: "latest"
     start-ip-address: "10.0.20.203"
     num-nodes: 1
-    entrypoint: "python3 /source/apps/node-watch.py --log-level info"
+    entrypoint: "python3 /source/src/node-watch.py --log-level info"
+
+  tx-spammer:
+    image: "etb-all-clients"
+    tag: "minimal-current"
+    start-ip-address: "10.0.20.204"
+    num-nodes: 1
+    # runs on the first prysm geth node.
+    entrypoint: "python3 /source/src/tx-spammer.py --target-ip 10.0.20.10 --target-port 8645 --epoch-delay 1 --fuzz-mode spam --tx-fuzz-path /usr/local/bin/livefuzzer"

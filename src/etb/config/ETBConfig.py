@@ -2,8 +2,8 @@ import logging
 import pathlib
 import time
 
-from .Consensus import ConsensusFork, TerminalBlockHash
-from .Consensus import (
+from ..common.Consensus import ConsensusFork, TerminalBlockHash
+from ..common.Consensus import (
     PresetEnum,
     MinimalPreset,
     MainnetPreset,
@@ -11,7 +11,7 @@ from .Consensus import (
     Epoch,
 )
 from ruamel import yaml
-from typing import List, Dict, Union, Any, Generator, Type
+from typing import List, Union
 from web3.auto import w3
 
 

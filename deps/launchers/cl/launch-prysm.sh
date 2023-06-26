@@ -29,8 +29,6 @@ for var in "${env_vars[@]}" ; do
         echo "PRYSM error in geth var check."
         echo "$var not set"
         exit 1
-    else
-        echo "Using $var = ${env_vars[var]}"
     fi
 done
 
