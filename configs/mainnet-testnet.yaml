@@ -50,7 +50,7 @@ testnet-config:
     bellatrix-fork-epoch: 0
 
     capella-fork-version: 0x04000666
-    capella-fork-epoch: 2
+    capella-fork-epoch: 0
 
     deneb-fork-version: 0x05000666
 #    deneb-fork-epoch: 18446744073709551615 # far future
