@@ -7,10 +7,6 @@ rebuild-bootstrapper:
 	docker build --no-cache -t ethereum-testnet-bootstrapper -f bootstrapper.Dockerfile .
 
 # Build the etb-all-clients images:
-# - etb-all-clients:minimal-current
-# - etb-all-clients:minimal-next  <- untested
-# - etb-all-clients:mainnet-current
-# - etb-all-clients:mainnet-next
 build-etb-all-clients:
 	cd deps/dockers && ./build-dockers.sh
 
