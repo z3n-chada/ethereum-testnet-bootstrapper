@@ -771,6 +771,8 @@ class ClientInstance(Instance):
         entry["command"] = self.docker_command
         # add the client specific env vars to the global env vars.
         entry["environment"].update(client_specific_env_vars)
+        # add num validators for this entry.
+        entry["environment"].update({"NUM_VALIDATORS": self.collection_config.consensus_config.num_validators})
 
         return entry
 
