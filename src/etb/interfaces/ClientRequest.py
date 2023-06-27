@@ -119,7 +119,7 @@ class BeaconAPIRequest(ClientInstanceRequest):
         @return: response on success, exception otherwise.
         """
         beacon_api_endpoint = instance.get_consensus_beacon_api_path()
-        request_str = f"{beacon_api_endpoint}/{self.payload}"
+        request_str = f"{beacon_api_endpoint}{self.payload}"
         for attempt in range(self.max_retries):
             try:
                 response = requests.get(request_str, timeout=self.timeout)
