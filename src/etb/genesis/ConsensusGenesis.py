@@ -112,6 +112,18 @@ PROPOSER_SCORE_BOOST: 40
 DEPOSIT_CHAIN_ID: {self.etb_config.testnet_config.execution_layer.chain_id}
 DEPOSIT_NETWORK_ID: {self.etb_config.testnet_config.execution_layer.network_id}
 DEPOSIT_CONTRACT_ADDRESS: {self.etb_config.testnet_config.deposit_contract_address}
+
+# Networking
+# ---------------------------------------------------------------
+GOSSIP_MAX_SIZE: {self.consensus_testnet_config.preset_base.GOSSIP_MAX_SIZE.value}
+MAX_CHUNK_SIZE: {self.consensus_testnet_config.preset_base.MAX_CHUNK_SIZE.value}
+MAX_REQUEST_BLOCKS: {self.consensus_testnet_config.preset_base.MAX_REQUEST_BLOCKS.value}
+EPOCHS_PER_SUBNET_SUBSCRIPTION: {self.consensus_testnet_config.preset_base.EPOCHS_PER_SUBNET_SUBSCRIPTION.value}
+SUBNETS_PER_NODE: {self.consensus_testnet_config.preset_base.SUBNETS_PER_NODE.value}
+ATTESTATION_SUBNET_COUNT: {self.consensus_testnet_config.preset_base.ATTESTATION_SUBNET_COUNT.value}
+ATTESTATION_SUBNET_EXTRA_BITS: {self.consensus_testnet_config.preset_base.ATTESTATION_SUBNET_EXTRA_BITS.value}
+ATTESTATION_SUBNET_PREFIX_BITS: {self.consensus_testnet_config.preset_base.ATTESTATION_SUBNET_PREFIX_BITS.value}
+
 """
         # check if we are doing a deneb experiment, if so add the deneb related config params.
         if self.consensus_testnet_config.deneb_fork.epoch != Epoch.FarFuture:
