@@ -275,6 +275,7 @@ class ConsensusLayerTestnetConfig(Config):
         # optional fields that may be overridden in the etb-config file.
         self.min_validator_withdrawability_delay: int = self.preset_base.MIN_VALIDATOR_WITHDRAWABILITY_DELAY.value
         self.shard_committee_period: int = self.preset_base.SHARD_COMMITTEE_PERIOD.value
+        self.min_epochs_for_block_requests: int = self.preset_base.MIN_EPOCHS_FOR_BLOCK_REQUESTS.value
 
         self.phase0_fork: ConsensusFork
         self.altair_fork: ConsensusFork
@@ -288,6 +289,9 @@ class ConsensusLayerTestnetConfig(Config):
 
         if "shard-committee-period" in config:
             self.shard_committee_period: int = config["shard-committee-period"]
+
+        if "min-epochs-for-block-requests" in config:
+            self.min_epochs_for_block_requests: int = config["min-epochs-for-block-requests"]
 
         self.phase0_fork, self.altair_fork, self.bellatrix_fork, self.capella_fork, self.deneb_fork, self.sharding_fork = self._get_forks_from_config(
             config)

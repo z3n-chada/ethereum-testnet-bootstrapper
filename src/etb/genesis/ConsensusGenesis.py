@@ -124,6 +124,10 @@ ATTESTATION_SUBNET_COUNT: {self.consensus_testnet_config.preset_base.ATTESTATION
 ATTESTATION_SUBNET_EXTRA_BITS: {self.consensus_testnet_config.preset_base.ATTESTATION_SUBNET_EXTRA_BITS.value}
 ATTESTATION_SUBNET_PREFIX_BITS: {self.consensus_testnet_config.preset_base.ATTESTATION_SUBNET_PREFIX_BITS.value}
 
+# potential override
+# MIN_VALIDATOR_WITHDRAWABILITY_DELAY + CHURN_LIMIT_QUOTIENT // 2
+MIN_EPOCHS_FOR_BLOCK_REQUESTS: {self.consensus_testnet_config.min_epochs_for_block_requests}
+
 """
         # check if we are doing a deneb experiment, if so add the deneb related config params.
         if self.consensus_testnet_config.deneb_fork.epoch != Epoch.FarFuture:

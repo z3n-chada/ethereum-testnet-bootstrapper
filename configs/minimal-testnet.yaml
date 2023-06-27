@@ -36,6 +36,8 @@ testnet-config:
     # optional config param overrides
     min-validator-withdrawability-delay: 2 # increase the withdrawal speed
     shard-committee-period: 2 # increase the withdrawal speed
+    # MIN_VALIDATOR_WITHDRAWABILITY_DELAY + CHURN_LIMIT_QUOTIENT // 2
+    min-epochs-for-block-requests: 17
 
     # the validator mnemonic to use for all validators
     validator-mnemonic: "ocean style run case glory clip into nature guess jacket document firm fiscal hello kite disagree symptom tide net coral envelope wink render festival"
