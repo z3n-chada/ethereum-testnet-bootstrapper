@@ -17,6 +17,8 @@ import requests
 from etb.common.Consensus import ConsensusFork, Epoch
 from etb.common.Utils import get_logger, logging_levels
 from etb.config.ETBConfig import ETBConfig, ClientInstance, get_etb_config
+from etb.interfaces.TestnetMonitor import TestnetMonitor
+from etb.interfaces.ClientRequest import beacon_getBlockV2, perform_batched_request
 
 logger: logging.Logger = get_logger(name="NodeWatch", log_level="info")
 
@@ -51,97 +53,22 @@ def perform_query(query, max_retries=3, timeout=5) -> Union[Any, Exception]:
             return e
 
 
-class SimpleNodeWatch(object):
+class NodeWatch(object):
     def __init__(self, logger: logging.Logger, etb_config: ETBConfig, max_retries: int, timeout: int):
-        self.logger: logging.Logger = logger
-        self.etb_config: ETBConfig = etb_config
-        self.max_retries: int = max_retries
-        self.timeout: int = timeout
+        if logger is None:
+            self.logger = get_logger(name="NodeWatch", log_level="debug")
+        else:
+            self.logger = logger
 
+        self.etb_config = etb_config
+        self.max_retries = max_retries
+        self.timeout = timeout
+        self.testnet_monitor = TestnetMonitor(logger=self.logger, etb_config=self.etb_config)
         self.instances_to_monitor = self.etb_config.get_client_instances()
 
-        self.queries: dict[ClientInstance, list[str]] = {}
-        for instance in self.instances_to_monitor:
-            self.queries[instance] = []
-            self.queries[instance].append(f"{instance.get_consensus_beacon_api_path()}/eth/v2/beacon/blocks/head")
-
-        # get the genesis time so we can calculate slot offsets.
-        self.genesis_time = self.etb_config.genesis_time
-
-    def wait_for_slot(self, slot: int, interval: int = 1):
+    def get_testnet_info_str(self) -> str:
         """
-        Wait until the current slot is equal to the target slot.
-        @param slot: target slot to wait for
-        @param interval: max interval between sleeps
-        @return: when current time corresponds to the target slot
-        """
-        target_time = self.etb_config.slot_to_time(slot)
-
-        while int(time.time()) < target_time:
-            self.logger.debug(f"Waiting for slot {slot}")
-            time.sleep(min(interval, target_time - int(time.time())))
-
-    def get_node_status(self):
-        """
-        Get the head and finality checkpoints for each node.
-        @return:
-        """
-        status_requests = [
-            "/eth/v2/beacon/blocks/head",
-        ]
-        value_error_instances = []
-        unreachable_instances = []
-        results = {}
-
-        # Create a ThreadPoolExecutor with a maximum of 5 concurrent threads
-        with ThreadPoolExecutor(max_workers=len(self.instances_to_monitor)) as executor:
-            head_futures: dict[ClientInstance, Future] = {}
-
-            for client_instance in self.instances_to_monitor:
-                query = f"{client_instance.get_consensus_beacon_api_path()}/eth/v2/beacon/blocks/head"
-                future = executor.submit(perform_query, query, max_retries=self.max_retries, timeout=self.timeout)
-                head_futures[client_instance] = future
-
-            # Retrieve the results as they become available and organize the responses
-            for client_instance, future in head_futures.items():
-                response = future.result()
-                if isinstance(response, requests.RequestException):
-                    unreachable_instances.append(client_instance.name)
-                elif isinstance(response, ValueError):
-                    value_error_instances.append(client_instance.name)
-                else:
-                    try:
-                        head = response["data"]["message"]["slot"]
-                        state_root = response["data"]["message"]["state_root"]
-                        graffiti = bytes.fromhex(response["data"]["message"]["body"]["graffiti"][2:]).decode(
-                            "utf-8").replace(
-                            "\x00", "")
-                        results[client_instance] = (head, state_root, graffiti)
-                    except ValueError:
-                        value_error_instances.append(client_instance.name)
-                    except KeyError:
-                        value_error_instances.append(client_instance.name)
-
-        # separate the forks
-        forks = {}
-        for client_instance, result in results.items():
-            head = result[0]
-            state_root = result[1][-6:]  # last 6 bytes of the state root
-            graffiti = result[2]
-            if (head, state_root, graffiti) not in forks:
-                forks[(head, state_root, graffiti)] = []
-            forks[(head, state_root, graffiti)].append(client_instance.name)
-        # print results to the logger
-        self.logger.info(f"Current forks: {len(forks) - 1}")
-        for fork, clients in forks.items():
-            self.logger.info(f"view: head_slot:{fork[0]}, state_root:{fork[1]}, graffiti:{fork[2]}, clients: {clients}")
-        self.logger.info(f"Unreachable instances: {unreachable_instances}")
-        if len(value_error_instances) > 0:
-            self.logger.info(f"Failed to parse message from: {value_error_instances}")
-
-    def get_testnet_info(self) -> str:
-        """
-            Prints some information about the running experiment
+        Returns str with some information about the running experiment
         @return: str
         """
         out = ""
@@ -164,17 +91,98 @@ class SimpleNodeWatch(object):
             out += f"\t\tconsensus_client: {instance.consensus_config.client}, execution_client: {instance.execution_config.client}\n"
         return out
 
+    def get_forks_str(self) -> str:
+        """
+        Returns a string suitable to report the current heads of all clients.
+        @return:
+        """
+        out = ""
+        heads, unreachable_instances, value_error_instances = self._get_heads(max_retries_for_consensus=2)
+        forks = {}
+        for result_tuple, clients in heads.items():
+            head = result_tuple[0]
+            state_root = result_tuple[1][-6:]  # last 6 bytes of the state root
+            graffiti = result_tuple[2]
+            if (head, state_root, graffiti) not in forks:
+                forks[(head, state_root, graffiti)] = []
+            for client in clients:
+                forks[(head, state_root, graffiti)].append(client.name)
+        out += f"Current forks: {len(forks) - 1}\n"
+        for fork, clients in forks.items():
+            out += f"head_slot:{fork[0]}, state_root:{fork[1]}, graffiti:{fork[2]}, clients: {clients}\n"
+        if len(unreachable_instances) > 0:
+            out += f"Unreachable instances: {unreachable_instances}\n"
+        if len(value_error_instances) > 0:
+            out += f"Failed to parse message from: {value_error_instances}\n"
+
+        return out
+
+    def _get_heads(self, max_retries_for_consensus: int) -> tuple[
+        dict[tuple[int, str, str], list[ClientInstance]], list[ClientInstance], list[ClientInstance]]:
+        """
+        Returns a 3-tuple given by:
+        1. dict: {(slot, root, graffiti) : [clients]} where block is the head block
+        2. list: unreachable clients
+        3. list: clients that had an error unpacking the block.
+
+        If there is not consensus w.r.t heads it will try max_retries_for_consensus times
+        in case the clients just needed to catch up. e.g. half are one slot behind on the
+        canonical chain.
+        @return:
+        """
+
+        # TODO this does the retries naively. Only retry clients with lower head slot.
+
+        get_head_request = beacon_getBlockV2(block="head", max_retries=self.max_retries, timeout=self.timeout)
+
+        clients_to_query = [x for x in self.instances_to_monitor]
+
+        for attempt in range(max_retries_for_consensus):
+            results: dict[tuple[int, str, str], list[ClientInstance]] = {}
+            unreachable_clients: list[ClientInstance] = []
+            value_error_clients: list[ClientInstance] = []
+            for client, api_future in perform_batched_request(get_head_request, clients_to_query).items():
+                # reset the query list
+                response: Union[requests.Response, Exception] = api_future.result()
+                if not get_head_request.is_valid(response):
+                    unreachable_clients.append(client)
+                else:
+                    try:
+                        block = get_head_request.get_block(response)
+                        slot = block["slot"]
+                        state_root = block["state_root"]
+                        graffiti = bytes.fromhex(block["body"]["graffiti"][2:]).decode(
+                            "utf-8").replace(
+                            "\x00", "")
+                        _tuple = (slot, state_root, graffiti)
+                    except Exception as e:
+                        self.logger.error(f"Failed to unpack result head block response from {client.name}")
+                        value_error_clients.append(client)
+                        continue
+                    if _tuple in results:
+                        results[_tuple].append(client)
+                    else:
+                        results[_tuple] = [client]
+            # bail if we have consensus
+            if len(results.keys()) == 1:
+                return results, unreachable_clients, value_error_clients
+            self.logger.debug(f"Retrying to get consensus on heads. {attempt}/{max_retries_for_consensus}: found {len(results.keys())} forks.")
+
+        return results, unreachable_clients, value_error_clients
+
     def run(self):
-        curr_slot = 1
-        self.logger.info(f"Testnet info: \n{self.get_testnet_info()}")
+        """
+        Run the node watch printing out the results every slot.
+        @return:
+        """
+        self.logger.info(self.get_testnet_info_str())
 
         while True:
-            self.wait_for_slot(curr_slot)
-            self.logger.info(
-                f"Status for expected slot: {curr_slot} (epoch: {self.etb_config.slot_to_epoch(curr_slot)})")
-            self.get_node_status()
-            curr_slot += 1
-
+            # wait for the next slot
+            goal_slot = self.testnet_monitor.get_slot() + 1
+            self.testnet_monitor.wait_for_slot(goal_slot)
+            self.logger.info(f"Expected slot: {goal_slot}")
+            self.logger.info(self.get_forks_str())
 
 if __name__ == "__main__":
     import argparse
@@ -189,9 +197,11 @@ if __name__ == "__main__":
                              "is a timeout for each request, e.g. for one "
                              "node we may wait timeout*max_retries seconds.")
 
+    parser.add_argument("--delay", dest="delay", type=int, default=10, help="Delay before running the monitor.")
+
     args = parser.parse_args()
 
-    time.sleep(5)  # if the user is attaching to this instance give them time to do so.
+    time.sleep(args.delay)  # if the user is attaching to this instance give them time to do so.
 
     if args.log_level not in logging_levels:
         raise ValueError(f"Invalid logging level: {args.log_level} ({logging_levels.keys()})")
@@ -200,7 +210,8 @@ if __name__ == "__main__":
     logger.info("Getting view of the testnet from etb-config.")
     etb_config: ETBConfig = get_etb_config(logger)
 
-    node_watcher = SimpleNodeWatch(logger=logger, etb_config=etb_config, max_retries=args.max_retries,
-                                    timeout=args.request_timeout)
+    node_watcher = NodeWatch(logger=logger, etb_config=etb_config, max_retries=args.max_retries,
+                             timeout=args.request_timeout)
+
     logger.info("Starting node watch.")
     node_watcher.run()
