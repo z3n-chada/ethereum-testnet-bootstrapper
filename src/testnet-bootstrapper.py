@@ -111,8 +111,7 @@ class EthereumTestnetBootstrapper(object):
 
         # write the etb-config file into the testnet-dir.
         self.logger.info("writing etb-config file..")
-        path_to_config: pathlib.Path = etb_config.config_path
-        shutil.copy(path_to_config, etb_config.files.testnet_root / "etb-config.yaml")
+        etb_config.write_config(etb_config.files.testnet_root / "etb-config.yaml")
 
         # lastly write the docker-compose file to use for bootstrapping later.
         self.logger.info("writing docker-compose file..")
@@ -147,7 +146,7 @@ class EthereumTestnetBootstrapper(object):
         self.logger.info("bootstrapping testnet..")
         etb_config: ETBConfig = ETBConfig(config_path, logger=self.logger)
         etb_config.set_genesis_time(int(time.time()))
-        etb_config.write_config()
+        etb_config.write_config(etb_config.files.testnet_root / "etb-config.yaml")
         with open(etb_config.files.etb_config_checkpoint_file, "w") as f:
             f.write("")
 

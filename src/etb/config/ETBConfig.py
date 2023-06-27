@@ -128,8 +128,11 @@ class FilesConfig(Config):
             deposit contract was deployed.
     """
 
-    def __init__(self):
+    def __init__(self, optional_overrides=None):
         super().__init__("files")
+
+        if optional_overrides is None:
+            optional_overrides = {}
 
         fields = {
             "testnet-root": "/data/",
@@ -178,12 +181,14 @@ class FilesConfig(Config):
                                                                                                "-deployment-block"
                                                                                                "-number-file"])
 
-        self.checkpoints = {
-            "etb-config-checkpoint": self.etb_config_checkpoint_file,
-            "consensus-checkpoint": self.consensus_checkpoint_file,
-            "execution-checkpoint": self.execution_checkpoint_file,
-            "consensus-bootnode-checkpoint": self.consensus_bootnode_checkpoint_file,
-        }
+        # add optional overrides
+        for key, value in optional_overrides.items():
+            if key not in fields:
+                # add new field
+                fields[key] = value
+                setattr(self, key.replace("-", "_"), pathlib.Path(value))
+
+        self.fields = fields
 
 
 class TestnetConfig(Config):
@@ -815,7 +820,14 @@ class ETBConfig(Config):
         self.config_path: pathlib.Path = path  # where the config file is located.
         self.num_client_nodes: int = 0  # the total number of client nodes in the testnet.
 
-        self.files: FilesConfig = FilesConfig()
+        # optional overrides for the config file.
+        if "files" in self._config:
+            self.files: FilesConfig = FilesConfig(self._config['files'])
+        else:
+            self.files: FilesConfig = FilesConfig()
+        # overwrite so the file written etb-config has all fields written.
+        self._config['files'] = self.files.fields
+
         self.docker: DockerConfig = DockerConfig(self._config['docker'])
         self.testnet_config: TestnetConfig = TestnetConfig(self._config['testnet-config'])
 
@@ -909,6 +921,11 @@ class ETBConfig(Config):
             "NETWORK_ID": self.testnet_config.execution_layer.network_id,
         }
 
+        # we also include any overrides from the files config.
+        override_files: dict[str, str] = {k: self.files.fields[k] for k in set(self.files.fields) - set(FilesConfig().fields)}
+        for k, v in override_files.items():
+            global_env_vars[k.upper().replace("-", "_")] = str(v)
+
         execution_genesis_map: dict[str, str] = {
             "geth": str(self.files.geth_genesis_file),
             "besu": str(self.files.besu_genesis_file),
@@ -1001,14 +1018,14 @@ class ETBConfig(Config):
         self.genesis_time = genesis_time
 
     # write an updated version of the config.
-    def write_config(self):
+    def write_config(self, dest: pathlib.Path):
         """
-            Writes the config to the correct file. This should only be done by the bootstrapper.
+            Writes the config to a file. This should only be done by the bootstrapper.
         @return:
         """
         if self.files.etb_config_checkpoint_file.exists():
             raise Exception("Cannot write config file while checkpoint file exists.")
-        with open(self.files.etb_config_file, "w") as f:
+        with open(dest, "w") as f:
             yaml.safe_dump(self._config, f)
 
 
@@ -1026,4 +1043,3 @@ def get_etb_config(logger: logging.Logger = None) -> ETBConfig:
         if logger is not None:
             logging.debug(f"Waiting for checkpoint: {checkpoint}")
     return ETBConfig(path, logger=logger)
-

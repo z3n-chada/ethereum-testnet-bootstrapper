@@ -5,6 +5,10 @@ docker:
     ip-subnet: "10.0.20.0/24"
     volumes: ['./data:/data/', './:/source/']
 
+# add optional custom files here. They are propagated to all container env.
+# NOTE: default values are not overwritten!
+# files:
+
 # testnet-configuration parameters
 testnet-config:
   deposit-contract-address: "0x8c594691c0e592ffa21f153a16ae41db5befcaaa"
