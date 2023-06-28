@@ -5,8 +5,28 @@ Provides abstractions to monitor testnet progress.
 """
 import logging
 import time
+from abc import abstractmethod
+from enum import Enum
 
 from ..config.ETBConfig import ETBConfig
+
+class TestnetMonitorActionInterval(Enum):
+    """
+    An enum for the interval of an action
+    """
+    EVERY_SLOT = 1
+    EVERY_EPOCH = 2
+
+class TestnetMonitorAction(object):
+    """
+    An abstraction for an action to perform on a testnet at some interval.
+    """
+    def __init__(self, name: str, interval: TestnetMonitorActionInterval):
+        self.interval: TestnetMonitorActionInterval = interval
+        self.name = name
+    @abstractmethod
+    def perform_action(self):
+        pass
 
 
 class TestnetMonitor(object):
@@ -27,6 +47,9 @@ class TestnetMonitor(object):
 
         self.current_slot: int = 0
         self.current_epoch: int = 0
+
+        self.every_slot_actions: list[TestnetMonitorAction] = []
+        self.every_epoch_actions: list[TestnetMonitorAction] = []
 
     def slot_to_epoch(self, slot_num: int) -> int:
         """
@@ -79,3 +102,25 @@ class TestnetMonitor(object):
         @return:
         """
         self.wait_for_slot(self.epoch_to_slot(target_epoch))
+
+    def add_action(self, action: TestnetMonitorAction):
+        if action.interval == TestnetMonitorActionInterval.EVERY_SLOT:
+            self.every_slot_actions.append(action)
+        elif action.interval == TestnetMonitorActionInterval.EVERY_EPOCH:
+            self.every_epoch_actions.append(action)
+        else:
+            raise Exception("Invalid action interval")
+
+    def run(self):
+        """
+        Optionally run the testnet monitor with actions.
+        """
+        while True:
+            goal_slot = self.get_slot() + 1
+            self.wait_for_slot(goal_slot)
+            logging.info(f"Expected slot: {goal_slot}")
+            for action in self.every_slot_actions:
+                action.perform_action()
+            if goal_slot % self.slots_per_epoch == 0:
+                for action in self.every_epoch_actions:
+                    action.perform_action()
