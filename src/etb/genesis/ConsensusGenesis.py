@@ -123,6 +123,12 @@ SUBNETS_PER_NODE: {self.consensus_testnet_config.preset_base.SUBNETS_PER_NODE.va
 ATTESTATION_SUBNET_COUNT: {self.consensus_testnet_config.preset_base.ATTESTATION_SUBNET_COUNT.value}
 ATTESTATION_SUBNET_EXTRA_BITS: {self.consensus_testnet_config.preset_base.ATTESTATION_SUBNET_EXTRA_BITS.value}
 ATTESTATION_SUBNET_PREFIX_BITS: {self.consensus_testnet_config.preset_base.ATTESTATION_SUBNET_PREFIX_BITS.value}
+TTFB_TIMEOUT: {self.consensus_testnet_config.preset_base.TTFB_TIMEOUT.value}
+RESP_TIMEOUT: {self.consensus_testnet_config.preset_base.RESP_TIMEOUT.value}
+ATTESTATION_PROPAGATION_SLOT_RANGE: {self.consensus_testnet_config.preset_base.ATTESTATION_PROPAGATION_SLOT_RANGE.value}
+MAXIMUM_GOSSIP_CLOCK_DISPARITY: {self.consensus_testnet_config.preset_base.MAXIMUM_GOSSIP_CLOCK_DISPARITY.value}
+MESSAGE_DOMAIN_INVALID_SNAPPY: 0x00000000
+MESSAGE_DOMAIN_VALID_SNAPPY: 0x01000000
 
 # potential override
 # MIN_VALIDATOR_WITHDRAWABILITY_DELAY + CHURN_LIMIT_QUOTIENT // 2
