@@ -8,7 +8,7 @@ import time
 from abc import abstractmethod
 from concurrent.futures import ThreadPoolExecutor, Future
 from enum import Enum
-from typing import Union, Awaitable, Dict
+from typing import Union, Awaitable, Dict, Tuple
 
 import requests
 from requests import HTTPError
@@ -158,6 +158,7 @@ def perform_batched_request(req: ClientInstanceRequest, clients: list[ClientInst
 
     return results_dict
 
+
 """
     Some predefined useful JSON-RPC requests for EL
 """
@@ -279,3 +280,41 @@ class beacon_getFinalityCheckpoints(BeaconAPIRequest):
             max_retries=max_retries,
             timeout=timeout,
         )
+
+    def get_finalized_checkpoint(self, response: Union[Exception, requests.Response]) -> Union[
+        Exception, Tuple[int, str]]:
+        """
+        Get the finalized checkpoint from the response, if it is valid. Returns exception otherwise.
+        @param response: the response from performing this query.
+        @return: (epoch:int, root:str)
+        """
+        if self.is_valid(response):
+            return response.json()["data"]["finalized"]["epoch"], response.json()["data"]["finalized"]["root"]
+        else:
+            return response
+
+    def get_previous_justified_checkpoint(self, response: Union[Exception, requests.Response]) -> Union[
+        Exception, Tuple[int, str]]:
+        """
+        Get the previous justified checkpoint from the response, if it is valid. Returns exception otherwise.
+        @param response: the response from performing this query.
+        @return: (epoch:int, root:str)
+        """
+        if self.is_valid(response):
+            return response.json()["data"]["previous_justified"]["epoch"], \
+                response.json()["data"]["previous_justified"]["root"]
+        else:
+            return response
+
+    def get_current_justified_checkpoint(self, response: Union[Exception, requests.Response]) -> Union[
+        Exception, Tuple[int, str]]:
+        """
+        Get the current justified checkpoint from the response, if it is valid. Returns exception otherwise.
+        @param response: the response from performing this query.
+        @return: (epoch:int, root:str)
+        """
+        if self.is_valid(response):
+            return response.json()["data"]["current_justified"]["epoch"], response.json()["data"]["current_justified"][
+                "root"]
+        else:
+            return response

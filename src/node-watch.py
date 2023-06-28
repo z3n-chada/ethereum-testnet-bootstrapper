@@ -6,7 +6,7 @@
     The output is organized in terms of forks seen. Roots are represented by
     the last 6 characters of the root.
 """
-
+from abc import abstractmethod
 from concurrent.futures import ThreadPoolExecutor, as_completed, Future
 import logging
 import time
@@ -17,49 +17,251 @@ import requests
 from etb.common.Consensus import ConsensusFork, Epoch
 from etb.common.Utils import create_logger, logging_levels
 from etb.config.ETBConfig import ETBConfig, ClientInstance, get_etb_config
-from etb.interfaces.TestnetMonitor import TestnetMonitor
-from etb.interfaces.ClientRequest import beacon_getBlockV2, perform_batched_request
+from etb.interfaces.TestnetMonitor import TestnetMonitor, TestnetMonitorAction, TestnetMonitorActionInterval
+from etb.interfaces.ClientRequest import beacon_getBlockV2, perform_batched_request, ClientInstanceRequest, \
+    beacon_getFinalityCheckpoints
 
 
-
-
-def perform_query(query, max_retries=3, timeout=5) -> Union[Any, Exception]:
+class NodeWatchResult(object):
     """
-    Perform a query to the API endpoint.
-    @param query: query to perform
-    @param max_retries: max number of retries
-    @param timeout: timout per query
-    @return:
+    The result of a NodeWatchMetric.
+    results: a dictionary of results, where the key is the result and the value is a list of client instances that returned that result.
+    unreachable_clients: a list of client instances that were unreachable.
+    invalid_response_clients: a list of client instances that returned an invalid response.
     """
-    for attempt in range(max_retries):
-        try:
-            response = requests.get(query, timeout=timeout)
-            response.raise_for_status()
 
-            # Process the response data here
-            data = response.json()
-            return data
+    def __init__(self, results: dict[Any, list[ClientInstance]], unreachable_clients: list[ClientInstance],
+                 invalid_response_clients: list[ClientInstance]):
+        self.results = results
+        self.unreachable_clients = unreachable_clients
+        self.invalid_response_clients = invalid_response_clients
 
-        except requests.exceptions.RequestException as e:
-            if attempt < max_retries - 1:
-                logger.debug(f"RequestException occurred during the API request {query}")
-                logger.debug("Retrying...")
-            else:
-                logger.error(f"Maximum number of retries reached for {query}")
-                return e
 
-        except ValueError as e:
-            logger.error(f"Error occurred while processing the response data for {query}")
-            return e
+class NodeWatchMetric(object):
+    """
+    A metric to be captured across some client instances.
+    """
 
+    def __init__(self, request: ClientInstanceRequest, name: str, max_retries_for_consensus: int = 3):
+        self.request = request
+        self.name = name
+        self.max_retries_for_consensus = max_retries_for_consensus
+
+    @abstractmethod
+    def parse_response(self, response: requests.Response) -> Union[Any, None]:
+        """
+        Parse the response and return a string.
+        If there was an exception, return None.
+        """
+        pass
+
+    def get_consensus_metric(self, client_instances: list[ClientInstance]) -> NodeWatchResult:
+        """
+        Tries max_retries_for_consensus times to get the same response from all
+        instances.
+        """
+        for attempt in range(self.max_retries_for_consensus):
+            results: dict[str, list[ClientInstance]] = {}
+            unreachable_clients: list[ClientInstance] = []
+            invalid_response_clients: list[ClientInstance] = []
+            for client, api_future in perform_batched_request(self.request, client_instances).items():
+                # reset the query list
+                response: Union[requests.Response, Exception] = api_future.result()
+                if not self.request.is_valid(response):
+                    unreachable_clients.append(client)
+                else:
+                    result_as_str = self.parse_response(response)
+                    if result_as_str is None:
+                        invalid_response_clients.append(client)
+                    else:
+                        if result_as_str not in results:
+                            results[result_as_str] = []
+                        results[result_as_str].append(client)
+
+            # bail if we have consensus
+            if len(results.keys()) == 1 and len(unreachable_clients) == 0 and len(invalid_response_clients) == 0:
+                return NodeWatchResult(results, unreachable_clients, invalid_response_clients)
+            logging.debug(
+                f"Retrying to get consensus on heads. {attempt}/{self.max_retries_for_consensus}: found {len(results.keys())} forks.")
+        # we didn't get consensus, return last result
+        return NodeWatchResult(results, unreachable_clients, invalid_response_clients)
+
+    def result_as_log_str(self, metric_result: NodeWatchResult) -> str:
+        """
+        Returns a string representation of the result.
+        """
+        out = ""
+        for result, clients in metric_result.results.items():
+            out += f"{result}: {[client.name for client in clients]}\n"
+        if len(metric_result.unreachable_clients) > 0:
+            out += f"Unreachable clients: {[client.name for client in metric_result.unreachable_clients]}\n"
+        if len(metric_result.invalid_response_clients) > 0:
+            out += f"Value error clients: {[client.name for client in metric_result.invalid_response_clients]}\n"
+        return out
+
+
+class HeadsMetric(NodeWatchMetric):
+    """
+    A metric that returns the head slot, state root, and graffiti of each client instance, grouped by
+    consensus among clients. Also reports unreachable clients and clients that returned an invalid response.
+    """
+
+    def __init__(self, max_retries: int, timeout: int, max_retries_for_consensus: int, last_n_root_bytes: int = 4):
+        super().__init__(beacon_getBlockV2("head", max_retries=max_retries, timeout=timeout),
+                         max_retries_for_consensus=max_retries_for_consensus, name="heads")
+        self.last_n_root_bytes = last_n_root_bytes
+
+    def parse_response(self, response: requests.Response) -> Union[tuple, None]:
+        self.request: beacon_getBlockV2
+        if not self.request.is_valid(response):
+            return None
+        else:
+            try:
+                block = self.request.get_block(response)
+                slot = block["slot"]
+                state_root = block["state_root"][-self.last_n_root_bytes*2:]
+                graffiti = bytes.fromhex(block["body"]["graffiti"][2:]).decode(
+                    "utf-8").replace(
+                    "\x00", "")
+                return slot, state_root, graffiti
+            except Exception as e:
+                logging.debug(f"Exception parsing response: {e}")
+                return None
+
+class CheckpointsMetric(NodeWatchMetric):
+    """
+    A metric that returns the finalized and justified checkpoints of each client instance, grouped by
+    consensus among clients. Also reports unreachable clients and clients that returned an invalid response.
+    """
+
+    def __init__(self, max_retries: int, timeout: int, max_retries_for_consensus: int, last_n_root_bytes: int = 4):
+        super().__init__(
+            request=beacon_getFinalityCheckpoints(state_id="head", max_retries=max_retries, timeout=timeout),
+            max_retries_for_consensus=max_retries_for_consensus, name="checkpoints")
+        self.last_n_root_bytes = last_n_root_bytes
+
+    def parse_response(self, response: requests.Response) -> Union[str, None]:
+        self.request: beacon_getFinalityCheckpoints
+        if not self.request.is_valid(response):
+            return None
+        else:
+            try:
+                finalized_checkpoint: tuple[int, str] = self.request.get_finalized_checkpoint(response)
+                finalized_checkpoint_epoch = finalized_checkpoint[0]
+                finalized_checkpoint_root = finalized_checkpoint[1]
+                finalized_checkpoint_repr = f"({finalized_checkpoint_epoch}, 0x{finalized_checkpoint_root[-self.last_n_root_bytes * 2:]})"
+                current_justified_checkpoint: tuple[int, str] = self.request.get_current_justified_checkpoint(response)
+                current_justified_checkpoint_epoch = current_justified_checkpoint[0]
+                current_justified_checkpoint_root = current_justified_checkpoint[1]
+                current_justified_checkpoint_repr = f"({current_justified_checkpoint_epoch}, 0x{current_justified_checkpoint_root[-self.last_n_root_bytes * 2:]})"
+                previous_justified_checkpoint: tuple[int, str] = self.request.get_previous_justified_checkpoint(
+                    response)
+                previous_justified_checkpoint_epoch = previous_justified_checkpoint[0]
+                previous_justified_checkpoint_root = previous_justified_checkpoint[1]
+                previous_justified_checkpoint_repr = f"({previous_justified_checkpoint_epoch}, 0x{previous_justified_checkpoint_root[-self.last_n_root_bytes * 2:]})"
+                return f"finalized: {finalized_checkpoint_repr}, current justified: {current_justified_checkpoint_repr}, previous justified: {previous_justified_checkpoint_repr}"
+
+            except Exception as e:
+                logging.debug(f"Exception parsing response: {e}")
+                return None
+
+
+class HeadsAndCheckpointsMonitorAction(TestnetMonitorAction):
+    """
+    A TestnetMonitorAction that runs each slot and reports the heads and checkpoints of each
+    client instance. We try multiple times to fetch the heads to reach consensus.
+    These are grouped into one action to allow us to run the requests in parallel.
+    """
+
+    def __init__(self, client_instances: list[ClientInstance], max_retries: int, timeout: int,
+                 max_retries_for_consensus: int):
+        """
+        client_instances: a list of client instances to monitor.
+        max_retries: the number of times to retry a request.
+        timeout: the timeout for a request.
+        max_retries_for_consensus: the number of times to retry to get consensus.
+        """
+        super().__init__(name="head_slots", interval=TestnetMonitorActionInterval.EVERY_SLOT)
+        self.get_heads_metric = HeadsMetric(max_retries=max_retries, timeout=timeout,
+                                            max_retries_for_consensus=max_retries_for_consensus)
+        self.get_checkpoints_metric = CheckpointsMetric(max_retries=max_retries, timeout=timeout,
+                                                        max_retries_for_consensus=max_retries_for_consensus)
+        self.instances_to_monitor = client_instances
+
+    def perform_action(self):
+        """
+        Perform the action of getting the heads and checkpoints of each client instance.
+        """
+        heads_metric_result = self.get_heads_metric.get_consensus_metric(self.instances_to_monitor)
+        checkpoints_metric_result = self.get_checkpoints_metric.get_consensus_metric(self.instances_to_monitor)
+
+        head_metric_as_str = self.get_heads_metric.result_as_log_str(heads_metric_result)
+        checkpoint_metric_as_str = self.get_checkpoints_metric.result_as_log_str(checkpoints_metric_result)
+
+        # these should always be the same. Just in case we separate though.
+        heads_detected_forks = not len(heads_metric_result.results) == 1 and len(heads_metric_result.unreachable_clients) == 0 and len(heads_metric_result.invalid_response_clients) == 0
+        checkpoint_detected_forks = not len(checkpoints_metric_result.results) == 1 and len(checkpoints_metric_result.unreachable_clients) == 0 and len(checkpoints_metric_result.invalid_response_clients) == 0
+
+        if heads_detected_forks is False and checkpoint_detected_forks is False:
+            logging.info(f"no forks detected.")
+        else:
+            logging.info(f"detected {max(len(heads_metric_result.results)-1, len(checkpoints_metric_result.results)-1)} forks.")
+        logging.info("heads:")
+        logging.info(self.get_heads_metric.result_as_log_str(heads_metric_result))
+        logging.info("checkpoints:")
+        logging.info(self.get_checkpoints_metric.result_as_log_str(checkpoints_metric_result))
+
+
+# class GetNetworkStatusMonitorAction(TestnetMonitorAction):
+#     """
+#     A TestnetMonitorAction that runs each slot and reports the heads of each
+#     client instance. We try multiple times to fetch the heads to reach consensus
+#     just in case some clients are slightly behind.
+#     """
+#
+#     def __init__(self, client_instances: list[ClientInstance], max_retries: int, timeout: int,
+#                  max_retries_for_consensus: int):
+#         """
+#         client_instances: a list of client instances to monitor.
+#         max_retries: the number of times to retry a request.
+#         timeout: the timeout for a request.
+#         max_retries_for_consensus: the number of times to retry to get consensus.
+#         """
+#         super().__init__(name="head_slots", interval=TestnetMonitorActionInterval.EVERY_SLOT)
+#         self.get_heads_metric = HeadsMetric(max_retries=max_retries, timeout=timeout,
+#                                             max_retries_for_consensus=max_retries_for_consensus)
+#         self.instances_to_monitor = client_instances
+#
+#     def perform_action(self):
+#         """
+#         Logs the head_slot, head_state_root and head_graffiti for each client instance.
+#         grouped by consensus among the client instances. Also logs the unreachable
+#         clients and clients we failed to parse the results from.
+#         """
+#         heads_metric_result = self.get_heads_metric.get_consensus_metric(self.instances_to_monitor)
+#         logging.info(self.get_heads_metric.result_as_log_str(heads_metric_result))
+#
 
 class NodeWatch(object):
-    def __init__(self, etb_config: ETBConfig, max_retries: int, timeout: int):
+    def __init__(self, etb_config: ETBConfig, max_retries: int, timeout: int, max_retries_for_consensus: int = 3):
+        """
+        etb_config: the ETBConfig for the experiment.
+        max_retries: the number of times to retry a request for a single client.
+        timeout: the timeout for the requests.
+        max_retries_for_consensus: the number of times to retry a series of requests to get consensus among all clients.
+        """
         self.etb_config = etb_config
         self.max_retries = max_retries
         self.timeout = timeout
         self.testnet_monitor = TestnetMonitor(etb_config=self.etb_config)
         self.instances_to_monitor = self.etb_config.get_client_instances()
+
+        status_action = HeadsAndCheckpointsMonitorAction(client_instances=self.instances_to_monitor,
+                                                            max_retries=self.max_retries,
+                                                            timeout=self.timeout,
+                                                            max_retries_for_consensus=max_retries_for_consensus)
+
+        self.testnet_monitor.add_action(status_action)
 
     def get_testnet_info_str(self) -> str:
         """
@@ -86,98 +288,21 @@ class NodeWatch(object):
             out += f"\t\tconsensus_client: {instance.consensus_config.client}, execution_client: {instance.execution_config.client}\n"
         return out
 
-    def get_forks_str(self) -> str:
-        """
-        Returns a string suitable to report the current heads of all clients.
-        @return:
-        """
-        out = ""
-        heads, unreachable_instances, value_error_instances = self._get_heads(max_retries_for_consensus=2)
-        forks = {}
-        for result_tuple, clients in heads.items():
-            head = result_tuple[0]
-            state_root = result_tuple[1][-6:]  # last 6 bytes of the state root
-            graffiti = result_tuple[2]
-            if (head, state_root, graffiti) not in forks:
-                forks[(head, state_root, graffiti)] = []
-            for client in clients:
-                forks[(head, state_root, graffiti)].append(client.name)
-        out += f"Current forks: {len(forks) - 1}\n"
-        for fork, clients in forks.items():
-            out += f"head_slot:{fork[0]}, state_root:{fork[1]}, graffiti:{fork[2]}, clients: {clients}\n"
-        if len(unreachable_instances) > 0:
-            out += f"Unreachable instances: {unreachable_instances}\n"
-        if len(value_error_instances) > 0:
-            out += f"Failed to parse message from: {value_error_instances}\n"
-
-        return out
-
-    def _get_heads(self, max_retries_for_consensus: int) -> tuple[
-        dict[tuple[int, str, str], list[ClientInstance]], list[ClientInstance], list[ClientInstance]]:
-        """
-        Returns a 3-tuple given by:
-        1. dict: {(slot, root, graffiti) : [clients]} where block is the head block
-        2. list: unreachable clients
-        3. list: clients that had an error unpacking the block.
-
-        If there is not consensus w.r.t heads it will try max_retries_for_consensus times
-        in case the clients just needed to catch up. e.g. half are one slot behind on the
-        canonical chain.
-        @return:
-        """
-
-        # TODO this does the retries naively. Only retry clients with lower head slot.
-
-        get_head_request = beacon_getBlockV2(block="head", max_retries=self.max_retries, timeout=self.timeout)
-
-        clients_to_query = [x for x in self.instances_to_monitor]
-
-        for attempt in range(max_retries_for_consensus):
-            results: dict[tuple[int, str, str], list[ClientInstance]] = {}
-            unreachable_clients: list[ClientInstance] = []
-            value_error_clients: list[ClientInstance] = []
-            for client, api_future in perform_batched_request(get_head_request, clients_to_query).items():
-                # reset the query list
-                response: Union[requests.Response, Exception] = api_future.result()
-                if not get_head_request.is_valid(response):
-                    unreachable_clients.append(client)
-                else:
-                    try:
-                        block = get_head_request.get_block(response)
-                        slot = block["slot"]
-                        state_root = block["state_root"]
-                        graffiti = bytes.fromhex(block["body"]["graffiti"][2:]).decode(
-                            "utf-8").replace(
-                            "\x00", "")
-                        _tuple = (slot, state_root, graffiti)
-                    except Exception as e:
-                        logging.error(f"Failed to unpack result head block response from {client.name}")
-                        value_error_clients.append(client)
-                        continue
-                    if _tuple in results:
-                        results[_tuple].append(client)
-                    else:
-                        results[_tuple] = [client]
-            # bail if we have consensus
-            if len(results.keys()) == 1:
-                return results, unreachable_clients, value_error_clients
-            logging.debug(f"Retrying to get consensus on heads. {attempt}/{max_retries_for_consensus}: found {len(results.keys())} forks.")
-
-        return results, unreachable_clients, value_error_clients
-
     def run(self):
         """
         Run the node watch printing out the results every slot.
         @return:
         """
         logging.info(self.get_testnet_info_str())
+        self.testnet_monitor.run()
+        # while True:
+        #     # wait for the next slot
+        #     goal_slot = self.testnet_monitor.get_slot() + 1
+        #     self.testnet_monitor.wait_for_slot(goal_slot)
+        #     logging.info(f"Expected slot: {goal_slot}")
+        #     # logging.info(self.get_forks_str())
+        #     self.show_status(max_retries_for_consensus=3)
 
-        while True:
-            # wait for the next slot
-            goal_slot = self.testnet_monitor.get_slot() + 1
-            self.testnet_monitor.wait_for_slot(goal_slot)
-            logging.info(f"Expected slot: {goal_slot}")
-            logging.info(self.get_forks_str())
 
 if __name__ == "__main__":
     import argparse
