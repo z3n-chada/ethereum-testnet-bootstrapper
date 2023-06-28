@@ -9,7 +9,7 @@ RUN git clone https://github.com/protolambda/eth2-testnet-genesis.git \
     && go install github.com/0xTylerHolmes/ethdo@fuzz \
     && go install github.com/protolambda/eth2-bootnode@latest 
 
-RUN git clone https://github.com/z3n-chada/eth2-val-tools.git \
+RUN git clone https://github.com/protolambda/eth2-val-tools.git \
     && cd eth2-val-tools && go install ./...
 
 RUN git clone https://github.com/ethereum/go-ethereum.git \
@@ -33,18 +33,14 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 RUN pip3 install ruamel.yaml web3
-# RUN cd /apps && pip3 install -r requirements.txt
 COPY --from=builder /go/bin/eth2-testnet-genesis /usr/local/bin/eth2-testnet-genesis
 COPY --from=builder /go/bin/eth2-val-tools /usr/local/bin/eth2-val-tools
 COPY --from=builder /go/bin/eth2-bootnode /usr/local/bin/eth2-bootnode
 COPY --from=builder /go/bin/ethereal /usr/local/bin/ethereal
-#COPY --from=builder /git/go-ethereum/build/bin/geth /usr/local/bin/geth
 COPY --from=builder /git/go-ethereum/build/bin/bootnode /usr/local/bin/bootnode
 COPY --from=builder /go/bin/ethdo /usr/local/bin/ethdo
 RUN chmod +x /usr/local/bin/bootnode
-RUN mkdir /configs
 
 COPY ./ /source
-COPY configs/ /configs
 
 ENTRYPOINT [ "/source/entrypoint.sh" ]

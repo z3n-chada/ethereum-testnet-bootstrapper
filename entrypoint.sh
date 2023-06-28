@@ -1,2 +1,2 @@
 #!/bin/bash -e
-python3 /source/apps/bootstrap_testnet.py "$@"
+python3 /source/src/testnet_bootstrapper.py "$@"
