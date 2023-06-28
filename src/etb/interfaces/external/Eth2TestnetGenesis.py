@@ -12,7 +12,6 @@ class Eth2TestnetGenesis(object):
     """
 
     def __init__(self, validator_mnemonic: str, num_validators: int):
-        self.logger = logging.getLogger()
         self.validator_mnemonic: str = validator_mnemonic
         self.num_validators: int = num_validators
         # where to dump the validators (this is temporary storage)
@@ -72,7 +71,7 @@ class Eth2TestnetGenesis(object):
         for arg in preset_args:
             cmd.append(arg)
 
-        self.logger.debug(f"ConsensusGenesis: running eth2-testnet-genesis:\n{cmd}")
+        logging.debug(f"ConsensusGenesis: running eth2-testnet-genesis:\n{cmd}")
         out = subprocess.run(cmd, capture_output=True)
         if len(out.stderr) > 0:
             return Exception(out.stderr)

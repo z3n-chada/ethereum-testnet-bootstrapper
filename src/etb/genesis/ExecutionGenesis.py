@@ -7,8 +7,6 @@ import logging
 from ..common.Consensus import Epoch, ConsensusFork
 
 w3.eth.account.enable_unaudited_hdwallet_features()
-logger = logging.getLogger("bootstrapper_log")
-
 
 class ExecutionGenesisWriter(object):
     def __init__(self, etb_config: ETBConfig):

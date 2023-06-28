@@ -15,12 +15,12 @@ from typing import Union, Any
 import requests
 
 from etb.common.Consensus import ConsensusFork, Epoch
-from etb.common.Utils import get_logger, logging_levels
+from etb.common.Utils import create_logger, logging_levels
 from etb.config.ETBConfig import ETBConfig, ClientInstance, get_etb_config
 from etb.interfaces.TestnetMonitor import TestnetMonitor
 from etb.interfaces.ClientRequest import beacon_getBlockV2, perform_batched_request
 
-logger: logging.Logger = get_logger(name="NodeWatch", log_level="info")
+
 
 
 def perform_query(query, max_retries=3, timeout=5) -> Union[Any, Exception]:
@@ -54,16 +54,11 @@ def perform_query(query, max_retries=3, timeout=5) -> Union[Any, Exception]:
 
 
 class NodeWatch(object):
-    def __init__(self, logger: logging.Logger, etb_config: ETBConfig, max_retries: int, timeout: int):
-        if logger is None:
-            self.logger = get_logger(name="NodeWatch", log_level="debug")
-        else:
-            self.logger = logger
-
+    def __init__(self, etb_config: ETBConfig, max_retries: int, timeout: int):
         self.etb_config = etb_config
         self.max_retries = max_retries
         self.timeout = timeout
-        self.testnet_monitor = TestnetMonitor(logger=self.logger, etb_config=self.etb_config)
+        self.testnet_monitor = TestnetMonitor(etb_config=self.etb_config)
         self.instances_to_monitor = self.etb_config.get_client_instances()
 
     def get_testnet_info_str(self) -> str:
@@ -156,7 +151,7 @@ class NodeWatch(object):
                             "\x00", "")
                         _tuple = (slot, state_root, graffiti)
                     except Exception as e:
-                        self.logger.error(f"Failed to unpack result head block response from {client.name}")
+                        logging.error(f"Failed to unpack result head block response from {client.name}")
                         value_error_clients.append(client)
                         continue
                     if _tuple in results:
@@ -166,7 +161,7 @@ class NodeWatch(object):
             # bail if we have consensus
             if len(results.keys()) == 1:
                 return results, unreachable_clients, value_error_clients
-            self.logger.debug(f"Retrying to get consensus on heads. {attempt}/{max_retries_for_consensus}: found {len(results.keys())} forks.")
+            logging.debug(f"Retrying to get consensus on heads. {attempt}/{max_retries_for_consensus}: found {len(results.keys())} forks.")
 
         return results, unreachable_clients, value_error_clients
 
@@ -175,20 +170,20 @@ class NodeWatch(object):
         Run the node watch printing out the results every slot.
         @return:
         """
-        self.logger.info(self.get_testnet_info_str())
+        logging.info(self.get_testnet_info_str())
 
         while True:
             # wait for the next slot
             goal_slot = self.testnet_monitor.get_slot() + 1
             self.testnet_monitor.wait_for_slot(goal_slot)
-            self.logger.info(f"Expected slot: {goal_slot}")
-            self.logger.info(self.get_forks_str())
+            logging.info(f"Expected slot: {goal_slot}")
+            logging.info(self.get_forks_str())
 
 if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Monitor the head and finality checkpoints of a testnet.")
-    parser.add_argument("--log-level", type=str, default="INFO", help="Logging level")
+    parser.add_argument("--log-level", type=str, default="info", help="Logging level")
     parser.add_argument("--max-retries", dest="max_retries", type=int, default=3, help="Max number of retries before "
                                                                                        "considering a node unreachable.")
 
@@ -203,15 +198,13 @@ if __name__ == "__main__":
 
     time.sleep(args.delay)  # if the user is attaching to this instance give them time to do so.
 
-    if args.log_level not in logging_levels:
-        raise ValueError(f"Invalid logging level: {args.log_level} ({logging_levels.keys()})")
-    logger.setLevel(logging_levels[args.log_level])
+    create_logger(name="node_watch", log_level=args.log_level.upper(), log_to_file=True)
 
-    logger.info("Getting view of the testnet from etb-config.")
-    etb_config: ETBConfig = get_etb_config(logger)
+    logging.info("Getting view of the testnet from etb-config.")
+    etb_config: ETBConfig = get_etb_config()
 
-    node_watcher = NodeWatch(logger=logger, etb_config=etb_config, max_retries=args.max_retries,
+    node_watcher = NodeWatch(etb_config=etb_config, max_retries=args.max_retries,
                              timeout=args.request_timeout)
 
-    logger.info("Starting node watch.")
+    logging.info("Starting node watch.")
     node_watcher.run()

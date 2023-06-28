@@ -19,12 +19,7 @@ class TestnetMonitor(object):
     - slot_to_epoch: convert slot to epoch
     - epoch_to_slot: convert epoch to slot
     """
-    def __init__(self, etb_config: ETBConfig, logger: logging.Logger = None):
-        if logger is None:
-            self.logger = logging.getLogger()
-        else:
-            self.logger = logger
-
+    def __init__(self, etb_config: ETBConfig):
         self.etb_config: ETBConfig = etb_config
         self.consensus_genesis_time: int = self.etb_config.genesis_time
         self.seconds_per_slot: int = self.etb_config.testnet_config.consensus_layer.preset_base.SECONDS_PER_SLOT.value
@@ -71,9 +66,9 @@ class TestnetMonitor(object):
         """
         t_delta: int = (target_slot - self.get_slot()) * self.seconds_per_slot
         while t_delta > 0:
-            self.logger.debug(f"Waiting for slot {target_slot}")
+            logging.debug(f"Waiting for slot {target_slot}")
             sleep_time = min(t_delta, 60)
-            self.logger.debug(f"Waiting for target slot: {target_slot}, sleeping for {sleep_time} seconds")
+            logging.debug(f"Waiting for target slot: {target_slot}, sleeping for {sleep_time} seconds")
             time.sleep(sleep_time)
             t_delta = (target_slot - self.get_slot()) * self.seconds_per_slot
 

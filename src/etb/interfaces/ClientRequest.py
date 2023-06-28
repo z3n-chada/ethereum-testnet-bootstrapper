@@ -3,7 +3,6 @@
     from CL and EL clients across the network.
 """
 
-# TODO: we must pass the logger to get the correct log level from the caller module.
 import logging
 import time
 from abc import abstractmethod
@@ -48,7 +47,6 @@ class ClientInstanceRequest(object):
         @param timeout: timeout to use per request.
         """
         self.payload: Union[dict, str] = payload
-        self.logger = logging.getLogger()
         self.max_retries: int = max_retries
         self.timeout: int = timeout
 
@@ -93,16 +91,16 @@ class ExecutionJSONRPCRequest(ClientInstanceRequest):
 
             except (requests.exceptions.RequestException, HTTPError) as e:
                 if attempt < self.max_retries - 1:
-                    self.logger.debug(f"{e.strerror} occurred during the API request {json_rpc_endpoint}. Retrying...")
+                    logging.debug(f"{e.strerror} occurred during the API request {json_rpc_endpoint}. Retrying...")
                 else:
-                    self.logger.error(f"Maximum number of retries reached for {json_rpc_endpoint}")
+                    logging.error(f"Maximum number of retries reached for {json_rpc_endpoint}")
                     return e
 
             except Exception as e:
                 if attempt < self.max_retries - 1:
-                    self.logger.debug(f"{e} occurred during the API request {json_rpc_endpoint}. Retrying...")
+                    logging.debug(f"{e} occurred during the API request {json_rpc_endpoint}. Retrying...")
                 else:
-                    self.logger.error(f"Maximum number of retries reached for {json_rpc_endpoint}")
+                    logging.error(f"Maximum number of retries reached for {json_rpc_endpoint}")
                     return e
 
             time.sleep(1)  # don't spam the clients.
@@ -129,17 +127,17 @@ class BeaconAPIRequest(ClientInstanceRequest):
 
             except (requests.exceptions.RequestException, HTTPError) as e:
                 if attempt < self.max_retries - 1:
-                    self.logger.debug(
+                    logging.debug(
                         f"{e.strerror} occurred during the API request {beacon_api_endpoint}. Retrying...")
                 else:
-                    self.logger.error(f"Maximum number of retries reached for {beacon_api_endpoint}")
+                    logging.error(f"Maximum number of retries reached for {beacon_api_endpoint}")
                     return e
 
             except Exception as e:
                 if attempt < self.max_retries - 1:
-                    self.logger.debug(f"{e} occurred during the API request {beacon_api_endpoint}. Retrying...")
+                    logging.debug(f"{e} occurred during the API request {beacon_api_endpoint}. Retrying...")
                 else:
-                    self.logger.error(f"Maximum number of retries reached for {beacon_api_endpoint}")
+                    logging.error(f"Maximum number of retries reached for {beacon_api_endpoint}")
                     return e
 
             time.sleep(1)  # don't spam the clients.

@@ -805,11 +805,9 @@ class ETBConfig(Config):
         This object can be used to get various information about a running testnet.
     """
 
-    def __init__(self, path: pathlib.Path, logger: logging.Logger = None):
+    def __init__(self, path: pathlib.Path):
         """
-            The logger is an optional param to pass logging from a module into this object.
         @param path: path to the etb-config file.
-        @param logger: optional logger to use
         """
         super().__init__("etb-config")
 
@@ -1031,17 +1029,15 @@ class ETBConfig(Config):
             yaml.safe_dump(self._config, f)
 
 
-def get_etb_config(logger: logging.Logger = None) -> ETBConfig:
+def get_etb_config() -> ETBConfig:
     """
         Returns the path to the etb-config.yaml file for running containers on the network.
     @return: network config: ETBConfig
     """
     path = FilesConfig().etb_config_file
     checkpoint = FilesConfig().etb_config_checkpoint_file
-    if logger is not None:
-        logging.info("Getting ETBConfig for testnet.")
+    logging.info("Getting ETBConfig for testnet.")
     while not checkpoint.exists():
         time.sleep(1)
-        if logger is not None:
-            logging.debug(f"Waiting for checkpoint: {checkpoint}")
-    return ETBConfig(path, logger=logger)
+        logging.debug(f"Waiting for checkpoint: {checkpoint}")
+    return ETBConfig(path)

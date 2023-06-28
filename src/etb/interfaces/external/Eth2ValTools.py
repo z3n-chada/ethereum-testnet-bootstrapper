@@ -6,7 +6,7 @@ from typing import Union
 
 class Eth2ValTools(object):
     def __init__(self):
-        self.logger = logging.getLogger()
+        pass
 
     def generate_deposit_data(
             self, ndx: int, amount: int, fork_version: str, mnemonic: str
@@ -20,7 +20,7 @@ class Eth2ValTools(object):
         :return:
         """
 
-        self.logger.debug(
+        logging.debug(
             f"Generating deposit for validator {ndx} with {amount} ether."
         )
         cmd = [
@@ -39,7 +39,7 @@ class Eth2ValTools(object):
             "--withdrawals-mnemonic",
             mnemonic,
         ]
-        self.logger.debug(f"Running command: {cmd}")
+        logging.debug(f"Running command: {cmd}")
         out = subprocess.run(cmd, capture_output=True)
         if len(out.stderr) > 0:
             return Exception(out.stderr)
@@ -66,7 +66,7 @@ class Eth2ValTools(object):
         :return:
         """
 
-        self.logger.debug(
+        logging.debug(
             f"Generating keystores for validators {min_ndx} to {max_ndx}."
         )
         cmd = [
@@ -86,7 +86,7 @@ class Eth2ValTools(object):
             cmd.append("--prysm-pass")
             cmd.append(prysm_password)
 
-        self.logger.debug(f"Running command: {cmd}")
+        logging.debug(f"Running command: {cmd}")
         out = subprocess.run(cmd, capture_output=True)
         if len(out.stderr) > 0:
             return Exception(out.stderr)

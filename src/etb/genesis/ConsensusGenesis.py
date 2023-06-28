@@ -14,16 +14,12 @@ from ..interfaces.external.Eth2TestnetGenesis import Eth2TestnetGenesis
 
 
 class ConsensusGenesisWriter(object):
-    def __init__(self, etb_config: ETBConfig, logger: logging.Logger = None):
+    def __init__(self, etb_config: ETBConfig):
         # self.etb_config: ETBConfig = etb_config
         if etb_config.genesis_time is None:
             raise Exception("Genesis time must be set.")  # should not occur
         self.etb_config = etb_config
         self.consensus_testnet_config = etb_config.testnet_config.consensus_layer
-        if logger is None:
-            self.logger = logging.getLogger()
-        else:
-            self.logger = logger
 
     def _get_old_version_yaml(self):
         # prysm doesn't use proper yaml for parsing.
@@ -37,7 +33,7 @@ class ConsensusGenesisWriter(object):
 
         # handle potential overrides
 
-        self.logger.info(f"writing {preset_name} config.yaml")
+        logging.info(f"writing {preset_name} config.yaml")
 
         config_file = f"""
 # Extends the {preset_name} preset

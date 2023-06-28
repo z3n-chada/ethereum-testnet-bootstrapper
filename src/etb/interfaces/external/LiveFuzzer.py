@@ -8,12 +8,7 @@ import subprocess
 
 
 class LiveFuzzer(object):
-    def __init__(self, logger: logging.Logger = None, binary_path: pathlib.Path = pathlib.Path("/usr/local/bin/livefuzzer")):
-        if logger is None:
-            self.logger = logging.getLogger("live-fuzzer")
-        else:
-            self.logger = logger
-
+    def __init__(self, binary_path: pathlib.Path = pathlib.Path("/usr/local/bin/livefuzzer")):
         self.binary_path = binary_path
 
     def start_fuzzer(self, rpc_path: str, fuzz_mode: str, private_key: str):
@@ -33,5 +28,5 @@ class LiveFuzzer(object):
             private_key,
         ]
 
-        self.logger.debug(f"Starting livefuzzer with the following command: {cmd}")
+        logging.debug(f"Starting livefuzzer with the following command: {cmd}")
         subprocess.run(cmd)
