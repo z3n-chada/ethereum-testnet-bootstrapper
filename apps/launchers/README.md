@@ -1,1 +1,0 @@
-This folder conatins launchers, which in the docker-compose are listed as the entrypoint. You can add new launchers to facilitate custom scenarios you wish to test. e.g. adding trusted peers or testing different bootnode configurations.
