@@ -1,10 +1,9 @@
-"""
-    Various utility functions that are used throughout common applications.
-"""
+"""Various utility functions that are used throughout common applications."""
 import logging
+
 from web3.auto import w3
 
-from ..config.ETBConfig import FilesConfig
+from ..config.etb_config import FilesConfig
 
 logging_levels: dict = {
     "DEBUG": logging.DEBUG,
@@ -14,23 +13,26 @@ logging_levels: dict = {
 }
 
 
-def create_logger(log_level: str,
-                  name: str,
-                  format_str: str = "%(asctime)s [%(levelname)s] %(message)s",
-                  log_to_file: bool = False,
-                  log_file: str = None):
-    """
-    Creates a logger with the given log level and name.
-    @param log_level: The log level to use.
-    @param name: The name of the logger.
-    @param format_str: The format of the logger (default: "%(asctime)s %(levelname)s %(message)s").
-    @return: The logger.
+def create_logger(
+    log_level: str,
+    name: str,
+    format_str: str = "%(asctime)s [%(levelname)s] %(message)s",
+    log_to_file: bool = False,
+    log_file: str = None,
+):
+    """Creates a logger with the given log level and name.
+
+    @param log_level: The log level to use. @param name: The name of the
+    logger. @param format_str
+    : The format of the logger (default: "%(asctime)s %(levelname)s
+        %(message)s"). @return: The logger.
     """
 
     if log_level.upper() not in logging_levels:
         raise Exception(f"Unknown log level: {log_level}")
 
-    logging.basicConfig(level=logging_levels[log_level.upper()], format=format_str)
+    logging.basicConfig(
+        level=logging_levels[log_level.upper()], format=format_str)
 
     if log_to_file:
         if log_file is None:
@@ -42,7 +44,7 @@ def create_logger(log_level: str,
         logging.root.handlers.append(file_handler)
 
 
-class PremineKey(object):
+class PremineKey:
     """
     Class that represents a premine key.
     These keys are present in the etb-config file via testnet-config -> execution-layer:
@@ -68,6 +70,8 @@ class PremineKey(object):
         self.account: str = account
         self.passphrase: str = passphrase
         w3.eth.account.enable_unaudited_hdwallet_features()
-        acct = w3.eth.account.from_mnemonic(mnemonic, account_path=self.account, passphrase=passphrase)
+        acct = w3.eth.account.from_mnemonic(
+            mnemonic, account_path=self.account, passphrase=passphrase
+        )
         self.public_key: str = acct.address
         self.private_key = acct.key.hex()

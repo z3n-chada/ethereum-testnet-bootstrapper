@@ -6,10 +6,8 @@ from typing import List, Union
 from ruamel import yaml
 
 
-class Eth2TestnetGenesis(object):
-    """
-        eth2-testnet-genesis by protolambda
-    """
+class Eth2TestnetGenesis:
+    """Eth2-testnet-genesis by protolambda."""
 
     def __init__(self, validator_mnemonic: str, num_validators: int):
         self.validator_mnemonic: str = validator_mnemonic
@@ -22,14 +20,14 @@ class Eth2TestnetGenesis(object):
             self.validator_dump_yaml.unlink()
 
     def _dump_validator_yaml(self):
-        """
-        Dumps the validator yaml file used later to generate the genesis.ssz file.
-        Runs on __init__
-        @return:
+        """Dumps the validator yaml file used later to generate the genesis.ssz
+        file.
+
+        Runs on __init__ @return:
         """
         self._cleanup()
 
-        with open(self.validator_dump_yaml, "w") as f:
+        with open(self.validator_dump_yaml, "w", encoding="utf-8") as f:
             yaml.dump(
                 [
                     {
@@ -40,10 +38,14 @@ class Eth2TestnetGenesis(object):
                 f,
             )
 
-    def get_genesis_ssz(self, genesis_fork_name: str, config_in: pathlib.Path, genesis_ssz_out: pathlib.Path,
-                          preset_args: List[str]) -> Union[bytes, Exception]:
-        """
-        Writes the genesis.ssz file.
+    def get_genesis_ssz(
+        self,
+        genesis_fork_name: str,
+        config_in: pathlib.Path,
+        genesis_ssz_out: pathlib.Path,
+        preset_args: List[str],
+    ) -> Union[bytes, Exception]:
+        """Writes the genesis.ssz file.
 
         Usage:
             eth2-testnet-genesis {preset} --mnemonics {validators_yaml} --config {config_in} --state-output {genesis_ssz_out} ...
@@ -71,7 +73,8 @@ class Eth2TestnetGenesis(object):
         for arg in preset_args:
             cmd.append(arg)
 
-        logging.debug(f"ConsensusGenesis: running eth2-testnet-genesis:\n{cmd}")
+        logging.debug(
+            f"ConsensusGenesis: running eth2-testnet-genesis:\n{cmd}")
         out = subprocess.run(cmd, capture_output=True)
         if len(out.stderr) > 0:
             return Exception(out.stderr)

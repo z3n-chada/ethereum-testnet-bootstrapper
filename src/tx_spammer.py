@@ -1,23 +1,18 @@
 """
-    Meant to launch tx-fuzz: https://github.com/MariusVanDerWijden/tx-fuzz
-    Usage: ./tx-fuzz.bin --rpc RPC_IP:RPC_URL COMMAND (spam) --pk "comma,seperated,private,keys" --seed RAND_SEED
+Spams the execution layer with transactions using the tx-fuzz tool.
+see: https://github.com/MariusVanDerWijden/tx-fuzz
 """
 import argparse
 import logging
-import os
 import pathlib
 import random
-import time
-import subprocess
 
-import pathlib as pathlib
 from web3.auto import w3
-from pathlib import Path
 
-from etb.config.ETBConfig import ETBConfig, ClientInstance, get_etb_config
-from etb.interfaces.TestnetMonitor import TestnetMonitor
-from etb.common.Utils import create_logger, PremineKey
-from etb.interfaces.external.LiveFuzzer import LiveFuzzer
+from etb.common.utils import create_logger, PremineKey
+from etb.config.etb_config import ETBConfig, ClientInstance, get_etb_config
+from etb.interfaces.testnet_monitor import TestnetMonitor
+from etb.interfaces.external.live_fuzzer import LiveFuzzer
 
 w3.eth.account.enable_unaudited_hdwallet_features()
 
@@ -72,15 +67,18 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    logger = create_logger(name="tx-fuzz", log_level=args.log_level)
+    create_logger(name="tx-fuzz", log_level=args.log_level)
     etb_config: ETBConfig = get_etb_config()
     testnet_monitor = TestnetMonitor(etb_config)
 
-    live_fuzzer_interface = LiveFuzzer(binary_path=pathlib.Path(args.tx_fuzz_path))
+    live_fuzzer_interface = LiveFuzzer(
+        binary_path=pathlib.Path(
+            args.tx_fuzz_path))
 
     # process args.
     if args.target_ip is None or args.target_port is None:
-        client: ClientInstance = random.choice(etb_config.get_client_instances())
+        client: ClientInstance = random.choice(
+            etb_config.get_client_instances())
         args.target_ip = client.get_ip_address()
         args.target_port = client.execution_config.http_port
 
@@ -93,14 +91,19 @@ if __name__ == "__main__":
 
     private_keys = []
     for acc in premine_accts:
-        private_keys.append(PremineKey(mnemonic=mnemonic,account=acc, passphrase=account_pass).private_key)
+        private_keys.append(
+            PremineKey(
+                mnemonic=mnemonic, account=acc, passphrase=account_pass
+            ).private_key
+        )
 
     logging.debug(f"private keys: {private_keys}")
 
     logging.info(f"Waiting for start epoch {args.epoch_delay}")
     testnet_monitor.wait_for_epoch(args.epoch_delay)
 
-    live_fuzzer_interface.start_fuzzer(rpc_path=rpc_path,
-                                       fuzz_mode=args.fuzz_mode,
-                                       private_key=random.choice(private_keys))
-
+    live_fuzzer_interface.start_fuzzer(
+        rpc_path=rpc_path,
+        fuzz_mode=args.fuzz_mode,
+        private_key=random.choice(private_keys),
+    )

@@ -1,30 +1,24 @@
-"""
-    Consensus related constants, enums, and abstractions.
-"""
+"""Consensus related constants, enums, and abstractions."""
 from enum import Enum
 
 
 # Preset constants and values
 class PresetEnum(Enum):
-    """
-        Abstraction for the various values for a minimal or mainnet preset
-        as defined in the consensus-spec.
-    """
-    pass
+    """Abstraction for the various values for a minimal or mainnet preset as
+    defined in the consensus-spec."""
 
 
 class Epoch(Enum):
-    """
-        Consensus Epoch constants as defined in the consensus-spec.
-    """
+    """Consensus Epoch constants as defined in the consensus-spec."""
+
     Genesis = 0
     FarFuture = 18446744073709551615
 
+
 # TODO - which of these should be used in the config?
 class MinimalPreset(PresetEnum, Enum):
-    """
-        Minimal presets, meant to be used for testing.
-    """
+    """Minimal presets, meant to be used for testing."""
+
     SLOTS_PER_EPOCH = 8
     EPOCHS_PER_ETH1_VOTING_PERIOD = 4
     # configs
@@ -46,7 +40,8 @@ class MinimalPreset(PresetEnum, Enum):
     GOSSIP_MAX_SIZE = 10485760
     MAX_REQUEST_BLOCKS = 1024
     EPOCHS_PER_SUBNET_SUBSCRIPTION = 256
-    # MIN_VALIDATOR_WITHDRAWABILITY_DELAY + CHURN_LIMIT_QUOTIENT // 2`( = 272) TODO: enforce or warn?
+    # MIN_VALIDATOR_WITHDRAWABILITY_DELAY + CHURN_LIMIT_QUOTIENT // 2`( = 272)
+    # TODO: enforce or warn?
     MIN_EPOCHS_FOR_BLOCK_REQUESTS = 272
     MAX_CHUNK_SIZE = 10485760
     TTFB_TIMEOUT = 5
@@ -64,9 +59,8 @@ class MinimalPreset(PresetEnum, Enum):
 
 
 class MainnetPreset(PresetEnum, Enum):
-    """
-        Mainnet presets, values used in mainnet.
-    """
+    """Mainnet presets, values used in mainnet."""
+
     # presets
     SLOTS_PER_EPOCH = 32
     EPOCHS_PER_ETH1_VOTING_PERIOD = 64
@@ -107,18 +101,18 @@ class MainnetPreset(PresetEnum, Enum):
 
 # Consensus values related to the merge, note that we only support post merge
 # testnets, however some clients still use these values for genesis.
-TerminalBlockHash: str = "0x0000000000000000000000000000000000000000000000000000000000000000"
+TerminalBlockHash: str = (
+    "0x0000000000000000000000000000000000000000000000000000000000000000"
+)
 TerminalBlockHashActivationEpoch: int = Epoch.FarFuture.value
 
 
 class ConsensusConfigOverrides(str, Enum):
-    """
-    These are the plausible overrides that users can put in the
-    config-params section of an etb-config file in order to
-    override their values.
+    """These are the plausible overrides that users can put in the config-
+    params section of an etb-config file in order to override their values.
 
-    Do not add to this list unless you know what you are doing. They override the
-    configuration of the consensus genesis files.
+    Do not add to this list unless you know what you are doing. They
+    override the configuration of the consensus genesis files.
     """
 
     ETH1_FOLLOW_DISTANCE = "eth1-follow-distance"
@@ -127,14 +121,22 @@ class ConsensusConfigOverrides(str, Enum):
 
 
 # The full list of possible consensus forks.
-DEFINED_CONSENSUS_FORK_NAMES = ["phase0", "altair", "bellatrix", "capella", "deneb", "sharding"]
+DEFINED_CONSENSUS_FORK_NAMES = [
+    "phase0",
+    "altair",
+    "bellatrix",
+    "capella",
+    "deneb",
+    "sharding",
+]
 
 
 class ForkVersionName(int, Enum):
+    """The code names for the forks.
+
+    These are used in the etb-config files to define when forks happen.
     """
-        The code names for the forks. These are used in the etb-config files to
-        define when forks happen.
-    """
+
     phase0 = 0
     altair = 1
     bellatrix = 2
@@ -143,12 +145,11 @@ class ForkVersionName(int, Enum):
     sharding = 5
 
 
-class ConsensusFork(object):
-    """
-        Abstraction for a consensus fork.
-    """
+class ConsensusFork:
+    """Abstraction for a consensus fork."""
 
-    def __init__(self, fork_name: ForkVersionName, fork_version: int, fork_epoch: int):
+    def __init__(self, fork_name: ForkVersionName,
+                 fork_version: int, fork_epoch: int):
         self.name: ForkVersionName = fork_name
         self.version: int = fork_version
         self.epoch: int = fork_epoch
