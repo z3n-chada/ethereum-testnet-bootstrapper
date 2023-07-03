@@ -56,8 +56,7 @@ class DockerConfig(Config):
 
         for k in required_fields:
             if k not in config:
-                raise ValueError(
-                    f"docker-config is missing required field {k}")
+                raise ValueError(f"docker-config is missing required field {k}")
 
         self.network_name: str = config["network-name"]
         self.ip_subnet: str = config["ip-subnet"]
@@ -97,10 +96,8 @@ class FilesConfig(Config):
         }
 
         # el genesis files
-        self.geth_genesis_file: pathlib.Path = pathlib.Path(
-            fields["geth-genesis-file"])
-        self.besu_genesis_file: pathlib.Path = pathlib.Path(
-            fields["besu-genesis-file"])
+        self.geth_genesis_file: pathlib.Path = pathlib.Path(fields["geth-genesis-file"])
+        self.besu_genesis_file: pathlib.Path = pathlib.Path(fields["besu-genesis-file"])
         self.nether_mind_genesis_file: pathlib.Path = pathlib.Path(
             fields["nether-mind-genesis-file"]
         )
@@ -116,11 +113,9 @@ class FilesConfig(Config):
             fields["consensus-bootnode-file"]
         )
         # etb specific files
-        self.etb_config_file: pathlib.Path = pathlib.Path(
-            fields["etb-config-file"])
+        self.etb_config_file: pathlib.Path = pathlib.Path(fields["etb-config-file"])
         self.testnet_root: pathlib.Path = pathlib.Path(fields["testnet-root"])
-        self.local_testnet_dir: pathlib.Path = pathlib.Path(
-            fields["local-testnet-dir"])
+        self.local_testnet_dir: pathlib.Path = pathlib.Path(fields["local-testnet-dir"])
         self.docker_compose_file: pathlib.Path = pathlib.Path(
             fields["docker-compose-file"]
         )
@@ -307,8 +302,8 @@ class ConsensusLayerTestnetConfig(Config):
 
         for fork in required_forks:
             if (
-                    f"{fork}-fork-epoch" not in config
-                    and f"{fork}-fork-version" not in config
+                f"{fork}-fork-epoch" not in config
+                and f"{fork}-fork-version" not in config
             ):
                 raise Exception(
                     f"Missing required fork fields for {fork} in ConsensusLayerTestnetConfig: {self.name}"
@@ -387,11 +382,9 @@ class ExecutionInstanceConfig(Config):
         self.launcher: pathlib.Path = config["launcher"]
         self.log_level: str = config["log-level"]
         self.p2p_port: int = config["p2p-port"]
-        self.http_apis: List[str] = [x.strip()
-                                     for x in config["http-apis"].split(",")]
+        self.http_apis: List[str] = [x.strip() for x in config["http-apis"].split(",")]
         self.http_port: int = config["http-port"]
-        self.ws_apis: List[str] = [x.strip()
-                                   for x in config["ws-apis"].split(",")]
+        self.ws_apis: List[str] = [x.strip() for x in config["ws-apis"].split(",")]
         self.ws_port: int = config["ws-port"]
         self.engine_http_port: int = config["engine-http-port"]
         self.engine_ws_port: int = config["engine-ws-port"]
@@ -499,8 +492,7 @@ class InstanceCollectionConfig(Config):
         if "additional-env" in config:
             for key, value in config["additional-env"].items():
                 if key in self.additional_env:
-                    raise Exception(
-                        f"Duplicate key {key} in additional-env for {name}")
+                    raise Exception(f"Duplicate key {key} in additional-env for {name}")
                 self.additional_env[key] = value
 
     def get_env_vars(self) -> dict[str, str]:
@@ -524,11 +516,11 @@ class ClientInstanceCollectionConfig(InstanceCollectionConfig):
     """
 
     def __init__(
-            self,
-            name: str,
-            config: dict,
-            consensus_config: ConsensusInstanceConfig,
-            execution_config: ExecutionInstanceConfig,
+        self,
+        name: str,
+        config: dict,
+        consensus_config: ConsensusInstanceConfig,
+        execution_config: ExecutionInstanceConfig,
     ):
         InstanceCollectionConfig.__init__(self, name, config)
 
@@ -570,10 +562,10 @@ class Instance:
     """
 
     def __init__(
-            self,
-            collection_name: str,
-            ndx: int,
-            collection_config: InstanceCollectionConfig,
+        self,
+        collection_name: str,
+        ndx: int,
+        collection_config: InstanceCollectionConfig,
     ):
         self.collection_name: str = collection_name
         self.ndx: int = ndx
@@ -600,9 +592,7 @@ class Instance:
         return hash(self.name)
 
     def get_ip_address(self) -> str:
-        prefix = ".".join(
-            self.collection_config.start_ip_address.split(".")[
-                :3]) + "."
+        prefix = ".".join(self.collection_config.start_ip_address.split(".")[:3]) + "."
         base = int(self.collection_config.start_ip_address.split(".")[-1])
         return prefix + str(base + int(self.ndx))
 
@@ -621,7 +611,7 @@ class Instance:
         return env_dict
 
     def get_docker_compose_repr(
-            self, docker_config: DockerConfig, global_env_vars: dict
+        self, docker_config: DockerConfig, global_env_vars: dict
     ) -> dict:
         """Returns a dict that represents this instance in a docker-compose
         file.
@@ -641,8 +631,7 @@ class Instance:
             "networks": {docker_config.network_name: {"ipv4_address": self.ip_address}},
         }
         if self.collection_config.entrypoint is not None:
-            entry["entrypoint"] = str(
-                self.collection_config.entrypoint).split()
+            entry["entrypoint"] = str(self.collection_config.entrypoint).split()
         else:
             entry["entrypoint"] = ["/bin/sh", "-c"]
 
@@ -669,10 +658,10 @@ class ClientInstance(Instance):
     """
 
     def __init__(
-            self,
-            root_name: str,
-            ndx: int,
-            collection_config: ClientInstanceCollectionConfig,
+        self,
+        root_name: str,
+        ndx: int,
+        collection_config: ClientInstanceCollectionConfig,
     ):
         Instance.__init__(self, root_name, ndx, collection_config)
         # useful for typing.
@@ -696,8 +685,7 @@ class ClientInstance(Instance):
             FilesConfig().local_testnet_dir / self.collection_name
         )
         self.node_dir: pathlib.Path = (
-            FilesConfig().local_testnet_dir /
-            self.collection_name / f"node_{ndx}"
+            FilesConfig().local_testnet_dir / self.collection_name / f"node_{ndx}"
         )
         self.el_dir: pathlib.Path = self.node_dir / self.execution_config.client
         self.jwt_secret_file: pathlib.Path = self.node_dir / "jwt_secret"
@@ -717,7 +705,7 @@ class ClientInstance(Instance):
             ]
 
     def get_docker_compose_repr(
-            self, docker_config: DockerConfig, global_env_vars: dict
+        self, docker_config: DockerConfig, global_env_vars: dict
     ) -> dict:
         """Returns a dict that represents this instance in a docker-compose
         file. The client instance docker-repr is a bit different from the
@@ -785,8 +773,7 @@ class ETBConfig(Config):
             with open(path, "r", encoding="utf-8") as etb_config_file:
                 self._config = yaml.safe_load(etb_config_file)
         else:
-            raise FileNotFoundError(
-                f"Could not find etb-config file at {path}")
+            raise FileNotFoundError(f"Could not find etb-config file at {path}")
 
         # where the config file is located.
         self.config_path: pathlib.Path = path
@@ -835,8 +822,7 @@ class ETBConfig(Config):
                     collection_name=name, ndx=ndx, collection_config=collection_config
                 )
                 if instance.name in _generic_instance_names:
-                    raise Exception(
-                        f"Found duplicate instance name: {instance}")
+                    raise Exception(f"Found duplicate instance name: {instance}")
                 _generic_instance_names[instance.name] = None
                 self.generic_instances[name].append(instance)
 
@@ -868,8 +854,7 @@ class ETBConfig(Config):
                     root_name=name, ndx=ndx, collection_config=collection_config
                 )
                 if instance.name in _generic_instance_names:
-                    raise Exception(
-                        f"Found duplicate instance name: {instance}")
+                    raise Exception(f"Found duplicate instance name: {instance}")
                 _generic_instance_names[instance.name] = None
                 self.client_instances[name].append(instance)
 
@@ -881,11 +866,10 @@ class ETBConfig(Config):
 
         # are we opening ETB config after a testnet has been bootstrapped?
         if "genesis-time" in self._config["dynamic-entries"]:
-            self.genesis_time = int(
-                self._config["dynamic-entries"]["genesis-time"])
+            self.genesis_time = int(self._config["dynamic-entries"]["genesis-time"])
 
     def get_generic_instances(self) -> List[Instance]:
-        """ Returns a list of all generic instances.
+        """Returns a list of all generic instances.
         @return: a list of all generic instances.
         """
         generic_instances: list[Instance] = []
@@ -1045,8 +1029,7 @@ class ETBConfig(Config):
         This should only be done by the bootstrapper. @return:
         """
         if self.files.etb_config_checkpoint_file.exists():
-            raise Exception(
-                "Cannot write config file while checkpoint file exists.")
+            raise Exception("Cannot write config file while checkpoint file exists.")
         with open(dest, "w", encoding="utf-8") as etb_config_file:
             yaml.safe_dump(self._config, etb_config_file)
 

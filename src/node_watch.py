@@ -17,7 +17,11 @@ import requests
 from etb.common.consensus import ConsensusFork, Epoch
 from etb.common.utils import create_logger
 from etb.config.etb_config import ETBConfig, ClientInstance, get_etb_config
-from etb.monitoring.monitors.consensus_monitors import HeadsMonitor, CheckpointsMonitor, ConsensusLayerPeeringSummary
+from etb.monitoring.monitors.consensus_monitors import (
+    HeadsMonitor,
+    CheckpointsMonitor,
+    ConsensusLayerPeeringSummary,
+)
 from etb.monitoring.testnet_monitor import (
     TestnetMonitor,
     TestnetMonitorAction,
@@ -75,7 +79,7 @@ class PeersMonitorAction(TestnetMonitorAction):
         client_instances: list[ClientInstance],
         max_retries: int,
         timeout: int,
-        max_retries_for_consensus: int, # not used.
+        max_retries_for_consensus: int,  # not used.
         interval: TestnetMonitorActionInterval,
     ):
         super().__init__(name="peer-monitor", interval=interval)
@@ -87,7 +91,9 @@ class PeersMonitorAction(TestnetMonitorAction):
 
     def perform_action(self):
         logging.info("peering-info:")
-        logging.info(f"{self.get_peering_summary_monitor.run(self.instances_to_monitor)}\n")
+        logging.info(
+            f"{self.get_peering_summary_monitor.run(self.instances_to_monitor)}\n"
+        )
 
 
 class NodeWatch:

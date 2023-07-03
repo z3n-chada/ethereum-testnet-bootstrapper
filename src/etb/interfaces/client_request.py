@@ -35,7 +35,7 @@ class ClientInstanceRequest:
     """
 
     def __init__(
-            self, payload: Union[dict, str], max_retries: int = 3, timeout: int = 5
+        self, payload: Union[dict, str], max_retries: int = 3, timeout: int = 5
     ):
         """A request to a client instance.
 
@@ -49,7 +49,7 @@ class ClientInstanceRequest:
 
     @abstractmethod
     def perform_request(
-            self, instance: ClientInstance
+        self, instance: ClientInstance
     ) -> Union[Exception, requests.Response]:
         """Either returns the response or an exception."""
 
@@ -69,7 +69,7 @@ class ExecutionJSONRPCRequest(ClientInstanceRequest):
         super().__init__(payload=payload, max_retries=max_retries, timeout=timeout)
 
     def perform_request(
-            self, instance: ClientInstance
+        self, instance: ClientInstance
     ) -> Union[Exception, requests.Response]:
         """Perform a request to the execution client. Either return an
         exception or a response. In the case that the response is an error code
@@ -123,7 +123,7 @@ class BeaconAPIRequest(ClientInstanceRequest):
         super().__init__(payload, max_retries, timeout)
 
     def perform_request(
-            self, instance: ClientInstance
+        self, instance: ClientInstance
     ) -> Union[Exception, requests.Response]:
         """Perform a request to the beacon client. Either return an exception
         or a response.
@@ -141,7 +141,10 @@ class BeaconAPIRequest(ClientInstanceRequest):
 
                 return response
 
-            except (requests.exceptions.RequestException, HTTPError) as connection_exception:
+            except (
+                requests.exceptions.RequestException,
+                HTTPError,
+            ) as connection_exception:
                 if attempt < self.max_retries - 1:
                     err = connection_exception.strerror
                     logging.debug(
@@ -169,7 +172,7 @@ class BeaconAPIRequest(ClientInstanceRequest):
 
 
 def perform_batched_request(
-        req: ClientInstanceRequest, clients: list[ClientInstance]
+    req: ClientInstanceRequest, clients: list[ClientInstance]
 ) -> dict[ClientInstance, Future]:
     """Performs a batched request on a list of clients asynchronously. It
     returns a dictionary.
@@ -192,7 +195,7 @@ class eth_getBlockByNumber(ExecutionJSONRPCRequest):
     """
 
     def __init__(
-            self, block="latest", _id: int = 1, max_retries: int = 3, timeout: int = 5
+        self, block="latest", _id: int = 1, max_retries: int = 3, timeout: int = 5
     ):
         payload = {
             "method": "eth_getBlockByNumber",
@@ -237,7 +240,7 @@ class admin_nodeInfo(ExecutionJSONRPCRequest):
         )
 
     def get_enode(
-            self, response: Union[Exception, requests.Response]
+        self, response: Union[Exception, requests.Response]
     ) -> Union[Exception, str]:
         """Get the enode from the response, if it is valid. Returns exception
         otherwise.
@@ -256,7 +259,7 @@ class admin_addPeer(ExecutionJSONRPCRequest):
     """
 
     def __init__(
-            self, enode: str, _id: int = 1, max_retries: int = 3, timeout: int = 5
+        self, enode: str, _id: int = 1, max_retries: int = 3, timeout: int = 5
     ):
         payload = {
             "method": "admin_addPeer",
@@ -287,7 +290,7 @@ class BeaconAPIgetBlockV2(BeaconAPIRequest):
         super().__init__(payload=payload, max_retries=max_retries, timeout=timeout)
 
     def get_block(
-            self, response: Union[Exception, requests.Response]
+        self, response: Union[Exception, requests.Response]
     ) -> Union[Exception, dict]:
         if self.is_valid(response):
             return response.json()["data"]["message"]
@@ -316,8 +319,7 @@ class BeaconAPIgetFinalityCheckpoints(BeaconAPIRequest):
     https://ethereum.github.io/beacon-APIs/#/Beacon/getStateFinalityCheckpoints
     """
 
-    def __init__(self, state_id="head", max_retries: int = 3,
-                 timeout: int = 5):
+    def __init__(self, state_id="head", max_retries: int = 3, timeout: int = 5):
         payload = f"/eth/v1/beacon/states/{state_id}/finality_checkpoints"
         super().__init__(
             payload=payload,
@@ -326,7 +328,7 @@ class BeaconAPIgetFinalityCheckpoints(BeaconAPIRequest):
         )
 
     def get_finalized_checkpoint(
-            self, response: Union[Exception, requests.Response]
+        self, response: Union[Exception, requests.Response]
     ) -> Union[Exception, Tuple[int, str]]:
         """Get the finalized checkpoint from the response, if it is valid.
         Returns exception otherwise.
@@ -344,7 +346,7 @@ class BeaconAPIgetFinalityCheckpoints(BeaconAPIRequest):
         return response  # the exception
 
     def get_previous_justified_checkpoint(
-            self, response: Union[Exception, requests.Response]
+        self, response: Union[Exception, requests.Response]
     ) -> Union[Exception, Tuple[int, str]]:
         """Get the previous justified checkpoint from the response, if it is
         valid. Returns exception otherwise.
@@ -362,7 +364,7 @@ class BeaconAPIgetFinalityCheckpoints(BeaconAPIRequest):
         return response  # the exception
 
     def get_current_justified_checkpoint(
-            self, response: Union[Exception, requests.Response]
+        self, response: Union[Exception, requests.Response]
     ) -> Union[Exception, Tuple[int, str]]:
         """Get the current justified checkpoint from the response, if it is
         valid. Returns exception otherwise.
@@ -384,6 +386,7 @@ class BeaconAPIgetIdentity(BeaconAPIRequest):
     """
     /eth/v1/beacon/identity beaconAPI request.
     """
+
     def __init__(self, max_retries: int = 3, timeout: int = 5):
         payload = f"/eth/v1/node/identity"
         super().__init__(
@@ -393,7 +396,7 @@ class BeaconAPIgetIdentity(BeaconAPIRequest):
         )
 
     def get_identity(
-            self, response: Union[Exception, requests.Response]
+        self, response: Union[Exception, requests.Response]
     ) -> Union[Exception, dict]:
         """Get the identity from the response, if it is valid.
         Returns exception otherwise.
@@ -408,7 +411,7 @@ class BeaconAPIgetIdentity(BeaconAPIRequest):
         return response
 
     def get_enr(
-            self, response: Union[Exception, requests.Response]
+        self, response: Union[Exception, requests.Response]
     ) -> Union[Exception, dict]:
         """Get the ENR from the response, if it is valid.
         Returns exception otherwise.
@@ -419,7 +422,9 @@ class BeaconAPIgetIdentity(BeaconAPIRequest):
         """
         return self.get_identity(response)["enr"]
 
-    def get_peer_id(self, response: Union[Exception, requests.Response]) -> Union[Exception, str]:
+    def get_peer_id(
+        self, response: Union[Exception, requests.Response]
+    ) -> Union[Exception, str]:
         """Get the peer ID from the response, if it is valid.
         Returns exception otherwise.
 
@@ -436,7 +441,13 @@ class BeaconAPIgetPeers(BeaconAPIRequest):
     https://ethereum.github.io/beacon-APIs/#/Beacon/getPeers
     """
 
-    def __init__(self, max_retries: int = 3, timeout: int = 5, directions: list[str] = None, states: list[str] = None):
+    def __init__(
+        self,
+        max_retries: int = 3,
+        timeout: int = 5,
+        directions: list[str] = None,
+        states: list[str] = None,
+    ):
         payload = f"/eth/v1/node/peers"
         additional_params: bool = False
         state_str = ""
@@ -461,7 +472,7 @@ class BeaconAPIgetPeers(BeaconAPIRequest):
         )
 
     def get_peers(
-            self, response: Union[Exception, requests.Response]
+        self, response: Union[Exception, requests.Response]
     ) -> Union[Exception, dict]:
         """Get the list of peers from the response, if it is valid. Returns
         exception otherwise.

@@ -16,8 +16,14 @@ import logging
 import requests
 
 from ...config.etb_config import ClientInstance
-from ...interfaces.client_request import ClientInstanceRequest, perform_batched_request, BeaconAPIgetBlockV2, \
-    BeaconAPIgetFinalityCheckpoints, BeaconAPIgetPeers, BeaconAPIgetIdentity
+from ...interfaces.client_request import (
+    ClientInstanceRequest,
+    perform_batched_request,
+    BeaconAPIgetBlockV2,
+    BeaconAPIgetFinalityCheckpoints,
+    BeaconAPIgetPeers,
+    BeaconAPIgetIdentity,
+)
 
 """
 Consensus Monitors are meant to be standalone actions that can be performed
@@ -29,38 +35,43 @@ ClientMonitorResult = dict[ClientInstance, Any]
 # The result of the metric and the clients that returned that result
 ConsensusMonitorResult = dict[Any, list[ClientInstance]]
 # results are grouped by client, unreachable_clients, invalid_response_clients
-ClientMonitorReport = tuple[ClientMonitorResult, list[ClientInstance], list[ClientInstance]]
+ClientMonitorReport = tuple[
+    ClientMonitorResult, list[ClientInstance], list[ClientInstance]
+]
 # clients grouped by result, unreachable_clients, invalid_response_clients
-ConsensusMonitorReport = tuple[ConsensusMonitorResult, list[ClientInstance], list[ClientInstance]]
+ConsensusMonitorReport = tuple[
+    ConsensusMonitorResult, list[ClientInstance], list[ClientInstance]
+]
 
 
 class ClientMetricMonitor:
     """
-        A monitor that can be run on a testnet.
+    A monitor that can be run on a testnet.
 
-        Provides a small interface to perform a query async on a client.
+    Provides a small interface to perform a query async on a client.
 
-        A client query should:
-            return an exception if we couldn't get a response from the client.
-            return Any if got a response from the client.
+    A client query should:
+        return an exception if we couldn't get a response from the client.
+        return Any if got a response from the client.
 
-        A response_parser should give the response of the query:
-            return the parsed result.
-            return None if the response is invalid.
+    A response_parser should give the response of the query:
+        return the parsed result.
+        return None if the response is invalid.
 
-        After each run the monitor will populate the following fields:
-            - results: A dictionary of results grouped by result. {ClientInstance: Any [result]}
-            - unreachable_clients: A list of clients that were unreachable.
-            - invalid_response_clients: A list of clients that returned an invalid response.
+    After each run the monitor will populate the following fields:
+        - results: A dictionary of results grouped by result. {ClientInstance: Any [result]}
+        - unreachable_clients: A list of clients that were unreachable.
+        - invalid_response_clients: A list of clients that returned an invalid response.
 
-        A report_metric routine is implemented by the user to report the metric.
+    A report_metric routine is implemented by the user to report the metric.
     """
 
-    def __init__(self,
-                 client_query: Callable[[ClientInstance], Union[Exception, Any]],
-                 response_parser: Callable[[Any], Optional[Any]],
-                 max_retries: int = 3,  # the max amount of time to retry a client
-                 ):
+    def __init__(
+        self,
+        client_query: Callable[[ClientInstance], Union[Exception, Any]],
+        response_parser: Callable[[Any], Optional[Any]],
+        max_retries: int = 3,  # the max amount of time to retry a client
+    ):
         self.client_query = client_query
         self.response_parser = response_parser
         self.max_retries = max_retries
@@ -77,9 +88,9 @@ class ClientMetricMonitor:
 
     def query_clients_for_metric(self, clients_to_monitor: list[ClientInstance]):
         """Query the clients for the metric.
-           This will run the client_query on each client we are monitoring.
-           If we get unreachable clients/invalid responses we will retry them
-              until we get a valid response or we reach max_retries.
+        This will run the client_query on each client we are monitoring.
+        If we get unreachable clients/invalid responses we will retry them
+           until we get a valid response or we reach max_retries.
         """
         client_futures = {}
         with ThreadPoolExecutor(max_workers=len(clients_to_monitor)) as executor:
@@ -104,7 +115,7 @@ class ClientMetricMonitor:
 
     def report_metric(self) -> str:
         """Report the results obtained from the measurements."""
-        out = ''
+        out = ""
         for client, result in self.results.items():
             out += f"{client}: {result}\n"
         if len(self.unreachable_clients) > 0:
@@ -115,13 +126,16 @@ class ClientMetricMonitor:
 
     def collect_metrics(self, clients_to_monitor: list[ClientInstance]):
         """Collect the metrics from the clients.
-           This will run the client_query on each client we are monitoring, we retry
-           until we get a valid response or we reach max_retries.
+        This will run the client_query on each client we are monitoring, we retry
+        until we get a valid response or we reach max_retries.
         """
         for _ in range(self.max_retries):
             self._clear_results()
             self.query_clients_for_metric(clients_to_monitor)
-            if len(self.unreachable_clients) == 0 and len(self.invalid_response_clients) == 0:
+            if (
+                len(self.unreachable_clients) == 0
+                and len(self.invalid_response_clients) == 0
+            ):
                 return
 
     def run(self, clients_to_monitor: list[ClientInstance]) -> str:
@@ -132,35 +146,36 @@ class ClientMetricMonitor:
 
 class ConsensusMetricMonitor(ClientMetricMonitor):
     """
-        A monitor that can be run on a testnet.
+    A monitor that can be run on a testnet.
 
-        Provides a small interface to perform a query async on a client.
+    Provides a small interface to perform a query async on a client.
 
-        A client query should:
-            return an exception if we couldn't get a response from the client.
-            return Any if got a response from the client.
+    A client query should:
+        return an exception if we couldn't get a response from the client.
+        return Any if got a response from the client.
 
-        A response_parser should given the response of the query:
-            return the parsed result.
-            return None if the response is invalid.
+    A response_parser should given the response of the query:
+        return the parsed result.
+        return None if the response is invalid.
 
-        A report_metric routine is implemented by the user to report the metric.
+    A report_metric routine is implemented by the user to report the metric.
 
-        The monitor will attempt to query the clients (max_retries_for_consensus) times
-        until it gets a consensus.
+    The monitor will attempt to query the clients (max_retries_for_consensus) times
+    until it gets a consensus.
 
-        After each run the monitor will populate the following fields:
-            - results: A dictionary of results grouped by result. {Any [result]: list[ClientInstance]}
-            - unreachable_clients: A list of clients that were unreachable.
-            - invalid_response_clients: A list of clients that returned an invalid response.
+    After each run the monitor will populate the following fields:
+        - results: A dictionary of results grouped by result. {Any [result]: list[ClientInstance]}
+        - unreachable_clients: A list of clients that were unreachable.
+        - invalid_response_clients: A list of clients that returned an invalid response.
     """
 
-    def __init__(self,
-                 client_query: Callable[[ClientInstance], Union[Exception, Any]],
-                 response_parser: Callable[[Any], Optional[Any]],
-                 max_retries: int = 3,
-                 max_retries_for_consensus: int = 3,
-                 ):
+    def __init__(
+        self,
+        client_query: Callable[[ClientInstance], Union[Exception, Any]],
+        response_parser: Callable[[Any], Optional[Any]],
+        max_retries: int = 3,
+        max_retries_for_consensus: int = 3,
+    ):
 
         super().__init__(client_query, response_parser)
         self.max_retries_for_consensus = max_retries_for_consensus
@@ -173,7 +188,11 @@ class ConsensusMetricMonitor(ClientMetricMonitor):
 
     def _reached_consensus(self) -> bool:
         """Check if we reached consensus."""
-        return len(self.results) == 1 and len(self.unreachable_clients) == 0 and len(self.invalid_response_clients) == 0
+        return (
+            len(self.results) == 1
+            and len(self.unreachable_clients) == 0
+            and len(self.invalid_response_clients) == 0
+        )
 
     def order_results_by_consensus(self) -> ConsensusMonitorResult:
         """
@@ -189,7 +208,7 @@ class ConsensusMetricMonitor(ClientMetricMonitor):
 
     def report_metric(self) -> str:
         """Report the results obtained from the measurements."""
-        out = ''
+        out = ""
         for result, clients in self.consensus_results.items():
             out += f"{result}: {[client.name for client in clients]}\n"
         if len(self.unreachable_clients) > 0:
@@ -200,8 +219,8 @@ class ConsensusMetricMonitor(ClientMetricMonitor):
 
     def collect_metrics(self, clients_to_monitor: list[ClientInstance]):
         """Collect the metrics from the clients.
-           This will run the client_query on each client we are monitoring, we retry
-           until we get consensus or we reach max_retries_for_consensus.
+        This will run the client_query on each client we are monitoring, we retry
+        until we get consensus or we reach max_retries_for_consensus.
         """
         for _ in range(self.max_retries_for_consensus):
             self._clear_results()
@@ -221,19 +240,24 @@ ClientHead = tuple[int, str, str]
 
 class HeadsMonitor(ConsensusMetricMonitor):
     """
-        A monitor that reports the heads of the clients.
-        It will retry the query up to max_retries_for_consensus times.
+    A monitor that reports the heads of the clients.
+    It will retry the query up to max_retries_for_consensus times.
     """
 
-    def __init__(self, max_retries: int = 3, timeout: int = 5,
-                 max_retries_for_consensus: int = 3):
+    def __init__(
+        self, max_retries: int = 3, timeout: int = 5, max_retries_for_consensus: int = 3
+    ):
         self.query = BeaconAPIgetBlockV2(max_retries=max_retries, timeout=timeout)
         self.max_retry_for_consensus = max_retries_for_consensus
 
-        super().__init__(client_query=self.query.perform_request,
-                         response_parser=self._get_client_head_from_block)
+        super().__init__(
+            client_query=self.query.perform_request,
+            response_parser=self._get_client_head_from_block,
+        )
 
-    def _get_client_head_from_block(self, response: requests.Response) -> Optional[ClientHead]:
+    def _get_client_head_from_block(
+        self, response: requests.Response
+    ) -> Optional[ClientHead]:
         try:
             block = self.query.get_block(response)
             slot = block["slot"]
@@ -262,13 +286,18 @@ Checkpoints = tuple[Checkpoint, Checkpoint, Checkpoint]
 
 
 class CheckpointsMonitor(ConsensusMetricMonitor):
-    def __init__(self, max_retries: int = 3, timeout: int = 5,
-                 max_retries_for_consensus: int = 3):
-        self.query = BeaconAPIgetFinalityCheckpoints(max_retries=max_retries, timeout=timeout)
+    def __init__(
+        self, max_retries: int = 3, timeout: int = 5, max_retries_for_consensus: int = 3
+    ):
+        self.query = BeaconAPIgetFinalityCheckpoints(
+            max_retries=max_retries, timeout=timeout
+        )
         self.max_retry_for_consensus = max_retries_for_consensus
 
-        super().__init__(client_query=self.query.perform_request,
-                         response_parser=self._get_checkpoints)
+        super().__init__(
+            client_query=self.query.perform_request,
+            response_parser=self._get_checkpoints,
+        )
 
     def _get_checkpoints(self, response: requests.Response) -> Optional[str]:
         try:
@@ -282,9 +311,7 @@ class CheckpointsMonitor(ConsensusMetricMonitor):
             fc_root = f"0x{finalized_cp[1][-8:]}"
             fc = (fc_epoch, fc_root)
 
-            current_justified_cp = self.query.get_current_justified_checkpoint(
-                response
-            )
+            current_justified_cp = self.query.get_current_justified_checkpoint(response)
             cj_epoch = current_justified_cp[0]
             cj_root = f"0x{current_justified_cp[1][-8:]}"
             cj = (cj_epoch, cj_root)
@@ -306,40 +333,53 @@ class CheckpointsMonitor(ConsensusMetricMonitor):
 # peer_id : {state: "", direction: ""}
 PeerSummary = dict[str, dict[str, str]]
 
+
 class PeeredClient:
     """
-        A peered client summary
+    A peered client summary
     """
+
     def __init__(self, peer_id: str, state: str, direction: str):
         self.peer_id = peer_id
         self.state = state
         self.direction = direction
 
     def __str__(self):
-        return f"peer_id: {self.peer_id}, state: {self.state}, direction: {self.direction}"
+        return (
+            f"peer_id: {self.peer_id}, state: {self.state}, direction: {self.direction}"
+        )
 
     def __repr__(self):
         return self.__str__()
 
+
 class ConsensusLayerPeersMonitor(ClientMetricMonitor):
     """
-        A monitor that reports the peers of the clients.
-        It will retry the query up to max_retries_for_consensus times.
+    A monitor that reports the peers of the clients.
+    It will retry the query up to max_retries_for_consensus times.
     """
 
     def __init__(self, max_retries: int = 3, timeout: int = 5):
-        self.query = BeaconAPIgetPeers(max_retries=max_retries, timeout=timeout, states=["connected"])
+        self.query = BeaconAPIgetPeers(
+            max_retries=max_retries, timeout=timeout, states=["connected"]
+        )
 
-        super().__init__(client_query=self.query.perform_request,
-                         response_parser=self._get_client_peers,
-                         max_retries=max_retries)
+        super().__init__(
+            client_query=self.query.perform_request,
+            response_parser=self._get_client_peers,
+            max_retries=max_retries,
+        )
 
     def _get_client_peers(self, response: requests.Response) -> Optional[dict]:
         peers_summary = {}
         try:
             peers = self.query.get_peers(response)
             for peer in peers:
-                peers_summary[peer["peer_id"]] = PeeredClient(peer_id=peer["peer_id"], state=peer["state"], direction=peer["direction"])
+                peers_summary[peer["peer_id"]] = PeeredClient(
+                    peer_id=peer["peer_id"],
+                    state=peer["state"],
+                    direction=peer["direction"],
+                )
             return peers_summary
         except Exception as e:
             logging.debug(f"Exception parsing response: {e}")
@@ -348,15 +388,17 @@ class ConsensusLayerPeersMonitor(ClientMetricMonitor):
 
 class ConsensusLayerIdentityMonitor(ClientMetricMonitor):
     """
-        A monitor that reports the identity of the clients.
+    A monitor that reports the identity of the clients.
     """
 
     def __init__(self, max_retries: int = 3, timeout: int = 5):
         self.query = BeaconAPIgetIdentity(max_retries=max_retries, timeout=timeout)
 
-        super().__init__(client_query=self.query.perform_request,
-                         response_parser=self._get_peer_id,
-                         max_retries=max_retries)
+        super().__init__(
+            client_query=self.query.perform_request,
+            response_parser=self._get_peer_id,
+            max_retries=max_retries,
+        )
 
     def _get_identity(self, response: requests.Response) -> Optional[dict]:
         try:
@@ -384,8 +426,12 @@ class ConsensusLayerPeeringSummary:
         self.max_retries = max_retries
         self.timeout = timeout
         # the peers for each client
-        self.peers_monitor = ConsensusLayerPeersMonitor(max_retries=max_retries, timeout=timeout)
-        self.identity_monitor = ConsensusLayerIdentityMonitor(max_retries=max_retries, timeout=timeout)
+        self.peers_monitor = ConsensusLayerPeersMonitor(
+            max_retries=max_retries, timeout=timeout
+        )
+        self.identity_monitor = ConsensusLayerIdentityMonitor(
+            max_retries=max_retries, timeout=timeout
+        )
 
     def run(self, clients_to_monitor: list[ClientInstance]) -> str:
         """Run the monitor."""

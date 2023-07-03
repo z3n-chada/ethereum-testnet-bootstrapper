@@ -121,13 +121,13 @@ class EthereumTestnetBootstrapper:
 
         # write the etb-config file into the testnet-dir.
         logging.info("writing etb-config file..")
-        etb_config.write_config(
-            etb_config.files.testnet_root /
-            "etb-config.yaml")
+        etb_config.write_config(etb_config.files.testnet_root / "etb-config.yaml")
 
         # lastly write the docker-compose file to use for bootstrapping later.
         logging.info("writing docker-compose file..")
-        with open(etb_config.files.docker_compose_file, "w", encoding="utf-8") as docker_file:
+        with open(
+            etb_config.files.docker_compose_file, "w", encoding="utf-8"
+        ) as docker_file:
             # remove identities and aliases from the yaml file to ease
             # readability for end users.
             class NoAliasDumper(yaml.SafeDumper):
@@ -139,9 +139,7 @@ class EthereumTestnetBootstrapper:
                     return True
 
             docker_file.write(
-                yaml.dump(
-                    etb_config.get_docker_compose_repr(), Dumper=NoAliasDumper
-                )
+                yaml.dump(etb_config.get_docker_compose_repr(), Dumper=NoAliasDumper)
             )
 
     def bootstrap_testnet(self, config_path: Path, global_timeout: int = 60):
@@ -161,9 +159,7 @@ class EthereumTestnetBootstrapper:
         logging.info("bootstrapping testnet..")
         etb_config: ETBConfig = ETBConfig(path=config_path)
         etb_config.set_genesis_time(int(time.time()))
-        etb_config.write_config(
-            etb_config.files.testnet_root /
-            "etb-config.yaml")
+        etb_config.write_config(etb_config.files.testnet_root / "etb-config.yaml")
         with open(
             etb_config.files.etb_config_checkpoint_file, "w", encoding="utf-8"
         ) as etb_checkpoint:
@@ -193,8 +189,7 @@ class EthereumTestnetBootstrapper:
         with open(
             etb_config.files.nether_mind_genesis_file, "w", encoding="utf-8"
         ) as nethermind_genesis:
-            nethermind_genesis.write(json.dumps(
-                egw.create_nethermind_genesis()))
+            nethermind_genesis.write(json.dumps(egw.create_nethermind_genesis()))
         # signal all execution clients to start.
         with open(
             etb_config.files.execution_checkpoint_file, "w", encoding="utf-8"
@@ -214,13 +209,15 @@ class EthereumTestnetBootstrapper:
         etb_block_number_file: pathlib.Path = (
             etb_config.files.deposit_contract_deployment_block_number_file
         )
-        with open(etb_block_hash_file, "w", encoding='utf-8') as block_hash_file:
+        with open(etb_block_hash_file, "w", encoding="utf-8") as block_hash_file:
             block_hash_file.write(block_hash)
-        with open(etb_block_number_file, "w", encoding='utf-8') as block_number_file:
+        with open(etb_block_number_file, "w", encoding="utf-8") as block_number_file:
             block_number_file.write(str(block_number))
         logging.info("Writing consensus genesis files")
         cgw = ConsensusGenesisWriter(etb_config)
-        with open(etb_config.files.consensus_config_file, "w", encoding="utf-8") as consensus_config:
+        with open(
+            etb_config.files.consensus_config_file, "w", encoding="utf-8"
+        ) as consensus_config:
             consensus_config.write(cgw.create_consensus_config_yaml())
         with open(etb_config.files.consensus_genesis_file, "wb") as consensus_genesis:
             genesis_ssz = cgw.create_consensus_genesis_ssz()
@@ -236,10 +233,7 @@ class EthereumTestnetBootstrapper:
             shutil.copy(etb_config.files.consensus_config_file, destination)
             shutil.copy(etb_config.files.consensus_genesis_file, destination)
             if config.consensus_config.client == "lighthouse":
-                shutil.copy(
-                    etb_block_number_file,
-                    destination /
-                    "deploy_block.txt")
+                shutil.copy(etb_block_number_file, destination / "deploy_block.txt")
             if config.consensus_config.client == "nimbus":
                 shutil.copy(
                     etb_block_hash_file, destination / "deposit_contract_block_hash.txt"
@@ -262,15 +256,13 @@ class EthereumTestnetBootstrapper:
         There is no need to call this method during normal operation.
         @param config_path: path of the etb-config.yaml file @return:
         """
-        logging.warning(
-            "create_keystores called outside of bootstrapping process.")
+        logging.warning("create_keystores called outside of bootstrapping process.")
         logging.warning(
             "This will not init a testnet or bootstrap one. See docs for more info."
         )
         self._write_validator_keystores(ETBConfig(config_path))
 
-    def _pair_execution_clients(
-            self, etb_config: ETBConfig, global_timeout: int):
+    def _pair_execution_clients(self, etb_config: ETBConfig, global_timeout: int):
         """Iterate through all client-instances which have the admin api.
 
         enabled and pair them. @param etb_config: config of
@@ -283,8 +275,7 @@ class EthereumTestnetBootstrapper:
 
         client_instances = etb_config.get_client_instances()
         for instance in client_instances:
-            if admin_api_filter.search(",".join(
-                    instance.execution_config.http_apis)):
+            if admin_api_filter.search(",".join(instance.execution_config.http_apis)):
                 el_clients_to_pair.append(instance)
             else:
                 logging.warning(
@@ -317,13 +308,11 @@ class EthereumTestnetBootstrapper:
 
         # now peer the clients with everyone but themselves.
         for el_peer, enode in enodes.items():
-            add_enode_rpc_request = admin_addPeer(
-                enode=enode, timeout=global_timeout)
+            add_enode_rpc_request = admin_addPeer(enode=enode, timeout=global_timeout)
             for el_client in el_clients_to_pair:
                 # don't pair clients with themselves.
                 if el_client != el_peer:
-                    logging.debug(
-                        f"adding peer {el_peer} to el_client {el_client}")
+                    logging.debug(f"adding peer {el_peer} to el_client {el_client}")
                     resp = add_enode_rpc_request.perform_request(el_client)
                     if not add_enode_rpc_request.is_valid(resp):
                         logging.error(f"admin_addPeer failed with {resp}")
@@ -346,19 +335,15 @@ class EthereumTestnetBootstrapper:
         client_instance: ClientInstance
         for client_instance in etb_config.get_client_instances():
             cl_client = client_instance.consensus_config.client
-            if cl_client not in ["prysm", "lighthouse",
-                                 "teku", "nimbus", "lodestar"]:
-                raise Exception(
-                    f"client: {cl_client} not supported for keystores")
+            if cl_client not in ["prysm", "lighthouse", "teku", "nimbus", "lodestar"]:
+                raise Exception(f"client: {cl_client} not supported for keystores")
             consensus_node_dir: pathlib.Path = client_instance.node_dir
-            keystore_dir: pathlib.Path = consensus_node_dir / \
-                pathlib.Path("keystores/")
+            keystore_dir: pathlib.Path = consensus_node_dir / pathlib.Path("keystores/")
             vpn = client_instance.consensus_config.num_validators  # validators per node
             offset = client_instance.ndx * vpn
             min_ndx = client_instance.collection_config.validator_offset_start + offset
             max_ndx = min_ndx + vpn
-            logging.debug(
-                f"populating keystores for client: {client_instance.name}")
+            logging.debug(f"populating keystores for client: {client_instance.name}")
             logging.debug(f"min_ndx: {min_ndx}, max_ndx: {max_ndx}")
             if cl_client == "prysm":
                 eth2_val_tools.generate_keystores(
@@ -380,8 +365,7 @@ class EthereumTestnetBootstrapper:
                     consensus_node_dir / "wallet-password.txt"
                 )
                 with open(wallet_password_path, "w") as wallet_password_file:
-                    wallet_password_file.write(
-                        client_instance.validator_password)
+                    wallet_password_file.write(client_instance.validator_password)
 
             else:
                 eth2_val_tools.generate_keystores(
@@ -429,21 +413,18 @@ class EthereumTestnetBootstrapper:
         el_eth_regex = re.compile(r"(eth|ETH)")
         plausible_instances: list[ClientInstance] = []
         for instance in etb_config.get_client_instances():
-            if el_eth_regex.search(",".join(
-                    instance.execution_config.http_apis)):
+            if el_eth_regex.search(",".join(instance.execution_config.http_apis)):
                 plausible_instances.append(instance)
 
         if len(plausible_instances) == 0:
-            raise Exception(
-                "No clients have an EL that supports the eth http-api")
+            raise Exception("No clients have an EL that supports the eth http-api")
 
         target_instance = random.choice(plausible_instances)
         logging.debug(
             f"Using instance: {target_instance.name} to get the contract deployment block."
         )
         # contract deployed at genesis
-        get_block_rpc_request = eth_getBlockByNumber(
-            "0x0", timeout=global_timeout)
+        get_block_rpc_request = eth_getBlockByNumber("0x0", timeout=global_timeout)
         resp = get_block_rpc_request.perform_request(target_instance)
         if not get_block_rpc_request.is_valid(resp):
             resp: Exception  # resp is an exception
@@ -523,12 +504,10 @@ if __name__ == "__main__":
             path_to_config = pathlib.Path(args.config)
 
         etb.init_testnet(path_to_config)
-        logging.debug(
-            "testnet_bootstrapper has finished init-ing the testnet.")
+        logging.debug("testnet_bootstrapper has finished init-ing the testnet.")
 
     if args.bootstrap_testnet:
         # the config path lies in /source/data/etb-config.yaml
         path_to_config = pathlib.Path("source/data/etb-config.yaml")
         etb.bootstrap_testnet(path_to_config)
-        logging.debug(
-            "testnet_bootstrapper has finished bootstrapping the testnet.")
+        logging.debug("testnet_bootstrapper has finished bootstrapping the testnet.")

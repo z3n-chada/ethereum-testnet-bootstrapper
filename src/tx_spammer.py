@@ -71,14 +71,11 @@ if __name__ == "__main__":
     etb_config: ETBConfig = get_etb_config()
     testnet_monitor = TestnetMonitor(etb_config)
 
-    live_fuzzer_interface = LiveFuzzer(
-        binary_path=pathlib.Path(
-            args.tx_fuzz_path))
+    live_fuzzer_interface = LiveFuzzer(binary_path=pathlib.Path(args.tx_fuzz_path))
 
     # process args.
     if args.target_ip is None or args.target_port is None:
-        client: ClientInstance = random.choice(
-            etb_config.get_client_instances())
+        client: ClientInstance = random.choice(etb_config.get_client_instances())
         args.target_ip = client.get_ip_address()
         args.target_port = client.execution_config.http_port
 

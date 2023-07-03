@@ -15,6 +15,7 @@ class ExecutionGenesisWriter:
     """
     Superclass to write the execution layer genesis files.
     """
+
     def __init__(self, etb_config: ETBConfig):
         self.etb_config: ETBConfig = etb_config
         self.genesis: dict[str, Any] = {}
@@ -193,8 +194,7 @@ class ExecutionGenesisWriter:
             acct = w3.eth.account.from_mnemonic(
                 mnemonic, account_path=acc, passphrase=password
             )
-            self.genesis["alloc"][acct.address]["privateKey"] = acct.key.hex()[
-                2:]
+            self.genesis["alloc"][acct.address]["privateKey"] = acct.key.hex()[2:]
 
         return self.genesis
 
