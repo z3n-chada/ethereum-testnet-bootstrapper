@@ -49,6 +49,7 @@ echo "Launching lighthouse."
 
 lighthouse \
       --testnet-dir="$COLLECTION_DIR" \
+      -l \
       bn \
       --datadir="$CONSENSUS_NODE_DIR" \
       --staking \
@@ -57,6 +58,7 @@ lighthouse \
       --http-allow-origin="*" \
       --http-allow-sync-stalled \
       --listen-address=0.0.0.0 \
+      --port="$CONSENSUS_P2P_PORT" \
       --execution-endpoints="http://127.0.0.1:$EXECUTION_ENGINE_HTTP_PORT" \
       --enable-private-discovery \
       --enr-address "$IP_ADDRESS" \
@@ -67,10 +69,12 @@ lighthouse \
       --boot-nodes="$bootnode_enr" \
       --target-peers="$NUM_CLIENT_NODES" \
       --subscribe-all-subnets \
+      --debug-level="$CONSENSUS_LOG_LEVEL" \
       --suggested-fee-recipient=0x00000000219ab540356cbb839cbe05303d7705fa &
 
 sleep 10
 lighthouse \
+      -l \
       --testnet-dir="$COLLECTION_DIR" \
       vc \
       --validators-dir "$CONSENSUS_NODE_DIR/keys" \
@@ -80,4 +84,5 @@ lighthouse \
       --graffiti="$CONSENSUS_GRAFFITI" \
       --http --http-port="$CONSENSUS_VALIDATOR_RPC_PORT" \
       --suggested-fee-recipient=0x00000000219ab540356cbb839cbe05303d7705fa \
+      --debug-level="$CONSENSUS_LOG_LEVEL" \
       --logfile="$CONSENSUS_NODE_DIR/validator.log" --logfile-debug-level="$CONSENSUS_LOG_LEVEL"

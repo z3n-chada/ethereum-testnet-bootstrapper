@@ -436,7 +436,7 @@ generic-instances:
     tag: "latest"
     start-ip-address: "10.0.20.203"
     num-nodes: 1
-    entrypoint: "python3 /source/src/node_watch.py --log-level info"
+    entrypoint: "python3 /source/src/node_watch.py --log-level info --monitor heads:slot --monitor checkpoints:slot --max-retries 3"
 #
 #  tx-spammer:
 #    image: "etb-all-clients"

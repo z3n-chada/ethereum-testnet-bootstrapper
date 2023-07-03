@@ -31,8 +31,7 @@ def create_logger(
     if log_level.upper() not in logging_levels:
         raise Exception(f"Unknown log level: {log_level}")
 
-    logging.basicConfig(
-        level=logging_levels[log_level.upper()], format=format_str)
+    logging.basicConfig(level=logging_levels[log_level.upper()], format=format_str)
 
     if log_to_file:
         if log_file is None:

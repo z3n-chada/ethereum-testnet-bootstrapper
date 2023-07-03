@@ -27,8 +27,7 @@ class Eth2ValTools:
         :return:
         """
 
-        logging.debug(
-            f"Generating deposit for validator {ndx} with {amount} ether.")
+        logging.debug(f"Generating deposit for validator {ndx} with {amount} ether.")
         cmd = [
             "eth2-val-tools",
             "deposit-data",
@@ -75,8 +74,7 @@ class Eth2ValTools:
         :return:
         """
 
-        logging.debug(
-            f"Generating keystores for validators {min_ndx} to {max_ndx}.")
+        logging.debug(f"Generating keystores for validators {min_ndx} to {max_ndx}.")
         cmd = [
             "eth2-val-tools",
             "keystores",
