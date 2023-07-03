@@ -62,6 +62,8 @@ lodestar beacon \
     --rest.namespace="*" \
     --logLevel="$CONSENSUS_LOG_LEVEL" \
     --logFile="$CONSENSUS_NODE_DIR/beacon.log" \
+    --port="$CONSENSUS_P2P_PORT" \
+    --discoveryPort="$CONSENSUS_CONSENSUS_P2P_PORT" \
     --enr.ip="$IP_ADDRESS" \
     --enr.tcp="$CONSENSUS_P2P_PORT" \
     --enr.udp="$CONSENSUS_CONSENSUS_P2P_PORT" \
