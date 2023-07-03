@@ -145,11 +145,11 @@ class BeaconAPIRequest(ClientInstanceRequest):
                 if attempt < self.max_retries - 1:
                     err = connection_exception.strerror
                     logging.debug(
-                        f"{err} occurred during the API request {beacon_api_endpoint}. Retrying..."
+                        f"{err} occurred during the API request {request_str}. Retrying..."
                     )
                 else:
                     logging.error(
-                        f"Maximum number of retries reached for {beacon_api_endpoint}"
+                        f"Maximum number of retries reached for {request_str}"
                     )
                     return connection_exception
 
@@ -157,11 +157,11 @@ class BeaconAPIRequest(ClientInstanceRequest):
                 if attempt < self.max_retries - 1:
                     err = unexpected_exception
                     logging.debug(
-                        f"{err} occurred during the API request {beacon_api_endpoint}. Retrying..."
+                        f"{err} occurred during the API request {request_str}. Retrying..."
                     )
                 else:
                     logging.error(
-                        f"Maximum number of retries reached for {beacon_api_endpoint}"
+                        f"Maximum number of retries reached for {request_str}"
                     )
                     return unexpected_exception
 
@@ -376,5 +376,100 @@ class BeaconAPIgetFinalityCheckpoints(BeaconAPIRequest):
                 response.json()["data"]["current_justified"]["epoch"],
                 response.json()["data"]["current_justified"]["root"],
             )
+
+        return response  # the exception
+
+
+class BeaconAPIgetIdentity(BeaconAPIRequest):
+    """
+    /eth/v1/beacon/identity beaconAPI request.
+    """
+    def __init__(self, max_retries: int = 3, timeout: int = 5):
+        payload = f"/eth/v1/node/identity"
+        super().__init__(
+            payload=payload,
+            max_retries=max_retries,
+            timeout=timeout,
+        )
+
+    def get_identity(
+            self, response: Union[Exception, requests.Response]
+    ) -> Union[Exception, dict]:
+        """Get the identity from the response, if it is valid.
+        Returns exception otherwise.
+
+        @param response: the response from performing this query.
+        @return
+        : identity: dict
+        """
+        if self.is_valid(response):
+            return response.json()["data"]
+
+        return response
+
+    def get_enr(
+            self, response: Union[Exception, requests.Response]
+    ) -> Union[Exception, dict]:
+        """Get the ENR from the response, if it is valid.
+        Returns exception otherwise.
+
+        @param response: the response from performing this query.
+        @return
+        : enr: dict
+        """
+        return self.get_identity(response)["enr"]
+
+    def get_peer_id(self, response: Union[Exception, requests.Response]) -> Union[Exception, str]:
+        """Get the peer ID from the response, if it is valid.
+        Returns exception otherwise.
+
+        @param response: the response from performing this query.
+        @return
+        : peer_id: str
+        """
+        return self.get_identity(response)["peer_id"]
+
+
+class BeaconAPIgetPeers(BeaconAPIRequest):
+    """
+    /eth/v1/beacon/p2p/peers beaconAPI request.
+    https://ethereum.github.io/beacon-APIs/#/Beacon/getPeers
+    """
+
+    def __init__(self, max_retries: int = 3, timeout: int = 5, directions: list[str] = None, states: list[str] = None):
+        payload = f"/eth/v1/node/peers"
+        additional_params: bool = False
+        state_str = ""
+        direction_str = ""
+        if states is not None:
+            additional_params = True
+            for state in states:
+                state_str += f"state={state}&"
+        if directions is not None:
+            additional_params = True
+            for direction in directions:
+                direction_str += f"direction={direction}&"
+        if additional_params:
+            payload += f"?{state_str}{direction_str}"
+        # remove the trailing &
+        payload = payload[:-1]
+
+        super().__init__(
+            payload=payload,
+            max_retries=max_retries,
+            timeout=timeout,
+        )
+
+    def get_peers(
+            self, response: Union[Exception, requests.Response]
+    ) -> Union[Exception, dict]:
+        """Get the list of peers from the response, if it is valid. Returns
+        exception otherwise.
+
+        @param response: the response from performing this query.
+        @return:
+        """
+        if self.is_valid(response):
+            return response.json()["data"]
 
         return response  # the exception

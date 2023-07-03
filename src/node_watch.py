@@ -17,7 +17,7 @@ import requests
 from etb.common.consensus import ConsensusFork, Epoch
 from etb.common.utils import create_logger
 from etb.config.etb_config import ETBConfig, ClientInstance, get_etb_config
-from etb.monitoring.monitors.consensus_monitors import HeadsMonitor, CheckpointsMonitor
+from etb.monitoring.monitors.consensus_monitors import HeadsMonitor, CheckpointsMonitor, ConsensusLayerPeeringSummary
 from etb.monitoring.testnet_monitor import (
     TestnetMonitor,
     TestnetMonitorAction,
@@ -69,6 +69,27 @@ class CheckpointsMonitorAction(TestnetMonitorAction):
         logging.info(f"{self.get_checkpoints_monitor.run(self.instances_to_monitor)}\n")
 
 
+class PeersMonitorAction(TestnetMonitorAction):
+    def __init__(
+        self,
+        client_instances: list[ClientInstance],
+        max_retries: int,
+        timeout: int,
+        max_retries_for_consensus: int, # not used.
+        interval: TestnetMonitorActionInterval,
+    ):
+        super().__init__(name="peer-monitor", interval=interval)
+        self.get_peering_summary_monitor = ConsensusLayerPeeringSummary(
+            max_retries=max_retries,
+            timeout=timeout,
+        )
+        self.instances_to_monitor = client_instances
+
+    def perform_action(self):
+        logging.info("peering-info:")
+        logging.info(f"{self.get_peering_summary_monitor.run(self.instances_to_monitor)}\n")
+
+
 class NodeWatch:
     """
     A class that watches the nodes of a testnet and reports on their status.
@@ -105,6 +126,7 @@ class NodeWatch:
         ] = {
             "heads": HeadsMonitorAction,
             "checkpoints": CheckpointsMonitorAction,
+            "peers": PeersMonitorAction,
         }
 
         intervals = {

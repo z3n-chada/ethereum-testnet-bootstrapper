@@ -17,7 +17,7 @@ import requests
 
 from ...config.etb_config import ClientInstance
 from ...interfaces.client_request import ClientInstanceRequest, perform_batched_request, BeaconAPIgetBlockV2, \
-    BeaconAPIgetFinalityCheckpoints
+    BeaconAPIgetFinalityCheckpoints, BeaconAPIgetPeers, BeaconAPIgetIdentity
 
 """
 Consensus Monitors are meant to be standalone actions that can be performed
@@ -301,3 +301,125 @@ class CheckpointsMonitor(ConsensusMetricMonitor):
         except Exception as e:
             logging.debug(f"Exception parsing response: {e}")
             return None
+
+
+# peer_id : {state: "", direction: ""}
+PeerSummary = dict[str, dict[str, str]]
+
+class PeeredClient:
+    """
+        A peered client summary
+    """
+    def __init__(self, peer_id: str, state: str, direction: str):
+        self.peer_id = peer_id
+        self.state = state
+        self.direction = direction
+
+    def __str__(self):
+        return f"peer_id: {self.peer_id}, state: {self.state}, direction: {self.direction}"
+
+    def __repr__(self):
+        return self.__str__()
+
+class ConsensusLayerPeersMonitor(ClientMetricMonitor):
+    """
+        A monitor that reports the peers of the clients.
+        It will retry the query up to max_retries_for_consensus times.
+    """
+
+    def __init__(self, max_retries: int = 3, timeout: int = 5):
+        self.query = BeaconAPIgetPeers(max_retries=max_retries, timeout=timeout, states=["connected"])
+
+        super().__init__(client_query=self.query.perform_request,
+                         response_parser=self._get_client_peers,
+                         max_retries=max_retries)
+
+    def _get_client_peers(self, response: requests.Response) -> Optional[dict]:
+        peers_summary = {}
+        try:
+            peers = self.query.get_peers(response)
+            for peer in peers:
+                peers_summary[peer["peer_id"]] = PeeredClient(peer_id=peer["peer_id"], state=peer["state"], direction=peer["direction"])
+            return peers_summary
+        except Exception as e:
+            logging.debug(f"Exception parsing response: {e}")
+            return None
+
+
+class ConsensusLayerIdentityMonitor(ClientMetricMonitor):
+    """
+        A monitor that reports the identity of the clients.
+    """
+
+    def __init__(self, max_retries: int = 3, timeout: int = 5):
+        self.query = BeaconAPIgetIdentity(max_retries=max_retries, timeout=timeout)
+
+        super().__init__(client_query=self.query.perform_request,
+                         response_parser=self._get_peer_id,
+                         max_retries=max_retries)
+
+    def _get_identity(self, response: requests.Response) -> Optional[dict]:
+        try:
+            identity = self.query.get_identity(response)
+            return identity
+        except Exception as e:
+            logging.debug(f"Exception parsing response: {e}")
+            return None
+
+    def _get_peer_id(self, response: requests.Response) -> Optional[str]:
+        try:
+            peer_id = self.query.get_peer_id(response)
+            return peer_id
+        except Exception as e:
+            logging.debug(f"Exception parsing response: {e}")
+            return None
+
+
+class ConsensusLayerPeeringSummary:
+    """
+    A summary of the consensus layer peering status.
+    """
+
+    def __init__(self, max_retries: int = 3, timeout: int = 5):
+        self.max_retries = max_retries
+        self.timeout = timeout
+        # the peers for each client
+        self.peers_monitor = ConsensusLayerPeersMonitor(max_retries=max_retries, timeout=timeout)
+        self.identity_monitor = ConsensusLayerIdentityMonitor(max_retries=max_retries, timeout=timeout)
+
+    def run(self, clients_to_monitor: list[ClientInstance]) -> str:
+        """Run the monitor."""
+        self.peers_monitor.collect_metrics(clients_to_monitor)
+        self.identity_monitor.collect_metrics(clients_to_monitor)
+
+        # better summary
+        # mapping to go from peer_id to ClientInstance
+        peer_id_client_map: dict[str, ClientInstance] = {}
+        client_peer_id_map: dict[ClientInstance, str] = {}
+        for client, identity in self.identity_monitor.results.items():
+            peer_id_client_map[identity] = client
+            client_peer_id_map[client] = identity
+
+        out = ""
+        inbound_peer_map: dict[ClientInstance, list[Union[ClientInstance, str]]] = {}
+        outbound_peer_map: dict[ClientInstance, list[Union[ClientInstance, str]]] = {}
+        for client, peered_clients in self.peers_monitor.results.items():
+            if client not in inbound_peer_map:
+                inbound_peer_map[client] = []
+            if client not in outbound_peer_map:
+                outbound_peer_map[client] = []
+            for _, peered_client in peered_clients.items():
+                if peered_client.peer_id in peer_id_client_map:
+                    peered_client_name = peer_id_client_map[peered_client.peer_id].name
+                else:
+                    peered_client_name = peered_client.peer_id
+                if peered_client.direction == "inbound":
+                    inbound_peer_map[client].append(peered_client_name)
+                elif peered_client.direction == "outbound":
+                    outbound_peer_map[client].append(peered_client_name)
+        for client in clients_to_monitor:
+            out += f"{client.name}:\n"
+            out += f"\tinbound: {inbound_peer_map[client]}\n"
+            out += f"\toutbound: {outbound_peer_map[client]}\n"
+
+        return out
