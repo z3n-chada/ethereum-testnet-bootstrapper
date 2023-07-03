@@ -11,7 +11,7 @@ from web3.auto import w3
 
 from etb.common.utils import create_logger, PremineKey
 from etb.config.etb_config import ETBConfig, ClientInstance, get_etb_config
-from etb.interfaces.testnet_monitor import TestnetMonitor
+from src.etb.monitoring.testnet_monitor import TestnetMonitor
 from etb.interfaces.external.live_fuzzer import LiveFuzzer
 
 w3.eth.account.enable_unaudited_hdwallet_features()
