@@ -47,6 +47,7 @@ nethermind \
   --Init.WebSocketsEnabled=true \
   --Init.EnableUnsecuredDevWallet=true \
   --Init.DiagnosticMode="None" \
+  --Init.KzgSetupFile "$TRUSTED_SETUP_TXT_FILE" \
   --JsonRpc.Enabled=true \
   --JsonRpc.EnabledModules="$EXECUTION_HTTP_APIS" \
   --JsonRpc.Port="$EXECUTION_HTTP_PORT" \

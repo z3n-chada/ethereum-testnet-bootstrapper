@@ -60,4 +60,5 @@ besu \
   --engine-jwt-secret="$JWT_SECRET_FILE" \
   --engine-host-allowlist="*" \
   --data-storage-format="BONSAI" \
+  --kzg-trusted-setup="$TRUSTED_SETUP_TXT_FILE" \
   --engine-rpc-port="$EXECUTION_ENGINE_HTTP_PORT" 

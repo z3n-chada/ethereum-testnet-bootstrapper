@@ -108,40 +108,12 @@ execution-configs:
 # configuration options used for consensus clients
 consensus-configs:
 
-  prysm-consensus-client:
-    client: "prysm"
-    launcher: "/source/deps/launchers/cl/launch-prysm.sh"
-    num-validators: 4      # number of validators for every client node
-
-    log-level: "debug"
-
-    p2p-port: 4000    # start port used for discovery
-    beacon-api-port: 5000   # start port used for the beacon rest API
-    beacon-rpc-port: 5500
-    validator-rpc-port: 6500
-    beacon-metric-port: 8000 # start port used for beacon node metrics.
-    validator-metric-port: 9000 # start port used for validator client metrics.
-
-  nimbus-consensus-client:
-    client: "nimbus"
-    launcher: "/source/deps/launchers/cl/launch-nimbus.sh"
-    num-validators: 4       # number of validators for every client node
-    # start ports increment each time we have a node.
-    log-level: "debug"
-
-    p2p-port: 4000    # start port used for discovery
-    beacon-api-port: 5000   # start port used for the beacon rest API
-    beacon-rpc-port: 5500
-    validator-rpc-port: 6500
-    beacon-metric-port: 8000 # start port used for beacon node metrics.
-    validator-metric-port: 9000 # start port used for validator client metrics.
-
   teku-consensus-client:
     client: "teku"
     launcher: "/source/deps/launchers/cl/launch-teku.sh"
     log-level: "INFO"
 
-    num-validators: 4       # number of validators for every client node
+    num-validators: 15       # number of validators for every client node
 
     p2p-port: 4000    # start port used for discovery
     beacon-api-port: 5000   # start port used for the beacon rest API
@@ -153,20 +125,7 @@ consensus-configs:
   lighthouse-consensus-client:
     client: "lighthouse"
     launcher: "/source/deps/launchers/cl/launch-lighthouse.sh"
-    num-validators: 4       # number of validators for every client node
-    # start ports increment each time we have a node.
-    log-level: "debug"
-    p2p-port: 4000    # start port used for discovery
-    beacon-api-port: 5000   # start port used for the beacon rest API
-    beacon-rpc-port: 5500
-    validator-rpc-port: 6500
-    beacon-metric-port: 8000 # start port used for beacon node metrics.
-    validator-metric-port: 9000 # start port used for validator client metrics.
-
-  lodestar-consensus-client:
-    client: "lodestar"
-    launcher: "/source/deps/launchers/cl/launch-lodestar.sh"
-    num-validators: 4       # number of validators for every client node
+    num-validators: 15       # number of validators for every client node
     # start ports increment each time we have a node.
     log-level: "debug"
     p2p-port: 4000    # start port used for discovery
@@ -182,26 +141,10 @@ client-instances:
 ###############################################################################
 
   # Geth clients
-  prysm-geth:
-    # docker-compose
-    image: "etb-all-clients"
-    tag: "mainnet-current"
-    start-ip-address: "10.0.20.10"
-    num-nodes: 1
-
-    # consensus-info
-    consensus-config: "prysm-consensus-client"
-    execution-config: "geth-execution-config"
-
-    validator-offset-start: 0
-
-    additional-env:
-      validator-password: "testnet-password"
-
   teku-geth:
     # docker-compose
     image: "etb-all-clients"
-    tag: "mainnet-current"
+    tag: "mainnet-deneb"
     start-ip-address: "10.0.20.20"
     num-nodes: 1
 
@@ -209,12 +152,12 @@ client-instances:
     consensus-config: "teku-consensus-client"
     execution-config: "geth-execution-config"
 
-    validator-offset-start: 4
+    validator-offset-start: 0
 
   lighthouse-geth:
     # docker-compose
     image: "etb-all-clients"
-    tag: "mainnet-current"
+    tag: "mainnet-deneb"
     start-ip-address: "10.0.20.30"
     num-nodes: 1
 
@@ -222,126 +165,13 @@ client-instances:
     consensus-config: "lighthouse-consensus-client"
     execution-config: "geth-execution-config"
 
-    validator-offset-start: 8
-
-  lodestar-geth:
-    # docker-compose
-    image: "etb-all-clients"
-    tag: "mainnet-current"
-    start-ip-address: "10.0.20.40"
-    num-nodes: 1
-
-    # consensus-info
-    consensus-config: "lodestar-consensus-client"
-    execution-config: "geth-execution-config"
-
-    validator-offset-start: 12
-
-  nimbus-geth:
-    # docker-compose
-    image: "etb-all-clients"
-    tag: "mainnet-current"
-    start-ip-address: "10.0.20.50"
-    num-nodes: 1
-
-    # consensus-info
-    consensus-config: "nimbus-consensus-client"
-    execution-config: "geth-execution-config"
-
-    validator-offset-start: 16
-
-  # Besu clients
-
-  prysm-besu:
-    # docker-compose
-    image: "etb-all-clients"
-    tag: "mainnet-current"
-    start-ip-address: "10.0.20.60"
-    num-nodes: 1
-
-    # consensus-info
-    consensus-config: "prysm-consensus-client"
-    execution-config: "besu-execution-config"
-
-    validator-offset-start: 20
-
-    additional-env:
-      validator-password: "testnet-password"
-
-  teku-besu:
-    # docker-compose
-    image: "etb-all-clients"
-    tag: "mainnet-current"
-    start-ip-address: "10.0.20.70"
-    num-nodes: 1
-
-    # consensus-info
-    consensus-config: "teku-consensus-client"
-    execution-config: "besu-execution-config"
-
-    validator-offset-start: 24
-
-  lighthouse-besu:
-    # docker-compose
-    image: "etb-all-clients"
-    tag: "mainnet-current"
-    start-ip-address: "10.0.20.80"
-    num-nodes: 1
-
-    # consensus-info
-    consensus-config: "lighthouse-consensus-client"
-    execution-config: "geth-execution-config"
-
-    validator-offset-start: 28
-
-  lodestar-besu:
-    # docker-compose
-    image: "etb-all-clients"
-    tag: "mainnet-current"
-    start-ip-address: "10.0.20.90"
-    num-nodes: 1
-
-    # consensus-info
-    consensus-config: "lodestar-consensus-client"
-    execution-config: "besu-execution-config"
-
-    validator-offset-start: 32
-
-  nimbus-besu:
-    # docker-compose
-    image: "etb-all-clients"
-    tag: "mainnet-current"
-    start-ip-address: "10.0.20.100"
-    num-nodes: 1
-
-    # consensus-info
-    consensus-config: "nimbus-consensus-client"
-    execution-config: "besu-execution-config"
-
-    validator-offset-start: 36
+    validator-offset-start: 15
 
   # Nethermind clients
-
-  prysm-nethermind:
-    # docker-compose
-    image: "etb-all-clients"
-    tag: "mainnet-current"
-    start-ip-address: "10.0.20.110"
-    num-nodes: 1
-
-    # consensus-info
-    consensus-config: "prysm-consensus-client"
-    execution-config: "nethermind-execution-config"
-
-    validator-offset-start: 40
-
-    additional-env:
-      validator-password: "testnet-password"
-
   teku-nethermind:
     # docker-compose
     image: "etb-all-clients"
-    tag: "mainnet-current"
+    tag: "mainnet-deneb"
     start-ip-address: "10.0.20.120"
     num-nodes: 1
 
@@ -349,12 +179,12 @@ client-instances:
     consensus-config: "teku-consensus-client"
     execution-config: "nethermind-execution-config"
 
-    validator-offset-start: 44
+    validator-offset-start: 30
 
   lighthouse-nethermind:
     # docker-compose
     image: "etb-all-clients"
-    tag: "mainnet-current"
+    tag: "mainnet-deneb"
     start-ip-address: "10.0.20.130"
     num-nodes: 1
 
@@ -362,33 +192,7 @@ client-instances:
     consensus-config: "lighthouse-consensus-client"
     execution-config: "nethermind-execution-config"
 
-    validator-offset-start: 48
-
-  lodestar-nethermind:
-    # docker-compose
-    image: "etb-all-clients"
-    tag: "mainnet-current"
-    start-ip-address: "10.0.20.140"
-    num-nodes: 1
-
-    # consensus-info
-    consensus-config: "lodestar-consensus-client"
-    execution-config: "nethermind-execution-config"
-
-    validator-offset-start: 52
-
-  nimbus-nethermind:
-    # docker-compose
-    image: "etb-all-clients"
-    tag: "mainnet-current"
-    start-ip-address: "10.0.20.150"
-    num-nodes: 1
-
-    # consensus-info
-    consensus-config: "nimbus-consensus-client"
-    execution-config: "nethermind-execution-config"
-
-    validator-offset-start: 56
+    validator-offset-start: 45
 
 # generic instances that run fuzzers/health checks/etc.
 generic-instances:
@@ -425,8 +229,8 @@ generic-instances:
 
   tx-spammer:
     image: "etb-all-clients"
-    tag: "minimal-current"
+    tag: "mainnet-deneb"
     start-ip-address: "10.0.20.204"
     num-nodes: 1
     # runs on the first prysm geth node.
-    entrypoint: "python3 /source/src/tx_spammer.py --target-ip 10.0.20.10 --target-port 8645 --epoch-delay 1 --fuzz-mode spam --tx-fuzz-path /usr/local/bin/livefuzzer"
+    entrypoint: "python3 /source/src/tx_spammer.py --target-ip 10.0.20.20 --target-port 8645 --epoch-delay 2 --fuzz-mode spam --no-al --tx-count 100 --tx-fuzz-path /usr/local/bin/livefuzzer"
