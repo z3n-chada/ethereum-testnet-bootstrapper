@@ -38,10 +38,8 @@ done
 
 
 echo "{}" > /tmp/nethermind.cfg
-echo "ADDITIONAL_ARGS: $ADDITIONAL_ARGS"
 # --Init.KzgSetupFile "$TRUSTED_SETUP_TXT_FILE" \
 nethermind \
-  $ADDITIONAL_ARGS \
   --config="/tmp/nethermind.cfg" \
   --datadir="$EXECUTION_NODE_DIR" \
   --Init.ChainSpecPath="$EXECUTION_GENESIS_FILE" \
