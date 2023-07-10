@@ -7,7 +7,7 @@ docker:
 
 # add optional custom files here. They are propagated to all container env.
 # NOTE: default values are not overwritten!
-# files:
+#files:
 
 # testnet-configuration parameters
 testnet-config:
