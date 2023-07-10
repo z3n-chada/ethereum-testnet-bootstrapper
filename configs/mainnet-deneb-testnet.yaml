@@ -202,7 +202,7 @@ generic-instances:
     tag: "latest"
     start-ip-address: "10.0.20.201"
     num-nodes: 1
-    entrypoint: "/source/entrypoint.sh --bootstrap-testnet --log-level info"
+    entrypoint: "/source/entrypoint.sh --bootstrap-testnet --log-level debug"
 
   # required instance, bootnode to connect all CL clients together
   eth2-bootnode:
