@@ -3,7 +3,7 @@
 ###############################################################################
 # Consensus Clients
 ARG LIGHTHOUSE_REPO="https://github.com/sigp/lighthouse.git"
-ARG LIGHTHOUSE_BRANCH="unstable"
+ARG LIGHTHOUSE_BRANCH="deneb-free-blobs"
 
 #ARG LODESTAR_REPO="https://github.com/ChainSafe/lodestar.git"
 #ARG LODESTAR_BRANCH="stable"
@@ -21,8 +21,8 @@ ARG TEKU_BRANCH="master"
 #ARG BESU_REPO="https://github.com/hyperledger/besu.git"
 #ARG BESU_BRANCH="main"
 
-ARG GETH_REPO="https://github.com/ethereum/go-ethereum.git"
-ARG GETH_BRANCH="master"
+ARG GETH_REPO="https://github.com/MariusVanDerWijden/go-ethereum.git"
+ARG GETH_BRANCH="4844-devnet-6"
 
 ARG NETHERMIND_REPO="https://github.com/NethermindEth/nethermind.git"
 ARG NETHERMIND_BRANCH="feature/eip-4844-v6"
