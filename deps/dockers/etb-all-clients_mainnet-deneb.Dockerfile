@@ -15,7 +15,7 @@ ARG LIGHTHOUSE_BRANCH="deneb-free-blobs"
 #ARG PRYSM_BRANCH="v4.0.4-patchFix"
 
 ARG TEKU_REPO="https://github.com/ConsenSys/teku.git"
-ARG TEKU_BRANCH="master"
+ARG TEKU_BRANCH="23.6.1"
 
 # Execution Clients
 #ARG BESU_REPO="https://github.com/hyperledger/besu.git"
