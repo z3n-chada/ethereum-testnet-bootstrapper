@@ -32,7 +32,25 @@ from etb.interfaces.client_request import (
     admin_addPeer,
 )
 from etb.interfaces.external.eth2_val_tools import Eth2ValTools
+from etb.common.consensus import Epoch
 
+
+def move_trusted_setup_files(etb_config: ETBConfig):
+    """Move the trusted setup files to the correct location.
+
+    @param etb_config: The ETBConfig object
+    @return:
+    """
+    # we must have the correct trusted setup files in deps.
+    trusted_setup_json = pathlib.Path("/source/deps/misc/trusted_setup.json")
+    trusted_setup_txt = pathlib.Path("/source/deps/misc/trusted_setup.txt")
+    if not trusted_setup_json.exists():
+        raise Exception("The trusted setup json file is missing from /source/deps/misc/")
+    if not trusted_setup_txt.exists():
+        raise Exception("The trusted setup txt file is missing from /source/deps/misc/")
+    # move the trusted setup files to the correct location.
+    shutil.copy(trusted_setup_txt, etb_config.files.trusted_setup_txt_file)
+    shutil.copy(trusted_setup_json, etb_config.files.trusted_setup_json_file)
 
 class EthereumTestnetBootstrapper:
     """The Testnet Bootstrapper wraps all the consensus and execution
@@ -122,6 +140,10 @@ class EthereumTestnetBootstrapper:
         # write the etb-config file into the testnet-dir.
         logging.info("writing etb-config file..")
         etb_config.write_config(etb_config.files.testnet_root / "etb-config.yaml")
+
+        # if running a deneb experiment copy over the trusted_setup files.
+        if etb_config.testnet_config.consensus_layer.deneb_fork.epoch != Epoch.FarFuture:
+            move_trusted_setup_files(etb_config)
 
         # lastly write the docker-compose file to use for bootstrapping later.
         logging.info("writing docker-compose file..")

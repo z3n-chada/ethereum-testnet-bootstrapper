@@ -70,6 +70,8 @@ lighthouse \
       --target-peers="$NUM_CLIENT_NODES" \
       --subscribe-all-subnets \
       --debug-level="$CONSENSUS_LOG_LEVEL" \
+      --trusted-setup-file-override="$TRUSTED_SETUP_JSON_FILE" \
+      --self-limiter="blob_sidecars_by_range:512/10" \
       --suggested-fee-recipient=0x00000000219ab540356cbb839cbe05303d7705fa &
 
 sleep 10

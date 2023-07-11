@@ -70,7 +70,7 @@ class FilesConfig(Config):
     Files specified in the ETBConfig are added to this object as well.
     """
 
-    def __init__(self, optional_overrides=None):
+    def __init__(self, optional_overrides=None, is_deneb_experiment=False):
         super().__init__("files")
 
         if optional_overrides is None:
@@ -93,6 +93,11 @@ class FilesConfig(Config):
             "consensus-bootnode-checkpoint-file": "/data/consensus-bootnode-checkpoint.txt",
             "deposit-contract-deployment-block-hash-file": "/data/deposit-contract-deployment-block-hash.txt",
             "deposit-contract-deployment-block-number-file": "/data/deposit-contract-deployment-block-number.txt",
+        }
+
+        deneb_only_fields = {
+            "trusted-setup-txt-file": "/data/trusted-setup.txt",
+            "trusted-setup-json-file": "/data/trusted-setup.json",
         }
 
         # el genesis files
@@ -139,6 +144,14 @@ class FilesConfig(Config):
         self.deposit_contract_deployment_block_number_file: pathlib.Path = pathlib.Path(
             fields["deposit-contract" "-deployment-block" "-number-file"]
         )
+
+        if is_deneb_experiment:
+            self.trusted_setup_txt_file: pathlib.Path = pathlib.Path(
+                deneb_only_fields["trusted-setup-txt-file"]
+            )
+            self.trusted_setup_json_file: pathlib.Path = pathlib.Path(
+                deneb_only_fields["trusted-setup-json-file"]
+            )
 
         # add optional overrides
         for key, value in optional_overrides.items():
@@ -302,8 +315,8 @@ class ConsensusLayerTestnetConfig(Config):
 
         for fork in required_forks:
             if (
-                f"{fork}-fork-epoch" not in config
-                and f"{fork}-fork-version" not in config
+                    f"{fork}-fork-epoch" not in config
+                    and f"{fork}-fork-version" not in config
             ):
                 raise Exception(
                     f"Missing required fork fields for {fork} in ConsensusLayerTestnetConfig: {self.name}"
@@ -516,11 +529,11 @@ class ClientInstanceCollectionConfig(InstanceCollectionConfig):
     """
 
     def __init__(
-        self,
-        name: str,
-        config: dict,
-        consensus_config: ConsensusInstanceConfig,
-        execution_config: ExecutionInstanceConfig,
+            self,
+            name: str,
+            config: dict,
+            consensus_config: ConsensusInstanceConfig,
+            execution_config: ExecutionInstanceConfig,
     ):
         InstanceCollectionConfig.__init__(self, name, config)
 
@@ -562,10 +575,10 @@ class Instance:
     """
 
     def __init__(
-        self,
-        collection_name: str,
-        ndx: int,
-        collection_config: InstanceCollectionConfig,
+            self,
+            collection_name: str,
+            ndx: int,
+            collection_config: InstanceCollectionConfig,
     ):
         self.collection_name: str = collection_name
         self.ndx: int = ndx
@@ -611,7 +624,7 @@ class Instance:
         return env_dict
 
     def get_docker_compose_repr(
-        self, docker_config: DockerConfig, global_env_vars: dict
+            self, docker_config: DockerConfig, global_env_vars: dict
     ) -> dict:
         """Returns a dict that represents this instance in a docker-compose
         file.
@@ -658,10 +671,10 @@ class ClientInstance(Instance):
     """
 
     def __init__(
-        self,
-        root_name: str,
-        ndx: int,
-        collection_config: ClientInstanceCollectionConfig,
+            self,
+            root_name: str,
+            ndx: int,
+            collection_config: ClientInstanceCollectionConfig,
     ):
         Instance.__init__(self, root_name, ndx, collection_config)
         # useful for typing.
@@ -682,10 +695,10 @@ class ClientInstance(Instance):
         # the etb-client will also pass in some additional attrs for this
         # object to use.
         self.collection_dir: pathlib.Path = (
-            FilesConfig().local_testnet_dir / self.collection_name
+                FilesConfig().local_testnet_dir / self.collection_name
         )
         self.node_dir: pathlib.Path = (
-            FilesConfig().local_testnet_dir / self.collection_name / f"node_{ndx}"
+                FilesConfig().local_testnet_dir / self.collection_name / f"node_{ndx}"
         )
         self.el_dir: pathlib.Path = self.node_dir / self.execution_config.client
         self.jwt_secret_file: pathlib.Path = self.node_dir / "jwt_secret"
@@ -705,7 +718,7 @@ class ClientInstance(Instance):
             ]
 
     def get_docker_compose_repr(
-        self, docker_config: DockerConfig, global_env_vars: dict
+            self, docker_config: DockerConfig, global_env_vars: dict
     ) -> dict:
         """Returns a dict that represents this instance in a docker-compose
         file. The client instance docker-repr is a bit different from the
@@ -779,14 +792,6 @@ class ETBConfig(Config):
         self.config_path: pathlib.Path = path
         self.num_client_nodes: int = 0
 
-        # optional overrides for the config file.
-        if "files" in self._config:
-            self.files: FilesConfig = FilesConfig(self._config["files"])
-        else:
-            self.files: FilesConfig = FilesConfig()
-        # overwrite so the file written etb-config has all fields written.
-        self._config["files"] = self.files.fields
-
         self.docker: DockerConfig = DockerConfig(self._config["docker"])
         self.testnet_config: TestnetConfig = TestnetConfig(
             self._config["testnet-config"]
@@ -803,6 +808,15 @@ class ETBConfig(Config):
             self.consensus_configs[conf] = ConsensusInstanceConfig(
                 name=conf, config=self._config["consensus-configs"][conf]
             )
+
+        # optional overrides for the config file.
+        is_deneb = self.testnet_config.consensus_layer.deneb_fork.epoch != Epoch.FarFuture
+        if "files" in self._config:
+            self.files: FilesConfig = FilesConfig(self._config["files"], is_deneb_experiment=is_deneb)
+        else:
+            self.files: FilesConfig = FilesConfig(is_deneb_experiment=is_deneb)
+        # overwrite so the file written etb-config has all fields written.
+        self._config["files"] = self.files.fields
 
         # instances should all have the same name, if they don't raise an
         # exception.
@@ -905,6 +919,13 @@ class ETBConfig(Config):
             "CHAIN_ID": self.testnet_config.execution_layer.chain_id,
             "NETWORK_ID": self.testnet_config.execution_layer.network_id,
         }
+        if self.testnet_config.consensus_layer.deneb_fork.epoch != Epoch.FarFuture:
+            global_env_vars["TRUSTED_SETUP_JSON_FILE"] = str(
+                self.files.trusted_setup_json_file
+            )
+            global_env_vars["TRUSTED_SETUP_TXT_FILE"] = str(
+                self.files.trusted_setup_txt_file
+            )
 
         # we also include any overrides from the files config.
         override_files: dict[str, str] = {
@@ -957,8 +978,8 @@ class ETBConfig(Config):
         @param epoch: @return: slot
         """
         return (
-            epoch
-            * self.testnet_config.consensus_layer.preset_base.SLOTS_PER_EPOCH.value
+                epoch
+                * self.testnet_config.consensus_layer.preset_base.SLOTS_PER_EPOCH.value
         )
 
     def epoch_to_time(self, epoch: int) -> int:
@@ -974,8 +995,8 @@ class ETBConfig(Config):
         @param slot: @return: epoch
         """
         return (
-            slot
-            // self.testnet_config.consensus_layer.preset_base.SLOTS_PER_EPOCH.value
+                slot
+                // self.testnet_config.consensus_layer.preset_base.SLOTS_PER_EPOCH.value
         )
 
     def slot_to_time(self, slot: int) -> int:
@@ -984,8 +1005,8 @@ class ETBConfig(Config):
         @param slot: time delta in slot form. @return: time as int.
         """
         return self.genesis_time + (
-            slot
-            * self.testnet_config.consensus_layer.preset_base.SECONDS_PER_SLOT.value
+                slot
+                * self.testnet_config.consensus_layer.preset_base.SECONDS_PER_SLOT.value
         )
 
     def get_consensus_fork_delay_seconds(self, fork_name: str) -> int:
@@ -1007,9 +1028,9 @@ class ETBConfig(Config):
 
         fork_epoch: int = epoch_map[fork_name]
         return (
-            fork_epoch
-            * self.testnet_config.consensus_layer.preset_base.SECONDS_PER_SLOT.value
-            * self.testnet_config.consensus_layer.preset_base.SLOTS_PER_EPOCH.value
+                fork_epoch
+                * self.testnet_config.consensus_layer.preset_base.SECONDS_PER_SLOT.value
+                * self.testnet_config.consensus_layer.preset_base.SLOTS_PER_EPOCH.value
         )
 
     # modify the dynamic entries. You shouldn't need to use these.
