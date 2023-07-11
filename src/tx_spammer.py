@@ -19,6 +19,11 @@ w3.eth.account.enable_unaudited_hdwallet_features()
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
+    # hidden config option for testing.
+    parser.add_argument(
+        "--config", dest="config", type=str, default=None, help=argparse.SUPPRESS
+    )
+
     parser.add_argument(
         "--fuzz-mode",
         dest="fuzz_mode",
@@ -90,7 +95,14 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     create_logger(name="tx-fuzz", log_level=args.log_level)
-    etb_config: ETBConfig = get_etb_config()
+
+    logging.info("Getting view of the testnet from etb-config.")
+    if args.config is None:
+        etb_config: ETBConfig = get_etb_config()
+    else:
+        logging.warning("Using config from args.")
+        etb_config: ETBConfig = ETBConfig(pathlib.Path(args.config))
+
     testnet_monitor = TestnetMonitor(etb_config)
 
     live_fuzzer_interface = LiveFuzzer(binary_path=pathlib.Path(args.tx_fuzz_path))
