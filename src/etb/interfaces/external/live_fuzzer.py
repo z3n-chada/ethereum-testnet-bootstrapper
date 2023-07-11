@@ -27,7 +27,7 @@ class LiveFuzzer:
             rpc_path,
             "--sk",
             private_key,
-            "--tx-count",
+            "--txcount",
             str(tx_count),
         ]
 
