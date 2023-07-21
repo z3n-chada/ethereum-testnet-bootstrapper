@@ -65,8 +65,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git
 
 # set up dotnet (nethermind)
-RUN wget https://packages.microsoft.com/config/debian/11/packages-microsoft-prod.deb -O packages-microsoft-prod.deb && dpkg -i packages-microsoft-prod.deb && rm packages-microsoft-prod.deb
-RUN apt update && apt install -y dotnet-sdk-7.0
+RUN wget https://dot.net/v1/dotnet-install.sh -O dotnet-install.sh && \
+    chmod +x dotnet-install.sh && \
+    ./dotnet-install.sh --channel 7.0
+ENV PATH="$PATH:/root/.dotnet/"
 
 WORKDIR /git
 
@@ -75,10 +77,15 @@ RUN wget --no-check-certificate https://apt.llvm.org/llvm.sh && chmod +x llvm.sh
 ENV LLVM_CONFIG=llvm-config-15
 
 # set up go (geth+prysm)
-RUN wget https://go.dev/dl/go1.20.3.linux-amd64.tar.gz
-RUN tar -zxvf go1.20.3.linux-amd64.tar.gz -C /usr/local/
-RUN ln -s /usr/local/go/bin/go /usr/local/bin/go
-RUN ln -s /usr/local/go/bin/gofmt /usr/local/bin/gofmt
+RUN arch=$(arch | sed s/aarch64/arm64/ | sed s/x86_64/amd64/) && \
+    wget https://go.dev/dl/go1.20.3.linux-${arch}.tar.gz
+
+RUN arch=$(arch | sed s/aarch64/arm64/ | sed s/x86_64/amd64/) && \
+    tar -zxvf go1.20.3.linux-${arch}.tar.gz -C /usr/local/
+
+RUN ln -s /usr/local/go/bin/go /usr/local/bin/go && \
+    ln -s /usr/local/go/bin/gofmt /usr/local/bin/gofmt
+
 ENV PATH="$PATH:/root/go/bin"
 
 # setup nodejs (lodestar)
@@ -113,6 +120,7 @@ RUN git clone "${LIGHTHOUSE_REPO}" && \
     git log -n 1 --format=format:"%H" > /lighthouse.version
 
 RUN cd lighthouse && \
+    cargo update -p proc-macro2 && \
     cargo build --release --manifest-path lighthouse/Cargo.toml --bin lighthouse
 
 # LODESTAR
@@ -140,7 +148,8 @@ RUN git clone "${NIMBUS_ETH2_REPO}" && \
     make -j16 update
 
 RUN cd nimbus-eth2 && \
-    make -j16 nimbus_beacon_node NIMFLAGS="-d:disableMarchNative --cc:clang --clang.exe:clang-15 --clang.linkerexe:clang-15"
+    arch=$(arch | sed s/aarch64/arm64/ | sed s/x86_64/amd64/) && \
+    make -j16 nimbus_beacon_node NIMFLAGS="-d:disableMarchNative --cpu:${arch} --cc:clang --clang.exe:clang-15 --clang.linkerexe:clang-15 --passC:-fno-lto --passL:-fno-lto"
 
 # TEKU
 FROM etb-client-builder AS teku-builder
@@ -156,15 +165,17 @@ RUN cd teku && \
     ./gradlew installDist
 
 # PRYSM
-FROM gcr.io/prysmaticlabs/build-agent AS prysm-builder
+FROM etb-client-builder AS prysm-builder
 ARG PRYSM_BRANCH
 ARG PRYSM_REPO
+RUN go install github.com/bazelbuild/bazelisk@latest
 RUN git clone "${PRYSM_REPO}" && \
     cd prysm && \
     git checkout "${PRYSM_BRANCH}" && \
     git log -n 1 --format=format:"%H" > /prysm.version
 
-RUN cd prysm && bazel build //cmd/beacon-chain:beacon-chain //cmd/validator:validator
+RUN cd prysm && \
+    /root/go/bin/bazelisk build --config=release //cmd/beacon-chain:beacon-chain //cmd/validator:validator
 
 
 ############################# Execution  Clients  #############################
@@ -227,6 +238,7 @@ RUN git clone "${BEACON_METRICS_GAZER_REPO}" && \
     git checkout "${BEACON_METRICS_GAZER_BRANCH}"
 
 RUN cd beacon-metrics-gazer && \
+    cargo update -p proc-macro2 && \
     cargo build --release
 ########################### etb-all-clients runner  ###########################
 FROM debian:bullseye-slim
@@ -239,9 +251,12 @@ RUN apt update && apt install curl ca-certificates -y --no-install-recommends \
     software-properties-common && \
     curl -sL https://deb.nodesource.com/setup_18.x | bash -
 
-RUN wget https://packages.microsoft.com/config/debian/11/packages-microsoft-prod.deb -O packages-microsoft-prod.deb && \
-    dpkg -i packages-microsoft-prod.deb && \
-    rm packages-microsoft-prod.deb
+RUN wget https://dot.net/v1/dotnet-install.sh -O dotnet-install.sh && \
+    chmod +x dotnet-install.sh && \
+    ./dotnet-install.sh --channel 7.0
+
+ENV PATH="$PATH:/root/.dotnet/"
+ENV DOTNET_ROOT=/root/.dotnet
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     nodejs \
@@ -252,8 +267,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     liblz4-dev \
     libzstd-dev \
     openjdk-17-jre \
-    dotnet-runtime-7.0 \
-    aspnetcore-runtime-7.0 \
     python3-dev \
     python3-pip
 
@@ -286,8 +299,8 @@ COPY --from=teku-builder  /git/teku/build/install/teku/. /opt/teku
 COPY --from=teku-builder /teku.version /teku.version
 RUN ln -s /opt/teku/bin/teku /usr/local/bin/teku
 
-COPY --from=prysm-builder /prysm/bazel-bin/cmd/beacon-chain/beacon-chain_/beacon-chain /usr/local/bin/beacon-chain
-COPY --from=prysm-builder /prysm/bazel-bin/cmd/validator/validator_/validator /usr/local/bin/validator
+COPY --from=prysm-builder /git/prysm/bazel-bin/cmd/beacon-chain/beacon-chain_/beacon-chain /usr/local/bin/beacon-chain
+COPY --from=prysm-builder /git/prysm/bazel-bin/cmd/validator/validator_/validator /usr/local/bin/validator
 COPY --from=prysm-builder /prysm.version /prysm.version
 
 COPY --from=lodestar-builder /git/lodestar /git/lodestar
