@@ -68,5 +68,6 @@ geth \
   --allow-insecure-unlock \
   --netrestrict="$IP_SUBNET" \
   --syncmode=full \
+  --ipcdisable=true \
   --vmodule=rpc=5 \
   --discovery.dns=""
