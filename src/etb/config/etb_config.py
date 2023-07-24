@@ -809,12 +809,14 @@ class ETBConfig(Config):
                 name=conf, config=self._config["consensus-configs"][conf]
             )
 
+        # does this experiment end up forking to deneb
+        self.is_deneb = self.testnet_config.consensus_layer.deneb_fork.epoch != Epoch.FarFuture.value
+
         # optional overrides for the config file.
-        is_deneb = self.testnet_config.consensus_layer.deneb_fork.epoch != Epoch.FarFuture
         if "files" in self._config:
-            self.files: FilesConfig = FilesConfig(self._config["files"], is_deneb_experiment=is_deneb)
+            self.files: FilesConfig = FilesConfig(self._config["files"], is_deneb_experiment=self.is_deneb)
         else:
-            self.files: FilesConfig = FilesConfig(is_deneb_experiment=is_deneb)
+            self.files: FilesConfig = FilesConfig(is_deneb_experiment=self.is_deneb)
         # overwrite so the file written etb-config has all fields written.
         self._config["files"] = self.files.fields
 
@@ -918,8 +920,10 @@ class ETBConfig(Config):
             "NUM_CLIENT_NODES": self.num_client_nodes,
             "CHAIN_ID": self.testnet_config.execution_layer.chain_id,
             "NETWORK_ID": self.testnet_config.execution_layer.network_id,
+            "IS_DENEB": str(int(self.is_deneb)),  # no boolean in bash
         }
-        if self.testnet_config.consensus_layer.deneb_fork.epoch != Epoch.FarFuture:
+
+        if self.is_deneb:
             global_env_vars["TRUSTED_SETUP_JSON_FILE"] = str(
                 self.files.trusted_setup_json_file
             )

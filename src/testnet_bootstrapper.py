@@ -142,7 +142,7 @@ class EthereumTestnetBootstrapper:
         etb_config.write_config(etb_config.files.testnet_root / "etb-config.yaml")
 
         # if running a deneb experiment copy over the trusted_setup files.
-        if etb_config.testnet_config.consensus_layer.deneb_fork.epoch != Epoch.FarFuture:
+        if etb_config.is_deneb:
             move_trusted_setup_files(etb_config)
 
         # lastly write the docker-compose file to use for bootstrapping later.

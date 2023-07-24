@@ -19,6 +19,7 @@ env_vars=(
   "IP_SUBNET"
   "JWT_SECRET_FILE"
   "CHAIN_ID"
+  "IS_DENEB"
 )
 
 # verify vars we need are set and available.
@@ -36,29 +37,58 @@ while [ ! -f "$EXECUTION_CHECKPOINT_FILE" ]; do
     sleep 1
 done
 
-besu \
-  --logging="$EXECUTION_LOG_LEVEL" \
-  --bootnodes="$EXECUTION_BOOTNODE" \
-  --data-path="$EXECUTION_DATA_DIR" \
-  --genesis-file="$EXECUTION_GENESIS_FILE" \
-  --network-id="$NETWORK_ID" \
-  --rpc-http-enabled=true --rpc-http-api="$EXECUTION_HTTP_APIS" \
-  --rpc-http-host=0.0.0.0 \
-  --rpc-http-port="$EXECUTION_HTTP_PORT" \
-  --rpc-http-cors-origins="*" \
-  --rpc-ws-enabled=true --rpc-ws-api="$EXECUTION_WS_APIS" \
-  --rpc-ws-host=0.0.0.0 \
-  --rpc-ws-port="$EXECUTION_WS_PORT" \
-  --host-allowlist="*" \
-  --p2p-enabled=true \
-  --p2p-host="$IP_ADDRESS" \
-  --nat-method=DOCKER \
-  --sync-mode=FULL \
-  --p2p-port="$EXECUTION_P2P_PORT" \
-  --engine-rpc-enabled=true \
-  --engine-jwt-enabled \
-  --engine-jwt-secret="$JWT_SECRET_FILE" \
-  --engine-host-allowlist="*" \
-  --data-storage-format="BONSAI" \
-  --kzg-trusted-setup="$TRUSTED_SETUP_TXT_FILE" \
-  --engine-rpc-port="$EXECUTION_ENGINE_HTTP_PORT" 
+if [ "$IS_DENEB" == 1 ]; then
+  echo "Launching deneb ready besu."
+  besu \
+    --logging="$EXECUTION_LOG_LEVEL" \
+    --bootnodes="$EXECUTION_BOOTNODE" \
+    --data-path="$EXECUTION_DATA_DIR" \
+    --genesis-file="$EXECUTION_GENESIS_FILE" \
+    --network-id="$NETWORK_ID" \
+    --rpc-http-enabled=true --rpc-http-api="$EXECUTION_HTTP_APIS" \
+    --rpc-http-host=0.0.0.0 \
+    --rpc-http-port="$EXECUTION_HTTP_PORT" \
+    --rpc-http-cors-origins="*" \
+    --rpc-ws-enabled=true --rpc-ws-api="$EXECUTION_WS_APIS" \
+    --rpc-ws-host=0.0.0.0 \
+    --rpc-ws-port="$EXECUTION_WS_PORT" \
+    --host-allowlist="*" \
+    --p2p-enabled=true \
+    --p2p-host="$IP_ADDRESS" \
+    --nat-method=DOCKER \
+    --sync-mode=FULL \
+    --p2p-port="$EXECUTION_P2P_PORT" \
+    --engine-rpc-enabled=true \
+    --engine-jwt-enabled \
+    --engine-jwt-secret="$JWT_SECRET_FILE" \
+    --engine-host-allowlist="*" \
+    --data-storage-format="BONSAI" \
+    --kzg-trusted-setup="$TRUSTED_SETUP_TXT_FILE" \
+    --engine-rpc-port="$EXECUTION_ENGINE_HTTP_PORT"
+else
+    besu \
+    --logging="$EXECUTION_LOG_LEVEL" \
+    --bootnodes="$EXECUTION_BOOTNODE" \
+    --data-path="$EXECUTION_DATA_DIR" \
+    --genesis-file="$EXECUTION_GENESIS_FILE" \
+    --network-id="$NETWORK_ID" \
+    --rpc-http-enabled=true --rpc-http-api="$EXECUTION_HTTP_APIS" \
+    --rpc-http-host=0.0.0.0 \
+    --rpc-http-port="$EXECUTION_HTTP_PORT" \
+    --rpc-http-cors-origins="*" \
+    --rpc-ws-enabled=true --rpc-ws-api="$EXECUTION_WS_APIS" \
+    --rpc-ws-host=0.0.0.0 \
+    --rpc-ws-port="$EXECUTION_WS_PORT" \
+    --host-allowlist="*" \
+    --p2p-enabled=true \
+    --p2p-host="$IP_ADDRESS" \
+    --nat-method=DOCKER \
+    --sync-mode=FULL \
+    --p2p-port="$EXECUTION_P2P_PORT" \
+    --engine-rpc-enabled=true \
+    --engine-jwt-enabled \
+    --engine-jwt-secret="$JWT_SECRET_FILE" \
+    --engine-host-allowlist="*" \
+    --data-storage-format="BONSAI" \
+    --engine-rpc-port="$EXECUTION_ENGINE_HTTP_PORT"
+fi
