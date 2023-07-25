@@ -19,6 +19,7 @@ env_vars=(
   "IP_SUBNET"
   "JWT_SECRET_FILE"
   "CHAIN_ID"
+  "IS_DENEB"
 )
 
 # verify vars we need are set and available.
@@ -44,30 +45,57 @@ geth init \
     "$EXECUTION_GENESIS_FILE"
 
 # Now start geth.
-echo "Starting geth"
-
-geth \
-  --datadir="$EXECUTION_NODE_DIR" \
-  --networkid="$CHAIN_ID" \
-  --port "$EXECUTION_P2P_PORT" \
-  --http --http.api "$EXECUTION_HTTP_APIS" \
-  --http.port "$EXECUTION_HTTP_PORT" \
-  --http.addr 0.0.0.0 \
-  --http.corsdomain "*" \
-  --http.vhosts="*" \
-  --ws --ws.api "$EXECUTION_WS_APIS" \
-  --ws.port="$EXECUTION_WS_PORT" \
-  --ws.addr 0.0.0.0 \
-  --gcmode=archive \
-  --authrpc.port="$EXECUTION_ENGINE_HTTP_PORT" \
-  --authrpc.addr=0.0.0.0 \
-  --authrpc.vhosts="*" \
-  --authrpc.jwtsecret="$JWT_SECRET_FILE" \
-  --nat "extip:$IP_ADDRESS" \
-  --rpc.allow-unprotected-txs \
-  --allow-insecure-unlock \
-  --netrestrict="$IP_SUBNET" \
-  --syncmode=full \
-  --ipcdisable=true \
-  --vmodule=rpc=5 \
-  --discovery.dns=""
+if [ "$IS_DENEB" == 1 ]; then
+  echo "Launching deneb ready geth."
+  geth \
+    --datadir="$EXECUTION_NODE_DIR" \
+    --networkid="$CHAIN_ID" \
+    --port "$EXECUTION_P2P_PORT" \
+    --http --http.api "$EXECUTION_HTTP_APIS" \
+    --http.port "$EXECUTION_HTTP_PORT" \
+    --http.addr 0.0.0.0 \
+    --http.corsdomain "*" \
+    --http.vhosts="*" \
+    --ws --ws.api "$EXECUTION_WS_APIS" \
+    --ws.port="$EXECUTION_WS_PORT" \
+    --ws.addr 0.0.0.0 \
+    --gcmode=archive \
+    --authrpc.port="$EXECUTION_ENGINE_HTTP_PORT" \
+    --authrpc.addr=0.0.0.0 \
+    --authrpc.vhosts="*" \
+    --authrpc.jwtsecret="$JWT_SECRET_FILE" \
+    --nat "extip:$IP_ADDRESS" \
+    --rpc.allow-unprotected-txs \
+    --allow-insecure-unlock \
+    --netrestrict="$IP_SUBNET" \
+    --syncmode=full \
+    --ipcdisable=true \
+    --vmodule=rpc=5 \
+    --discovery.dns=""
+else
+    geth \
+    --datadir="$EXECUTION_NODE_DIR" \
+    --networkid="$CHAIN_ID" \
+    --port "$EXECUTION_P2P_PORT" \
+    --http --http.api "$EXECUTION_HTTP_APIS" \
+    --http.port "$EXECUTION_HTTP_PORT" \
+    --http.addr 0.0.0.0 \
+    --http.corsdomain "*" \
+    --http.vhosts="*" \
+    --ws --ws.api "$EXECUTION_WS_APIS" \
+    --ws.port="$EXECUTION_WS_PORT" \
+    --ws.addr 0.0.0.0 \
+    --gcmode=archive \
+    --authrpc.port="$EXECUTION_ENGINE_HTTP_PORT" \
+    --authrpc.addr=0.0.0.0 \
+    --authrpc.vhosts="*" \
+    --authrpc.jwtsecret="$JWT_SECRET_FILE" \
+    --nat "extip:$IP_ADDRESS" \
+    --rpc.allow-unprotected-txs \
+    --allow-insecure-unlock \
+    --netrestrict="$IP_SUBNET" \
+    --syncmode=full \
+    --ipcdisable=true \
+    --vmodule=rpc=5 \
+    --discovery.dns=""
+fi

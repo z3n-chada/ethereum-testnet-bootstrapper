@@ -121,7 +121,7 @@ RUN git clone "${LIGHTHOUSE_REPO}" && \
 
 RUN cd lighthouse && \
     cargo update -p proc-macro2 && \
-    cargo build --release --manifest-path lighthouse/Cargo.toml --bin lighthouse
+    cargo build --release --manifest-path lighthouse/Cargo.toml --features spec-minimal --bin lighthouse
 
 # LODESTAR
 FROM etb-client-builder AS lodestar-builder
@@ -149,7 +149,7 @@ RUN git clone "${NIMBUS_ETH2_REPO}" && \
 
 RUN cd nimbus-eth2 && \
     arch=$(arch | sed s/aarch64/arm64/ | sed s/x86_64/amd64/) && \
-    make -j16 nimbus_beacon_node NIMFLAGS="-d:disableMarchNative --cpu:${arch} --cc:clang --clang.exe:clang-15 --clang.linkerexe:clang-15 --passC:-fno-lto --passL:-fno-lto"
+    make -j16 nimbus_beacon_node NIMFLAGS="-d:const_preset=minimal -d:web3_consensus_const_preset=minimal -d:FIELD_ELEMENTS_PER_BLOB=4 -d:disableMarchNative --cpu:${arch} --cc:clang --clang.exe:clang-15 --clang.linkerexe:clang-15 --passC:-fno-lto --passL:-fno-lto"
 
 # TEKU
 FROM etb-client-builder AS teku-builder
@@ -175,7 +175,7 @@ RUN git clone "${PRYSM_REPO}" && \
     git log -n 1 --format=format:"%H" > /prysm.version
 
 RUN cd prysm && \
-    /root/go/bin/bazelisk build --config=release //cmd/beacon-chain:beacon-chain //cmd/validator:validator
+    /root/go/bin/bazelisk build --config=minimal //cmd/beacon-chain:beacon-chain //cmd/validator:validator
 
 
 ############################# Execution  Clients  #############################
@@ -317,4 +317,4 @@ RUN ln -s /opt/besu/bin/besu /usr/local/bin/besu
 
 COPY --from=nethermind-builder /nethermind.version /nethermind.version
 COPY --from=nethermind-builder /git/nethermind/out /nethermind/
-RUN ln -s /nethermind/Nethermind.Runner /usr/local/bin/nethermind
+RUN ln -s /nethermind/nethermind /usr/local/bin/nethermind

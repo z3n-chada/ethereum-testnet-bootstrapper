@@ -129,10 +129,7 @@ class ExecutionGenesisWriter:
         }
 
         # for next based experiments
-        if (
-            self.etb_config.testnet_config.consensus_layer.deneb_fork.epoch
-            != Epoch.FarFuture.value
-        ):
+        if self.etb_config.is_deneb:
             config["cancunTime"] = self.cancun_fork_time
 
         self.genesis["config"] = config
@@ -179,10 +176,7 @@ class ExecutionGenesisWriter:
             },
         }
         # for next based experiments
-        if (
-            self.etb_config.testnet_config.consensus_layer.deneb_fork.epoch
-            != Epoch.FarFuture.value
-        ):
+        if self.etb_config.is_deneb:
             self.genesis["config"]["cancunTime"] = self.cancun_fork_time
 
         # besu doesn't use keystores like geth, however you can embed the
@@ -279,10 +273,7 @@ class ExecutionGenesisWriter:
             }
         }
         # for next based experiments
-        if (
-            self.etb_config.testnet_config.consensus_layer.deneb_fork.epoch
-            != Epoch.FarFuture.value
-        ):
+        if self.etb_config.is_deneb:
             self.genesis["params"][
                 "eip4844TransitionTimestamp"
             ] = f"0x{self.cancun_fork_time:08x}"

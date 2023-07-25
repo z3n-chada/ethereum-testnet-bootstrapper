@@ -22,6 +22,7 @@ env_vars=(
   "NUM_CLIENT_NODES"
   "EXECUTION_ENGINE_HTTP_PORT"
   "EXECUTION_ENGINE_WS_PORT"
+  "IS_DENEB"
 )
 # verify vars we need are set and available.
 for var in "${env_vars[@]}" ; do
@@ -45,46 +46,87 @@ done
 
 bootnode_enr=`cat $CONSENSUS_BOOTNODE_FILE`
 
-echo "Launching lighthouse."
+if [ "$IS_DENEB" == 1 ]; then
+  echo "Launching deneb ready lighthouse."
+  lighthouse \
+        --testnet-dir="$COLLECTION_DIR" \
+        -l \
+        bn \
+        --datadir="$CONSENSUS_NODE_DIR" \
+        --staking \
+        --http-address=0.0.0.0 \
+        --http-port="$CONSENSUS_BEACON_API_PORT" \
+        --http-allow-origin="*" \
+        --http-allow-sync-stalled \
+        --listen-address=0.0.0.0 \
+        --port="$CONSENSUS_P2P_PORT" \
+        --execution-endpoints="http://127.0.0.1:$EXECUTION_ENGINE_HTTP_PORT" \
+        --enable-private-discovery \
+        --enr-address "$IP_ADDRESS" \
+        --enr-udp-port "$CONSENSUS_P2P_PORT" \
+        --enr-tcp-port "$CONSENSUS_P2P_PORT" \
+        --discovery-port "$CONSENSUS_P2P_PORT" \
+        --jwt-secrets="$JWT_SECRET_FILE" \
+        --boot-nodes="$bootnode_enr" \
+        --target-peers="$NUM_CLIENT_NODES" \
+        --subscribe-all-subnets \
+        --debug-level="$CONSENSUS_LOG_LEVEL" \
+        --trusted-setup-file-override="$TRUSTED_SETUP_JSON_FILE" \
+        --self-limiter="blob_sidecars_by_range:512/10" \
+        --suggested-fee-recipient=0x00000000219ab540356cbb839cbe05303d7705fa &
 
-lighthouse \
-      --testnet-dir="$COLLECTION_DIR" \
-      -l \
-      bn \
-      --datadir="$CONSENSUS_NODE_DIR" \
-      --staking \
-      --http-address=0.0.0.0 \
-      --http-port="$CONSENSUS_BEACON_API_PORT" \
-      --http-allow-origin="*" \
-      --http-allow-sync-stalled \
-      --listen-address=0.0.0.0 \
-      --port="$CONSENSUS_P2P_PORT" \
-      --execution-endpoints="http://127.0.0.1:$EXECUTION_ENGINE_HTTP_PORT" \
-      --enable-private-discovery \
-      --enr-address "$IP_ADDRESS" \
-      --enr-udp-port "$CONSENSUS_P2P_PORT" \
-      --enr-tcp-port "$CONSENSUS_P2P_PORT" \
-      --discovery-port "$CONSENSUS_P2P_PORT" \
-      --jwt-secrets="$JWT_SECRET_FILE" \
-      --boot-nodes="$bootnode_enr" \
-      --target-peers="$NUM_CLIENT_NODES" \
-      --subscribe-all-subnets \
-      --debug-level="$CONSENSUS_LOG_LEVEL" \
-      --trusted-setup-file-override="$TRUSTED_SETUP_JSON_FILE" \
-      --self-limiter="blob_sidecars_by_range:512/10" \
-      --suggested-fee-recipient=0x00000000219ab540356cbb839cbe05303d7705fa &
+  sleep 10
+  lighthouse \
+        -l \
+        --testnet-dir="$COLLECTION_DIR" \
+        vc \
+        --validators-dir "$CONSENSUS_NODE_DIR/keys" \
+        --secrets-dir "$CONSENSUS_NODE_DIR/secrets" \
+        --init-slashing-protection \
+        --beacon-nodes="http://127.0.0.1:$CONSENSUS_BEACON_API_PORT" \
+        --graffiti="$CONSENSUS_GRAFFITI" \
+        --http --http-port="$CONSENSUS_VALIDATOR_RPC_PORT" \
+        --suggested-fee-recipient=0x00000000219ab540356cbb839cbe05303d7705fa \
+        --debug-level="$CONSENSUS_LOG_LEVEL" \
+        --logfile="$CONSENSUS_NODE_DIR/validator.log" --logfile-debug-level="$CONSENSUS_LOG_LEVEL"
+else
+  lighthouse \
+        --testnet-dir="$COLLECTION_DIR" \
+        -l \
+        bn \
+        --datadir="$CONSENSUS_NODE_DIR" \
+        --staking \
+        --http-address=0.0.0.0 \
+        --http-port="$CONSENSUS_BEACON_API_PORT" \
+        --http-allow-origin="*" \
+        --http-allow-sync-stalled \
+        --listen-address=0.0.0.0 \
+        --port="$CONSENSUS_P2P_PORT" \
+        --execution-endpoints="http://127.0.0.1:$EXECUTION_ENGINE_HTTP_PORT" \
+        --enable-private-discovery \
+        --enr-address "$IP_ADDRESS" \
+        --enr-udp-port "$CONSENSUS_P2P_PORT" \
+        --enr-tcp-port "$CONSENSUS_P2P_PORT" \
+        --discovery-port "$CONSENSUS_P2P_PORT" \
+        --jwt-secrets="$JWT_SECRET_FILE" \
+        --boot-nodes="$bootnode_enr" \
+        --target-peers="$NUM_CLIENT_NODES" \
+        --subscribe-all-subnets \
+        --debug-level="$CONSENSUS_LOG_LEVEL" \
+        --suggested-fee-recipient=0x00000000219ab540356cbb839cbe05303d7705fa &
 
-sleep 10
-lighthouse \
-      -l \
-      --testnet-dir="$COLLECTION_DIR" \
-      vc \
-      --validators-dir "$CONSENSUS_NODE_DIR/keys" \
-      --secrets-dir "$CONSENSUS_NODE_DIR/secrets" \
-      --init-slashing-protection \
-      --beacon-nodes="http://127.0.0.1:$CONSENSUS_BEACON_API_PORT" \
-      --graffiti="$CONSENSUS_GRAFFITI" \
-      --http --http-port="$CONSENSUS_VALIDATOR_RPC_PORT" \
-      --suggested-fee-recipient=0x00000000219ab540356cbb839cbe05303d7705fa \
-      --debug-level="$CONSENSUS_LOG_LEVEL" \
-      --logfile="$CONSENSUS_NODE_DIR/validator.log" --logfile-debug-level="$CONSENSUS_LOG_LEVEL"
+  sleep 10
+  lighthouse \
+        -l \
+        --testnet-dir="$COLLECTION_DIR" \
+        vc \
+        --validators-dir "$CONSENSUS_NODE_DIR/keys" \
+        --secrets-dir "$CONSENSUS_NODE_DIR/secrets" \
+        --init-slashing-protection \
+        --beacon-nodes="http://127.0.0.1:$CONSENSUS_BEACON_API_PORT" \
+        --graffiti="$CONSENSUS_GRAFFITI" \
+        --http --http-port="$CONSENSUS_VALIDATOR_RPC_PORT" \
+        --suggested-fee-recipient=0x00000000219ab540356cbb839cbe05303d7705fa \
+        --debug-level="$CONSENSUS_LOG_LEVEL" \
+        --logfile="$CONSENSUS_NODE_DIR/validator.log" --logfile-debug-level="$CONSENSUS_LOG_LEVEL"
+fi
