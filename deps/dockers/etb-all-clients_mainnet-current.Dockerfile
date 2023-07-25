@@ -68,6 +68,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN wget https://dot.net/v1/dotnet-install.sh -O dotnet-install.sh && \
     chmod +x dotnet-install.sh && \
     ./dotnet-install.sh --channel 7.0
+
 ENV PATH="$PATH:/root/.dotnet/"
 
 WORKDIR /git
