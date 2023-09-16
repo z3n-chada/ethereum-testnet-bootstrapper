@@ -34,14 +34,14 @@ class ExecutionGenesisWriter:
             raise Exception("Pre-merge forks no longer supported.")
 
         self.merge_fork_time = (
-            self.etb_config.get_consensus_fork_delay_seconds("bellatrix")
-            + self.etb_config.genesis_time
+                self.etb_config.get_consensus_fork_delay_seconds("bellatrix")
+                + self.etb_config.genesis_time
         )
         self.merge_fork_block = 0  # genesis.
 
         self.shanghai_fork_time = (
-            self.etb_config.get_consensus_fork_delay_seconds("capella")
-            + self.etb_config.genesis_time
+                self.etb_config.get_consensus_fork_delay_seconds("capella")
+                + self.etb_config.genesis_time
         )
         if genesis_fork.name >= ForkVersionName.capella:
             self.shanghai_fork_block = 0
@@ -52,8 +52,8 @@ class ExecutionGenesisWriter:
             )
 
         self.cancun_fork_time = (
-            self.etb_config.get_consensus_fork_delay_seconds("deneb")
-            + self.etb_config.genesis_time
+                self.etb_config.get_consensus_fork_delay_seconds("deneb")
+                + self.etb_config.genesis_time
         )
         if genesis_fork.name >= ForkVersionName.deneb:
             self.cancun_fork_block = 0
@@ -198,7 +198,7 @@ class ExecutionGenesisWriter:
         """
         self.genesis = {
             "name": "Local-ETB-Testnet",
-            "engine": {},
+            "engine": {"Ethash": {}},
             "params": {
                 "gasLimitBoundDivisor": "0x400",
                 "registrar": "0x0000000000000000000000000000000000000000",
@@ -261,17 +261,17 @@ class ExecutionGenesisWriter:
             "nodes": [],
         }
 
-        self.genesis["engine"]["Ethash"] = {
-            "params": {
-                "minimumDifficulty": "0x20000",
-                "difficultyBoundDivisor": "0x800",
-                "durationLimit": "0xd",
-                "blockReward": {"0x0": "0x1BC16D674EC80000"},
-                "homesteadTransition": "0x0",
-                "eip100bTransition": "0x0",
-                "difficultyBombDelays": {},
-            }
-        }
+        # self.genesis["engine"]["Ethash"] = {
+        #     "params": {
+        #         "minimumDifficulty": "0x20000",
+        #         "difficultyBoundDivisor": "0x800",
+        #         "durationLimit": "0xd",
+        #         "blockReward": {"0x0": "0x1BC16D674EC80000"},
+        #         "homesteadTransition": "0x0",
+        #         "eip100bTransition": "0x0",
+        #         "difficultyBombDelays": {},
+        #     }
+        # }
         # for next based experiments
         if self.etb_config.is_deneb:
             self.genesis["params"][
