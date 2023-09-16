@@ -54,7 +54,7 @@ testnet-config:
     bellatrix-fork-epoch: 0
 
     capella-fork-version: 0x04000666
-    capella-fork-epoch: 0
+    capella-fork-epoch: 2
 
     deneb-fork-version: 0x05000666
 #    deneb-fork-epoch: 18446744073709551615 # far future
@@ -72,6 +72,19 @@ execution-configs:
     log-level: "4" # detail
     http-apis: "debug,txpool,admin,net,eth,web3,personal,engine,clique,miner"
     ws-apis: "admin,net,eth,engine"
+    http-port: 8645
+    ws-port: 8646
+    p2p-port: 666
+    engine-http-port: 8551   # http/ws same port.
+    engine-ws-port: 8551   # include for nimbus
+    metric-port: 9001
+
+  reth-execution-config:
+    client: "reth"
+    launcher: "/source/deps/launchers/el/launch-reth.sh"
+    log-level: "debug" # detail
+    http-apis: "eth,net,admin,web3"
+    ws-apis: "eth,net,admin,web3"
     http-port: 8645
     ws-port: 8646
     p2p-port: 666

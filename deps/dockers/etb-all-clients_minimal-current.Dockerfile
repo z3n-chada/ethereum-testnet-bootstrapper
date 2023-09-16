@@ -24,6 +24,9 @@ ARG BESU_BRANCH="main"
 ARG GETH_REPO="https://github.com/ethereum/go-ethereum.git"
 ARG GETH_BRANCH="master"
 
+ARG RETH_REPO="https://github.com/paradigmxyz/reth.git"
+ARG RETH_BRANCH="main"
+
 ARG NETHERMIND_REPO="https://github.com/NethermindEth/nethermind.git"
 ARG NETHERMIND_BRANCH="master"
 
@@ -191,6 +194,17 @@ RUN git clone "${GETH_REPO}" && \
 RUN cd go-ethereum && \
     go install ./...
 
+FROM etb-client-builder AS reth-builder
+ARG RETH_BRANCH
+ARG RETH_REPO
+RUN git clone "${RETH_REPO}" && \
+    cd reth && \
+    git checkout "${RETH_BRANCH}" && \
+    git log -n 1 --format=format:"%H" > /reth.version
+
+RUN cd reth && \
+    cargo build --release
+
 # Besu
 FROM etb-client-builder AS besu-builder
 ARG BESU_BRANCH
@@ -310,6 +324,9 @@ RUN ln -s /git/lodestar/node_modules/.bin/lodestar /usr/local/bin/lodestar
 # execution clients
 COPY --from=geth-builder /geth.version /geth.version
 COPY --from=geth-builder /root/go/bin/geth /usr/local/bin/geth
+
+COPY --from=reth-builder /reth.version /reth.version
+COPY --from=reth-builder /git/reth/target/release/reth /usr/local/bin/reth
 
 COPY --from=besu-builder /besu.version /besu.version
 COPY --from=besu-builder /git/besu/build/install/besu/. /opt/besu

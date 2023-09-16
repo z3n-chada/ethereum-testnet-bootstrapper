@@ -941,6 +941,7 @@ class ETBConfig(Config):
 
         execution_genesis_map: dict[str, str] = {
             "geth": str(self.files.geth_genesis_file),
+            "reth": str(self.files.geth_genesis_file),
             "besu": str(self.files.besu_genesis_file),
             "nethermind": str(self.files.nether_mind_genesis_file),
         }
