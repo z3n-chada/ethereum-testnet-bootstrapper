@@ -120,12 +120,10 @@ class ExecutionGenesisWriter:
             "istanbulBlock": 0,
             "berlinBlock": 0,
             "londonBlock": 0,
-            "mergeForkBlock": self.merge_fork_block,
-            "arrowGlacierBlock": self.merge_fork_block,
-            "grayGlacierBlock": self.merge_fork_block,
-            "shanghaiTime": self.shanghai_fork_time,
+            "mergeNetsplitBlock" : self.merge_fork_block,
             "terminalTotalDifficulty": 0,
             "terminalTotalDifficultyPassed": True,
+            "shanghaiTime": self.shanghai_fork_time,
         }
 
         # for next based experiments
@@ -168,8 +166,8 @@ class ExecutionGenesisWriter:
                 "berlinBlock": 0,
                 "londonBlock": 0,
                 "mergeForkBlock": self.merge_fork_block,
-                "arrowGlacierBlock": self.merge_fork_block,
-                "grayGlacierBlock": self.merge_fork_block,
+                # "arrowGlacierBlock": self.merge_fork_block,
+                # "grayGlacierBlock": self.merge_fork_block,
                 "shanghaiTime": self.shanghai_fork_time,
                 "terminalTotalDifficulty": 0,
                 "ethash": {},
