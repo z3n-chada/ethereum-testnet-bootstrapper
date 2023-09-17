@@ -35,6 +35,8 @@ ARG TX_FUZZ_BRANCH="4844"
 ARG BEACON_METRICS_GAZER_REPO="https://github.com/dapplion/beacon-metrics-gazer.git"
 ARG BEACON_METRICS_GAZER_BRANCH="master"
 
+ARG JSON_RPC_SNOOP_REPO="https://github.com/ethDreamer/json_rpc_snoop.git"
+ARG JSON_RPC_SNOOP_BRANCH="master"
 ###############################################################################
 # Builder to build all of the clients.
 FROM debian:bullseye-slim AS etb-client-builder

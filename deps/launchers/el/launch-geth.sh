@@ -44,6 +44,10 @@ geth init \
     --datadir "$EXECUTION_NODE_DIR" \
     "$EXECUTION_GENESIS_FILE"
 
+if [ "$RUN_JSON_RPC_SNOOPER" == "true" ]; then
+  json_rpc_snoop -p "$CL_EXECUTION_ENGINE_HTTP_PORT" http://localhost:"$EXECUTION_ENGINE_HTTP_PORT" &
+fi
+
 # Now start geth.
 if [ "$IS_DENEB" == 1 ]; then
   echo "Launching deneb ready geth."

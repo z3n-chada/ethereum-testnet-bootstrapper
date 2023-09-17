@@ -37,6 +37,9 @@ ARG TX_FUZZ_BRANCH="master"
 # Metrics gathering
 ARG BEACON_METRICS_GAZER_REPO="https://github.com/dapplion/beacon-metrics-gazer.git"
 ARG BEACON_METRICS_GAZER_BRANCH="master"
+
+ARG JSON_RPC_SNOOP_REPO="https://github.com/ethDreamer/json_rpc_snoop.git"
+ARG JSON_RPC_SNOOP_BRANCH="master"
 ###############################################################################
 # Builder to build all of the clients.
 FROM debian:bullseye-slim AS etb-client-builder
@@ -168,18 +171,18 @@ RUN git clone "${TEKU_REPO}" && \
 RUN cd teku && \
     ./gradlew installDist
 
-# PRYSM
-FROM etb-client-builder AS prysm-builder
-ARG PRYSM_BRANCH
-ARG PRYSM_REPO
-RUN go install github.com/bazelbuild/bazelisk@latest
-RUN git clone "${PRYSM_REPO}" && \
-    cd prysm && \
-    git checkout "${PRYSM_BRANCH}" && \
-    git log -n 1 --format=format:"%H" > /prysm.version
-
-RUN cd prysm && \
-    /root/go/bin/bazelisk build --config=release //cmd/beacon-chain:beacon-chain //cmd/validator:validator
+## PRYSM
+#FROM etb-client-builder AS prysm-builder
+#ARG PRYSM_BRANCH
+#ARG PRYSM_REPO
+#RUN go install github.com/bazelbuild/bazelisk@latest
+#RUN git clone "${PRYSM_REPO}" && \
+#    cd prysm && \
+#    git checkout "${PRYSM_BRANCH}" && \
+#    git log -n 1 --format=format:"%H" > /prysm.version
+#
+#RUN cd prysm && \
+#    /root/go/bin/bazelisk build --config=release //cmd/beacon-chain:beacon-chain //cmd/validator:validator
 
 
 ############################# Execution  Clients  #############################
@@ -236,6 +239,8 @@ ARG TX_FUZZ_BRANCH
 ARG TX_FUZZ_REPO
 ARG BEACON_METRICS_GAZER_REPO
 ARG BEACON_METRICS_GAZER_BRANCH
+ARG JSON_RPC_SNOOP_REPO
+ARG JSON_RPC_SNOOP_BRANCH
 
 RUN go install github.com/wealdtech/ethereal/v2@latest \
     && go install github.com/wealdtech/ethdo@latest \
@@ -255,6 +260,13 @@ RUN git clone "${BEACON_METRICS_GAZER_REPO}" && \
 RUN cd beacon-metrics-gazer && \
     cargo update -p proc-macro2 && \
     cargo build --release
+
+RUN git clone "${JSON_RPC_SNOOP_REPO}" && \
+    cd json_rpc_snoop && \
+    git checkout "${JSON_RPC_SNOOP_BRANCH}"
+
+RUN cd json_rpc_snoop && \
+    make
 ########################### etb-all-clients runner  ###########################
 FROM debian:bullseye-slim
 
@@ -302,6 +314,8 @@ COPY --from=misc-builder /root/go/bin/eth2-val-tools /usr/local/bin/eth2-val-too
 COPY --from=misc-builder /git/tx-fuzz/cmd/livefuzzer/livefuzzer /usr/local/bin/livefuzzer
 # beacon-metrics-gazer
 COPY --from=misc-builder /git/beacon-metrics-gazer/target/release/beacon-metrics-gazer /usr/local/bin/beacon-metrics-gazer
+# json-rpc-snooper
+COPY --from=misc-builder /git/json_rpc_snoop/target/release/json_rpc_snoop /usr/local/bin/json_rpc_snoop
 
 # consensus clients
 COPY --from=nimbus-eth2-builder /git/nimbus-eth2/build/nimbus_beacon_node /usr/local/bin/nimbus_beacon_node
@@ -314,9 +328,9 @@ COPY --from=teku-builder  /git/teku/build/install/teku/. /opt/teku
 COPY --from=teku-builder /teku.version /teku.version
 RUN ln -s /opt/teku/bin/teku /usr/local/bin/teku
 
-COPY --from=prysm-builder /git/prysm/bazel-bin/cmd/beacon-chain/beacon-chain_/beacon-chain /usr/local/bin/beacon-chain
-COPY --from=prysm-builder /git/prysm/bazel-bin/cmd/validator/validator_/validator /usr/local/bin/validator
-COPY --from=prysm-builder /prysm.version /prysm.version
+#COPY --from=prysm-builder /git/prysm/bazel-bin/cmd/beacon-chain/beacon-chain_/beacon-chain /usr/local/bin/beacon-chain
+#COPY --from=prysm-builder /git/prysm/bazel-bin/cmd/validator/validator_/validator /usr/local/bin/validator
+#COPY --from=prysm-builder /prysm.version /prysm.version
 
 COPY --from=lodestar-builder /git/lodestar /git/lodestar
 COPY --from=lodestar-builder /lodestar.version /lodestar.version

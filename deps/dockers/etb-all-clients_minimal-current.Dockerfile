@@ -37,6 +37,9 @@ ARG TX_FUZZ_BRANCH="master"
 # Metrics gathering
 ARG BEACON_METRICS_GAZER_REPO="https://github.com/dapplion/beacon-metrics-gazer.git"
 ARG BEACON_METRICS_GAZER_BRANCH="master"
+
+ARG JSON_RPC_SNOOP_REPO="https://github.com/ethDreamer/json_rpc_snoop.git"
+ARG JSON_RPC_SNOOP_BRANCH="master"
 ###############################################################################
 # Builder to build all of the clients.
 FROM debian:bullseye-slim AS etb-client-builder
@@ -235,6 +238,8 @@ ARG TX_FUZZ_BRANCH
 ARG TX_FUZZ_REPO
 ARG BEACON_METRICS_GAZER_REPO
 ARG BEACON_METRICS_GAZER_BRANCH
+ARG JSON_RPC_SNOOP_REPO
+ARG JSON_RPC_SNOOP_BRANCH
 
 RUN go install github.com/wealdtech/ethereal/v2@latest \
     && go install github.com/wealdtech/ethdo@latest \
@@ -254,6 +259,13 @@ RUN git clone "${BEACON_METRICS_GAZER_REPO}" && \
 RUN cd beacon-metrics-gazer && \
     cargo update -p proc-macro2 && \
     cargo build --release
+
+RUN git clone "${JSON_RPC_SNOOP_REPO}" && \
+    cd json_rpc_snoop && \
+    git checkout "${JSON_RPC_SNOOP_BRANCH}"
+
+RUN cd json_rpc_snoop && \
+    make
 ########################### etb-all-clients runner  ###########################
 FROM debian:bullseye-slim
 
@@ -301,6 +313,8 @@ COPY --from=misc-builder /root/go/bin/eth2-val-tools /usr/local/bin/eth2-val-too
 COPY --from=misc-builder /git/tx-fuzz/cmd/livefuzzer/livefuzzer /usr/local/bin/livefuzzer
 # beacon-metrics-gazer
 COPY --from=misc-builder /git/beacon-metrics-gazer/target/release/beacon-metrics-gazer /usr/local/bin/beacon-metrics-gazer
+# json-rpc-snoop
+COPY --from=misc-builder /git/json_rpc_snoop/target/release/json_rpc_snoop /usr/local/bin/json_rpc_snoop
 
 # consensus clients
 COPY --from=nimbus-eth2-builder /git/nimbus-eth2/build/nimbus_beacon_node /usr/local/bin/nimbus_beacon_node

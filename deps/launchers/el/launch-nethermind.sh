@@ -37,6 +37,9 @@ while [ ! -f "$EXECUTION_CHECKPOINT_FILE" ]; do
     sleep 1
 done
 
+if [ "$RUN_JSON_RPC_SNOOPER" == "true" ]; then
+  json_rpc_snoop -p "$CL_EXECUTION_ENGINE_HTTP_PORT" http://localhost:"$EXECUTION_ENGINE_HTTP_PORT" &
+fi
 
 echo "{}" > /tmp/nethermind.cfg
 

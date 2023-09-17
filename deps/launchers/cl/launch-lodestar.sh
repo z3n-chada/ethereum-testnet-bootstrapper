@@ -20,7 +20,7 @@ env_vars=(
   "JWT_SECRET_FILE"
   "COLLECTION_DIR"
   "NUM_CLIENT_NODES"
-  "EXECUTION_ENGINE_HTTP_PORT"
+  "CL_EXECUTION_ENGINE_HTTP_PORT"
   "EXECUTION_ENGINE_WS_PORT"
 )
 # verify vars we need are set and available.
@@ -51,7 +51,7 @@ lodestar beacon \
     --dataDir="$CONSENSUS_NODE_DIR" \
     --paramsFile="$CONSENSUS_CONFIG_FILE" \
     --genesisStateFile="$CONSENSUS_GENESIS_FILE" \
-    --execution.urls="http://127.0.0.1:$EXECUTION_ENGINE_HTTP_PORT" \
+    --execution.urls="http://127.0.0.1:$CL_EXECUTION_ENGINE_HTTP_PORT" \
     --jwt-secret="$JWT_SECRET_FILE" \
     --bootnodes="$bootnode_enr" \
     --network.connectToDiscv5Bootnodes=true \
