@@ -44,7 +44,7 @@ reth init \
     --chain "$EXECUTION_GENESIS_FILE"
 
 if [ "$RUN_JSON_RPC_SNOOPER" == "true" ]; then
-  json_rpc_snoop -p "$CL_EXECUTION_ENGINE_HTTP_PORT" http://localhost:"$EXECUTION_ENGINE_HTTP_PORT" &
+  json_rpc_snoop -p "$CL_EXECUTION_ENGINE_HTTP_PORT" http://localhost:"$EXECUTION_ENGINE_HTTP_PORT" 2>&1 | tee "$EXECUTION_NODE_DIR/json_rpc_snoop.log" &
 fi
 
 reth \
@@ -64,5 +64,5 @@ reth \
   --authrpc.addr=0.0.0.0 \
   --authrpc.jwtsecret="$JWT_SECRET_FILE" \
   --nat "extip:$IP_ADDRESS" \
-  --log.persistent --log.directory "$EXECUTION_NODE_DIR/logs/" -vvvv
+  --log.persistent --log.directory "$EXECUTION_NODE_DIR/logs/" -vv
 
