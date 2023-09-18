@@ -20,7 +20,7 @@ env_vars=(
   "JWT_SECRET_FILE"
   "COLLECTION_DIR"
   "NUM_CLIENT_NODES"
-  "EXECUTION_ENGINE_HTTP_PORT"
+  "CL_EXECUTION_ENGINE_HTTP_PORT"
   "EXECUTION_ENGINE_WS_PORT"
 )
 # verify vars we need are set and available.
@@ -66,5 +66,5 @@ nimbus_beacon_node \
     --doppelganger-detection=true \
     --bootstrap-node="$bootnode_enr" \
     --jwt-secret="$JWT_SECRET_FILE" \
-    --web3-url=http://"127.0.0.1:$EXECUTION_ENGINE_HTTP_PORT" \
+    --web3-url=http://"127.0.0.1:$CL_EXECUTION_ENGINE_HTTP_PORT" \
     --dump:on

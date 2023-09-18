@@ -20,7 +20,7 @@ env_vars=(
   "JWT_SECRET_FILE"
   "COLLECTION_DIR"
   "NUM_CLIENT_NODES"
-  "EXECUTION_ENGINE_HTTP_PORT"
+  "CL_EXECUTION_ENGINE_HTTP_PORT"
   "EXECUTION_ENGINE_WS_PORT"
   "IS_DENEB"
 )
@@ -80,7 +80,7 @@ if [ "$IS_DENEB" == 1 ]; then
       --validators-graffiti="$CONSENSUS_GRAFFITI" \
       --validator-keys="$CONSENSUS_NODE_DIR/keys:$CONSENSUS_NODE_DIR/secrets" \
       --validators-keystore-locking-enabled=false \
-      --ee-endpoint="http://127.0.0.1:$EXECUTION_ENGINE_HTTP_PORT" \
+      --ee-endpoint="http://127.0.0.1:$CL_EXECUTION_ENGINE_HTTP_PORT" \
       --validators-proposer-default-fee-recipient=0xA18Fd83a55A9BEdB96d66C24b768259eED183be3 \
       --p2p-discovery-site-local-addresses-enabled=true \
       --Xmetrics-blob-sidecars-storage-enabled=true \
@@ -119,7 +119,7 @@ else
       --validators-graffiti="$CONSENSUS_GRAFFITI" \
       --validator-keys="$CONSENSUS_NODE_DIR/keys:$CONSENSUS_NODE_DIR/secrets" \
       --validators-keystore-locking-enabled=false \
-      --ee-endpoint="http://127.0.0.1:$EXECUTION_ENGINE_HTTP_PORT" \
+      --ee-endpoint="http://127.0.0.1:$CL_EXECUTION_ENGINE_HTTP_PORT" \
       --validators-proposer-default-fee-recipient=0xA18Fd83a55A9BEdB96d66C24b768259eED183be3 \
       --p2p-discovery-site-local-addresses-enabled=true \
       --ee-jwt-secret-file="$JWT_SECRET_FILE"

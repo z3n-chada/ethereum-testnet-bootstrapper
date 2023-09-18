@@ -20,7 +20,7 @@ env_vars=(
   "JWT_SECRET_FILE"
   "COLLECTION_DIR"
   "NUM_CLIENT_NODES"
-  "EXECUTION_ENGINE_HTTP_PORT"
+  "CL_EXECUTION_ENGINE_HTTP_PORT"
   "EXECUTION_ENGINE_WS_PORT"
   "IS_DENEB"
 )
@@ -60,7 +60,7 @@ if [ "$IS_DENEB" == 1 ]; then
         --http-allow-sync-stalled \
         --listen-address=0.0.0.0 \
         --port="$CONSENSUS_P2P_PORT" \
-        --execution-endpoints="http://127.0.0.1:$EXECUTION_ENGINE_HTTP_PORT" \
+        --execution-endpoints="http://127.0.0.1:$CL_EXECUTION_ENGINE_HTTP_PORT" \
         --enable-private-discovery \
         --enr-address "$IP_ADDRESS" \
         --enr-udp-port "$CONSENSUS_P2P_PORT" \
@@ -102,7 +102,7 @@ else
         --http-allow-sync-stalled \
         --listen-address=0.0.0.0 \
         --port="$CONSENSUS_P2P_PORT" \
-        --execution-endpoints="http://127.0.0.1:$EXECUTION_ENGINE_HTTP_PORT" \
+        --execution-endpoints="http://127.0.0.1:$CL_EXECUTION_ENGINE_HTTP_PORT" \
         --enable-private-discovery \
         --enr-address "$IP_ADDRESS" \
         --enr-udp-port "$CONSENSUS_P2P_PORT" \

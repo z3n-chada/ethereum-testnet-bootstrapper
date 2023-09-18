@@ -402,6 +402,10 @@ class ExecutionInstanceConfig(Config):
         self.engine_http_port: int = config["engine-http-port"]
         self.engine_ws_port: int = config["engine-ws-port"]
         self.metric_port: int = config["metric-port"]
+        self.json_rpc_snooper: bool = False
+        if "json_snooper_proxy_port" in config:
+            self.json_rpc_snooper = True
+            self.json_rpc_snooper_proxy_port: int = config["json_snooper_proxy_port"]
 
     def get_env_vars(self) -> dict[str, str]:
         """Returns the environment variables used by the execution client that
@@ -411,7 +415,7 @@ class ExecutionInstanceConfig(Config):
         EXECUTION to avoid collisions with other env vars. @return:
         env_vars as dict.
         """
-        return {
+        env_vars = {
             "EXECUTION_CLIENT": self.client,
             "EXECUTION_LAUNCHER": str(self.launcher),
             "EXECUTION_LOG_LEVEL": self.log_level,
@@ -423,7 +427,14 @@ class ExecutionInstanceConfig(Config):
             "EXECUTION_ENGINE_HTTP_PORT": self.engine_http_port,
             "EXECUTION_ENGINE_WS_PORT": self.engine_ws_port,
             "EXECUTION_METRIC_PORT": self.metric_port,
+            "RUN_JSON_RPC_SNOOPER": self.json_rpc_snooper
         }
+        if self.json_rpc_snooper:
+            env_vars["CL_EXECUTION_ENGINE_HTTP_PORT"] = self.json_rpc_snooper_proxy_port
+        else:
+            env_vars["CL_EXECUTION_ENGINE_HTTP_PORT"] = self.engine_http_port
+
+        return env_vars
 
 
 class ConsensusInstanceConfig(Config):
