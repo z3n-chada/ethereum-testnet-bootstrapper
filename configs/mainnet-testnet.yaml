@@ -78,6 +78,7 @@ execution-configs:
     engine-http-port: 8551   # http/ws same port.
     engine-ws-port: 8551   # include for nimbus
     metric-port: 9001
+    json_snooper_proxy_port: 8765
 
   reth-execution-config:
     client: "reth"
@@ -91,6 +92,7 @@ execution-configs:
     engine-http-port: 8551   # http/ws same port.
     engine-ws-port: 8551   # include for nimbus
     metric-port: 9001
+    json_snooper_proxy_port: 8765
 
   besu-execution-config:
     client: "besu"
@@ -104,6 +106,7 @@ execution-configs:
     engine-http-port: 8551
     engine-ws-port: 8551
     metric-port: 9001
+    json_snooper_proxy_port: 8765
 
   nethermind-execution-config:
     client: "nethermind"
@@ -117,6 +120,7 @@ execution-configs:
     engine-ws-port: 8552
     p2p-port: 666
     metric-port: 9001
+    json_snooper_proxy_port: 8765
 
 # configuration options used for consensus clients
 consensus-configs:
