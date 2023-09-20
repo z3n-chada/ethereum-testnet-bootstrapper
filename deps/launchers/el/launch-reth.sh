@@ -64,5 +64,5 @@ reth \
   --authrpc.addr=0.0.0.0 \
   --authrpc.jwtsecret="$JWT_SECRET_FILE" \
   --nat "extip:$IP_ADDRESS" \
-  --log.persistent --log.directory "$EXECUTION_NODE_DIR/logs/" -vv
+  --log.directory "$EXECUTION_NODE_DIR/logs/" -vvv
 
