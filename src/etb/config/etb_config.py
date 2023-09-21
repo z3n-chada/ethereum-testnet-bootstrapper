@@ -5,6 +5,20 @@ from typing import List, Union
 
 from ruamel import yaml
 
+from .defaults import DEFAULT_EXECUTION_CLIENT_CONFIG_NAME_GETH, DEFAULT_EXECUTION_CLIENT_CONFIG_NAME_RETH, \
+    DEFAULT_EXECUTION_CLIENT_CONFIG_NAME_NETHERMIND, DEFAULT_EXECUTION_CLIENT_CONFIG_NAME_BESU, \
+    DEFAULT_EXECUTION_LAUNCHER_RETH, DEFAULT_EXECUTION_LAUNCHER_GETH, DEFAULT_EXECUTION_LAUNCHER_BESU, \
+    DEFAULT_EXECUTION_LAUNCHER_NETHERMIND, DEFAULT_EXECUTION_LOG_LEVEL_RETH, DEFAULT_EXECUTION_LOG_LEVEL_GETH, \
+    DEFAULT_EXECUTION_LOG_LEVEL_BESU, DEFAULT_EXECUTION_LOG_LEVEL_NETHERMIND, DEFAULT_EXECUTION_P2P_PORT, \
+    DEFAULT_EXECUTION_HTTP_PORT, DEFAULT_EXECUTION_WS_PORT, DEFAULT_EXECUTION_ENGINE_HTTP_PORT, \
+    DEFAULT_EXECUTION_METRIC_PORT, \
+    DEFAULT_EXECUTION_ENGINE_WS_PORT, DEFAULT_EXECUTION_APIS_RETH, DEFAULT_EXECUTION_APIS_GETH, \
+    DEFAULT_EXECUTION_APIS_BESU, DEFAULT_EXECUTION_APIS_NETHERMIND, DEFAULT_CONSENSUS_CLIENT_CONFIG_NAME_PRYSM, \
+    DEFAULT_CONSENSUS_CLIENT_CONFIG_NAME_TEKU, \
+    DEFAULT_CONSENSUS_CLIENT_CONFIG_NAME_NIMBUS, \
+    DEFAULT_CONSENSUS_CLIENT_CONFIG_NAME_LIGHTHOUSE, \
+    DEFAULT_CONSENSUS_CLIENT_CONFIG_NAME_LODESTAR, DEFAULT_CONSENSUS_CLIENT_SPECIFIC_VALUES_MAP, \
+    DEFAULT_CONSENSUS_VALUES_MAP
 from ..common.consensus import ConsensusFork, TerminalBlockHash
 from ..common.consensus import (
     PresetEnum,
@@ -13,6 +27,20 @@ from ..common.consensus import (
     ForkVersionName,
     Epoch,
 )
+
+
+def _set_default(config: dict, entry: str, default_param):
+    """
+    @param config: Config to read from
+    @param entry: The entry to look up
+    @param default_param: The default param to use
+    @return:
+    """
+    # if its defined use it
+    if entry in config:
+        return config[entry]
+    else:
+        return default_param
 
 
 class Config:
@@ -24,6 +52,8 @@ class Config:
 
     def __init__(self, name: str):
         self.name: str = name
+        # fields that get flattened.
+        self.fields: list[str] = []
 
     def __contains__(self, item):
         return hasattr(self, item.replace("-", "_"))
@@ -62,6 +92,13 @@ class DockerConfig(Config):
         self.ip_subnet: str = config["ip-subnet"]
         self.volumes: List[str] = ["./data:/data", "./:/source/"]
 
+    def flatten_config(self) -> dict:
+        return {
+            "network-name": self.network_name,
+            "ip-subnet": self.ip_subnet,
+            "volumes": self.volumes
+        }
+
 
 class FilesConfig(Config):
     """Files used in the ETBConfig. These are implicit and not specified in the
@@ -73,6 +110,8 @@ class FilesConfig(Config):
     def __init__(self, optional_overrides=None, is_deneb_experiment=False):
         super().__init__("files")
 
+        self.is_deneb_experiment = is_deneb_experiment
+        self.optional_overrides = {}
         if optional_overrides is None:
             optional_overrides = {}
 
@@ -162,6 +201,36 @@ class FilesConfig(Config):
 
         self.fields = fields
 
+    def flatten_config(self) -> dict:
+        config = {
+            "testnet-root": str(self.testnet_root),
+            "geth-genesis-file": str(self.geth_genesis_file),
+            "besu-genesis-file": str(self.besu_genesis_file),
+            "nether-mind-genesis-file": str(self.nether_mind_genesis_file),
+            "consensus-config-file": str(self.consensus_config_file),
+            "consensus-genesis-file": str(self.consensus_genesis_file),
+            "consensus-bootnode-file": str(self.consensus_bootnode_file),
+            "etb-config-file": str(self.etb_config_file),
+            "local-testnet-dir": str(self.local_testnet_dir),
+            "docker-compose-file": str(self.docker_compose_file),
+            "etb-config-checkpoint-file": str(self.etb_config_checkpoint_file),
+            "consensus-checkpoint-file": str(self.consensus_checkpoint_file),
+            "execution-checkpoint-file": str(self.execution_checkpoint_file),
+            "consensus-bootnode-checkpoint-file": str(self.consensus_bootnode_checkpoint_file),
+            "deposit-contract-deployment-block-hash-file": str(self.deposit_contract_deployment_block_hash_file),
+            "deposit-contract-deployment-block-number-file": str(self.deposit_contract_deployment_block_number_file),
+        }
+        # "trusted-setup-txt-file": "/data/trusted-setup.txt",
+        # "trusted-setup-json-file": "/data/trusted-setup.json",
+        if self.is_deneb_experiment:
+            config["trusted-setup-txt-file"] = str(self.trusted_setup_txt_file)
+            config["trusted-setup-json-file"] = str(self.trusted_setup_json_file)
+
+        for override in self.optional_overrides:
+            config[override] = str(self.optional_overrides[override])
+
+        return config
+
 
 class TestnetConfig(Config):
     """Testnet's configuration found in ETBConfig -> testnet-config.
@@ -184,6 +253,13 @@ class TestnetConfig(Config):
         self.deposit_contract_address: str = config[
             "deposit-contract-address"
         ]  # hash as str.
+
+    def flatten_config(self) -> dict:
+        return {
+            "deposit-contract-address": self.deposit_contract_address,
+            "execution-layer": self.execution_layer.flatten_config(),
+            "consensus-layer": self.consensus_layer.flatten_config(),
+        }
 
 
 class ExecutionLayerTestnetConfig(Config):
@@ -213,6 +289,20 @@ class ExecutionLayerTestnetConfig(Config):
         self.premines: dict[str, int] = {}
         for acct, balance in config["premines"].items():
             self.premines[acct] = balance
+
+    def _populate_config(self, config):
+        pass
+
+    def flatten_config(self) -> dict:
+        config = {
+            "seconds-per-eth1-block": self.seconds_per_eth1_block,
+            "chain-id": self.chain_id,
+            "network-id": self.network_id,
+            "account-mnemonic": self.account_mnemonic,
+            "keystore-passphrase": self.keystore_passphrase,
+            "premines": self.premines,
+        }
+        return config
 
 
 class ConsensusLayerTestnetConfig(Config):
@@ -381,6 +471,35 @@ class ConsensusLayerTestnetConfig(Config):
             return self.phase0_fork
         raise Exception("No genesis fork found")  # should never occur
 
+    def flatten_config(self) -> dict:
+        config = {
+            "config-name": self.config_name,
+            "min-genesis-active-validator-count": self.min_genesis_active_validator_count,
+            "min-validator-withdrawability-delay": self.min_validator_withdrawability_delay,
+            "shard-committee-period": self.shard_committee_period,
+            "min-epochs-for-block-requests": self.min_epochs_for_block_requests,
+            "validator-mnemonic": self.validator_mnemonic,
+            "phase0-fork-version": self.phase0_fork.version,
+            "phase0-fork-epoch": self.phase0_fork.epoch,
+            "altair-fork-version": self.altair_fork.version,
+            "altair-fork-epoch": self.altair_fork.epoch,
+            "bellatrix-fork-version": self.bellatrix_fork.version,
+            "bellatrix-fork-epoch": self.bellatrix_fork.epoch,
+            "capella-fork-version": self.capella_fork.version,
+            "capella-fork-epoch": self.capella_fork.epoch,
+            "deneb-fork-version": self.deneb_fork.version,
+            "deneb-fork-epoch": self.deneb_fork.epoch,
+            "sharding-fork-version": self.sharding_fork.version,
+            "sharding-fork-epoch": self.sharding_fork.epoch,
+        }
+        if self.preset_base == MinimalPreset:
+            config["preset-base"] = "minimal"
+        elif self.preset_base == MainnetPreset:
+            config["preset-base"] = "mainnet"
+        else:
+            raise Exception(f"Can't flatten undefined preset-base: {self.preset_base}")
+        return config
+
 
 class ExecutionInstanceConfig(Config):
     """Represents the execution configs for an execution instance.
@@ -391,21 +510,108 @@ class ExecutionInstanceConfig(Config):
     def __init__(self, name: str, config: dict):
         super().__init__(name)
 
+        logging.info(f"init: {config}")
+
         self.client: str = config["client"]
-        self.launcher: pathlib.Path = config["launcher"]
-        self.log_level: str = config["log-level"]
-        self.p2p_port: int = config["p2p-port"]
-        self.http_apis: List[str] = [x.strip() for x in config["http-apis"].split(",")]
-        self.http_port: int = config["http-port"]
-        self.ws_apis: List[str] = [x.strip() for x in config["ws-apis"].split(",")]
-        self.ws_port: int = config["ws-port"]
-        self.engine_http_port: int = config["engine-http-port"]
-        self.engine_ws_port: int = config["engine-ws-port"]
-        self.metric_port: int = config["metric-port"]
+        self.launcher: pathlib.Path
+        self.log_level: str
+        self.p2p_port: int
+        self.http_apis: List[str]
+        self.http_port: int
+        self.ws_apis: List[str]
+        self.ws_port: int
+        self.engine_http_port: int
+        self.engine_ws_port: int
+        self.metric_port: int
         self.json_rpc_snooper: bool = False
-        if "json_snooper_proxy_port" in config:
+        self._populate_config(config)
+
+    def _populate_config(self, config):
+        logging.info(f"execution-instance-config: {config}")
+        default_launcher_map = {
+            "reth": DEFAULT_EXECUTION_LAUNCHER_RETH,
+            "geth": DEFAULT_EXECUTION_LAUNCHER_GETH,
+            "besu": DEFAULT_EXECUTION_LAUNCHER_BESU,
+            "nethermind": DEFAULT_EXECUTION_LAUNCHER_NETHERMIND,
+        }
+
+        default_log_level_map = {
+            "reth": DEFAULT_EXECUTION_LOG_LEVEL_RETH,
+            "geth": DEFAULT_EXECUTION_LOG_LEVEL_GETH,
+            "besu": DEFAULT_EXECUTION_LOG_LEVEL_BESU,
+            "nethermind": DEFAULT_EXECUTION_LOG_LEVEL_NETHERMIND,
+        }
+
+        default_apis_map = {
+            "reth": DEFAULT_EXECUTION_APIS_RETH,
+            "geth": DEFAULT_EXECUTION_APIS_GETH,
+            "besu": DEFAULT_EXECUTION_APIS_BESU,
+            "nethermind": DEFAULT_EXECUTION_APIS_NETHERMIND,
+        }
+        if "launcher" in config:
+            self.launcher = pathlib.Path(config["launcher"])
+        else:
+            if self.client not in default_launcher_map:
+                raise Exception(f"No default launcher available for {self.client}")
+            self.launcher = pathlib.Path(default_launcher_map[self.client])
+
+        if "log-level" in config:
+            self.log_level = config["log-level"]
+        else:
+            if self.client not in default_log_level_map:
+                raise Exception(f"No default log level available for {self.client}")
+            self.log_level = default_log_level_map[self.client]
+
+        if "http-apis" in config:
+            http_apis = config["http-apis"]
+        else:
+            if self.client not in default_apis_map:
+                raise Exception(f"No default http-apis available for {self.client}")
+            http_apis = default_apis_map[self.client]
+
+        if "ws-apis" in config:
+            ws_apis = config["ws-apis"]
+        else:
+            if self.client not in default_apis_map:
+                raise Exception(f"No default ws-apis available for {self.client}")
+            ws_apis = default_apis_map[self.client]
+
+        self.http_apis = [x.strip() for x in http_apis.split(",")]
+        self.ws_apis = [x.strip() for x in ws_apis.split(",")]
+        self.p2p_port = _set_default(config, "p2p-port", DEFAULT_EXECUTION_P2P_PORT)
+        self.http_port = _set_default(config, "http-port", DEFAULT_EXECUTION_HTTP_PORT)
+        self.ws_port = _set_default(config, "ws-port", DEFAULT_EXECUTION_WS_PORT)
+        self.engine_http_port = _set_default(config, "engine-http-port", DEFAULT_EXECUTION_ENGINE_HTTP_PORT)
+        self.engine_ws_port = _set_default(config, "engine-ws-port", DEFAULT_EXECUTION_ENGINE_WS_PORT)
+        self.metric_port = _set_default(config, "metric-port", DEFAULT_EXECUTION_METRIC_PORT)
+
+        if "json-snooper-proxy-port" in config:
             self.json_rpc_snooper = True
-            self.json_rpc_snooper_proxy_port: int = config["json_snooper_proxy_port"]
+            self.json_rpc_snooper_proxy_port: int = config["json-snooper-proxy-port"]
+
+    def flatten_config(self) -> dict:
+        """
+        Create a dict object containing all the fields in the config
+        @return:
+        """
+        config = {
+            self.name: {
+                "client": self.client,
+                "launcher": str(self.launcher),
+                "log-level": self.log_level,
+                "p2p-port": self.p2p_port,
+                "http-apis": ','.join(self.http_apis),
+                "http-port": self.http_port,
+                "ws-apis": ','.join(self.ws_apis),
+                "ws-port": self.ws_port,
+                "engine-http-port": self.engine_http_port,
+                "engine-ws-port": self.engine_ws_port,
+                "metric-port": self.metric_port
+            }
+        }
+        if self.json_rpc_snooper:
+            config[self.name]["json-snooper-proxy-port"] = self.json_rpc_snooper_proxy_port
+        return config
 
     def get_env_vars(self) -> dict[str, str]:
         """Returns the environment variables used by the execution client that
@@ -446,17 +652,29 @@ class ConsensusInstanceConfig(Config):
     def __init__(self, name: str, config: dict):
         super().__init__(name)
 
+        self.fields = [
+            "launcher",
+            "log-level",
+            "p2p-port",
+            "beacon-api-port",
+            "beacon-rpc-port",
+            "beacon-metric-port",
+            "validator-rpc-port",
+            "validator-metric-port",
+            "num-validators",
+        ]
+
         self.client: str = config["client"]
-        self.launcher: pathlib.Path = pathlib.Path(config["launcher"])
-        self.log_level: str = config["log-level"]
-        self.p2p_port: int = config["p2p-port"]
-        self.beacon_api_port: int = config["beacon-api-port"]
-        self.beacon_rpc_port: int = config["beacon-rpc-port"]
-        self.beacon_metric_port: int = config["beacon-metric-port"]
-        # self.validator_api_port: int = config["validator-api-port"]
-        self.validator_rpc_port: int = config["validator-rpc-port"]
-        self.validator_metric_port: int = config["validator-metric-port"]
-        self.num_validators: int = config["num-validators"]
+        self.launcher: pathlib.Path = pathlib.Path(self._get_or_set_default(config, "launcher"))
+        self.log_level: str = self._get_or_set_default(config, "log-level")
+        self.p2p_port: int = self._get_or_set_default(config, "p2p-port")
+        self.beacon_api_port: int = self._get_or_set_default(config, "beacon-api-port")
+        self.beacon_rpc_port: int = self._get_or_set_default(config, "beacon-rpc-port")
+        self.beacon_metric_port: int = self._get_or_set_default(config, "beacon-metric-port")
+        # self.validator_api_port: int = self._get_or_set_default(config, "validator-api-port")
+        self.validator_rpc_port: int = self._get_or_set_default(config, "validator-rpc-port")
+        self.validator_metric_port: int = self._get_or_set_default(config, "validator-metric-port")
+        self.num_validators: int = self._get_or_set_default(config, "num-validators")
 
     def get_env_vars(self) -> dict[str, str]:
         """Returns the environment variables used by the consensus client that
@@ -478,6 +696,39 @@ class ConsensusInstanceConfig(Config):
             "CONSENSUS_VALIDATOR_RPC_PORT": self.validator_rpc_port,
             "CONSENSUS_VALIDATOR_METRIC_PORT": self.validator_metric_port,
         }
+
+    def _get_or_set_default(self, config: dict, entry: str):
+        """
+        @param config: the config we are pulling from
+        @param entry: the entry we are trying to set
+        @param default_param: if we don't have it defined in our config use this
+        @return:
+        """
+        if entry in config:
+            return config[entry]
+        if (self.client, entry) in DEFAULT_CONSENSUS_CLIENT_SPECIFIC_VALUES_MAP:
+            return DEFAULT_CONSENSUS_CLIENT_SPECIFIC_VALUES_MAP[(self.client, entry)]
+        if entry in DEFAULT_CONSENSUS_VALUES_MAP:
+            return DEFAULT_CONSENSUS_VALUES_MAP[entry]
+        else:
+            raise Exception(f"Failed to get required field: {entry} from config: {config}")
+
+    def flatten_config(self) -> dict:
+        config = {
+            self.name: {
+                "client": self.client,
+                "launcher": str(self.launcher),
+                "num-validators": self.num_validators,
+                "log-level": self.log_level,
+                "p2p-port": self.p2p_port,
+                "beacon-api-port": self.beacon_api_port,
+                "beacon-rpc-port": self.beacon_rpc_port,
+                "beacon-metric-port": self.beacon_metric_port,
+                "validator-rpc-port": self.validator_rpc_port,
+                "validator-metric-port": self.validator_metric_port,
+            }
+        }
+        return config
 
 
 class InstanceCollectionConfig(Config):
@@ -533,6 +784,23 @@ class InstanceCollectionConfig(Config):
 
         return env_dict
 
+    def flatten_config(self) -> dict:
+        config = {
+            self.name: {
+                "image": self.image,
+                "tag": self.tag,
+                "start-ip-address": self.start_ip_address,
+                "num-nodes": self.num_nodes,
+                "entrypoint": str(self.entrypoint),
+            }
+        }
+        if len(self.additional_env.keys()) > 0:
+            config[self.name]["additional-env"] = {}
+            for key, value in self.additional_env.items():
+                config[self.name]["additional-env"][key] = value
+
+        return config
+
 
 class ClientInstanceCollectionConfig(InstanceCollectionConfig):
     """Represents a config for a collection of client instances. These are the
@@ -575,6 +843,13 @@ class ClientInstanceCollectionConfig(InstanceCollectionConfig):
         env_dict.update(self.consensus_config.get_env_vars())
         env_dict.update(self.execution_config.get_env_vars())
         return env_dict
+
+    def flatten_config(self) -> dict:
+        config = super().flatten_config()
+        config[self.name]["consensus-config"] = self.consensus_config.name
+        config[self.name]["execution-config"] = self.execution_config.name
+        config[self.name]["validator-offset-start"] = self.validator_offset_start
+        return config
 
 
 class Instance:
@@ -809,16 +1084,20 @@ class ETBConfig(Config):
         )
 
         self.execution_configs: dict[str, ExecutionInstanceConfig] = {}
-        for conf in self._config["execution-configs"]:
-            self.execution_configs[conf] = ExecutionInstanceConfig(
-                name=conf, config=self._config["execution-configs"][conf]
-            )
+        self._populate_default_execution_configs()
+        if "execution-configs" in self._config and self._config["execution-configs"]:
+            for conf in self._config["execution-configs"]:
+                self.execution_configs[conf] = ExecutionInstanceConfig(
+                    name=conf, config=self._config["execution-configs"][conf]
+                )
 
         self.consensus_configs: dict[str, ConsensusInstanceConfig] = {}
-        for conf in self._config["consensus-configs"]:
-            self.consensus_configs[conf] = ConsensusInstanceConfig(
-                name=conf, config=self._config["consensus-configs"][conf]
-            )
+        self._populate_default_consensus_configs()
+        if "consensus-configs" in self._config and self._config["consensus-configs"] is not None:
+            for conf in self._config["consensus-configs"]:
+                self.consensus_configs[conf] = ConsensusInstanceConfig(
+                    name=conf, config=self._config["consensus-configs"][conf]
+                )
 
         # does this experiment end up forking to deneb
         self.is_deneb = self.testnet_config.consensus_layer.deneb_fork.epoch != Epoch.FarFuture.value
@@ -894,6 +1173,47 @@ class ETBConfig(Config):
         # are we opening ETB config after a testnet has been bootstrapped?
         if "genesis-time" in self._config["dynamic-entries"]:
             self.genesis_time = int(self._config["dynamic-entries"]["genesis-time"])
+
+    def _populate_default_execution_configs(self):
+        default_geth_config = {"client": "geth"}
+        default_reth_config = {"client": "reth"}
+        default_besu_config = {"client": "besu"}
+        default_nethermind_config = {"client": "nethermind"}
+
+        self.execution_configs[DEFAULT_EXECUTION_CLIENT_CONFIG_NAME_GETH] = ExecutionInstanceConfig(
+            name=DEFAULT_EXECUTION_CLIENT_CONFIG_NAME_GETH, config=default_geth_config
+        )
+        self.execution_configs[DEFAULT_EXECUTION_CLIENT_CONFIG_NAME_RETH] = ExecutionInstanceConfig(
+            name=DEFAULT_EXECUTION_CLIENT_CONFIG_NAME_RETH, config=default_reth_config
+        )
+        self.execution_configs[DEFAULT_EXECUTION_CLIENT_CONFIG_NAME_BESU] = ExecutionInstanceConfig(
+            name=DEFAULT_EXECUTION_CLIENT_CONFIG_NAME_BESU, config=default_besu_config
+        )
+        self.execution_configs[DEFAULT_EXECUTION_CLIENT_CONFIG_NAME_NETHERMIND] = ExecutionInstanceConfig(
+            name=DEFAULT_EXECUTION_CLIENT_CONFIG_NAME_NETHERMIND, config=default_nethermind_config
+        )
+
+    def _populate_default_consensus_configs(self):
+        """
+        Populates the default consensus configs for various clients.
+        @return:
+        """
+
+        self.consensus_configs[DEFAULT_CONSENSUS_CLIENT_CONFIG_NAME_PRYSM] = ConsensusInstanceConfig(
+            name=DEFAULT_CONSENSUS_CLIENT_CONFIG_NAME_PRYSM, config={"client": "prysm"}
+        )
+        self.consensus_configs[DEFAULT_CONSENSUS_CLIENT_CONFIG_NAME_TEKU] = ConsensusInstanceConfig(
+            name=DEFAULT_CONSENSUS_CLIENT_CONFIG_NAME_TEKU, config={"client": "teku"}
+        )
+        self.consensus_configs[DEFAULT_CONSENSUS_CLIENT_CONFIG_NAME_NIMBUS] = ConsensusInstanceConfig(
+            name=DEFAULT_CONSENSUS_CLIENT_CONFIG_NAME_NIMBUS, config={"client": "nimbus"}
+        )
+        self.consensus_configs[DEFAULT_CONSENSUS_CLIENT_CONFIG_NAME_LIGHTHOUSE] = ConsensusInstanceConfig(
+            name=DEFAULT_CONSENSUS_CLIENT_CONFIG_NAME_LIGHTHOUSE, config={"client": "lighthouse"}
+        )
+        self.consensus_configs[DEFAULT_CONSENSUS_CLIENT_CONFIG_NAME_LODESTAR] = ConsensusInstanceConfig(
+            name=DEFAULT_CONSENSUS_CLIENT_CONFIG_NAME_LODESTAR, config={"client": "lodestar"}
+        )
 
     def get_generic_instances(self) -> List[Instance]:
         """Returns a list of all generic instances.
@@ -1059,16 +1379,44 @@ class ETBConfig(Config):
         self._config["dynamic-entries"]["genesis-time"] = genesis_time
         self.genesis_time = genesis_time
 
+    def flatten_config(self) -> dict:
+        config: dict = {}
+        _execution_configs = {}
+        for execution_config in self.execution_configs.values():
+            _execution_configs.update(execution_config.flatten_config())
+        _consensus_configs = {}
+        for consensus_config in self.consensus_configs.values():
+            _consensus_configs.update(consensus_config.flatten_config())
+        _client_instances = {}
+        for client_collection in self.client_collections:
+            _client_instances.update(client_collection.flatten_config())
+        _generic_instances = {}
+        for generic_collection in self.generic_collections:
+            _generic_instances.update(generic_collection.flatten_config())
+
+        config["files"] = self.files.flatten_config()
+        config["docker"] = self.docker.flatten_config()
+        config["testnet-config"] = self.testnet_config.flatten_config()
+        config["execution-configs"] = _execution_configs
+        config["consensus-configs"] = _consensus_configs
+        config["client-instances"] = _client_instances
+        config["generic-instances"] = _generic_instances
+
+        return config
+
     # write an updated version of the config.
     def write_config(self, dest: pathlib.Path):
         """Writes the config to a file.
 
         This should only be done by the bootstrapper. @return:
         """
+        etb_config = self.flatten_config()
+        etb_config["dynamic-entries"] = self._config["dynamic-entries"]
         if self.files.etb_config_checkpoint_file.exists():
             raise Exception("Cannot write config file while checkpoint file exists.")
+
         with open(dest, "w", encoding="utf-8") as etb_config_file:
-            yaml.safe_dump(self._config, etb_config_file)
+            yaml.safe_dump(etb_config, etb_config_file)
 
 
 def get_etb_config() -> ETBConfig:
