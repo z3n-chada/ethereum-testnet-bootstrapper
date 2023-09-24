@@ -49,6 +49,14 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
+        "--target-instance",
+        dest="target_instance",
+        type=str,
+        required=False,
+        help="if specifed use the target instance for spamming (ignores target-port and target-ip)"
+    )
+
+    parser.add_argument(
         "--epoch-delay",
         dest="epoch_delay",
         type=int,
@@ -107,13 +115,29 @@ if __name__ == "__main__":
 
     live_fuzzer_interface = LiveFuzzer(binary_path=pathlib.Path(args.tx_fuzz_path))
 
-    # process args.
-    if args.target_ip is None or args.target_port is None:
-        client: ClientInstance = random.choice(etb_config.get_client_instances())
-        args.target_ip = client.get_ip_address()
-        args.target_port = client.execution_config.http_port
+    if args.target_instance is not None:
+        # use the target instance.
+        instances = etb_config.get_client_instances()
+        found_instance: bool = False
+        for instance in instances:
+            if instance.name == args.target_instance:
+                found_instance = True
+                args.target_ip = instance.get_ip_address()
+                args.target_port = instance.execution_config.http_port
+                logging.info(f"spammer using supplied instance {instance.name}")
+
+        if not found_instance:
+            raise Exception("Supplied target-instance was not found in the etb-config.")
+
+    else:
+        # process args.
+        if args.target_ip is None or args.target_port is None:
+            client: ClientInstance = random.choice(etb_config.get_client_instances())
+            args.target_ip = client.get_ip_address()
+            args.target_port = client.execution_config.http_port
 
     rpc_path = f"http://{args.target_ip}:{args.target_port}"
+    logging.info(f"Spamming with rpc: {rpc_path}")
 
     if args.sk is None:
         # get the private keys to use.

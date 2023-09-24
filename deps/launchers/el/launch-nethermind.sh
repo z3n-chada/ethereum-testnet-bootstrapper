@@ -64,7 +64,7 @@ if [ "$IS_DENEB" == 1 ]; then
     --Network.DiscoveryPort="$EXECUTION_P2P_PORT" \
     --Network.P2PPort="$EXECUTION_P2P_PORT" \
     --JsonRpc.JwtSecretFile="$JWT_SECRET_FILE" \
-    --JsonRpc.AdditionalRpcUrls="http://localhost:$EXECUTION_ENGINE_HTTP_PORT|http|net;eth;subscribe;engine;web3;client;clique,http://localhost:$EXECUTION_ENGINE_WS_PORT|ws|net;eth;subscribe;engine;web3;client"
+    --JsonRpc.AdditionalRpcUrls="http://localhost:$EXECUTION_ENGINE_HTTP_PORT|http|net;eth;subscribe;engine;web3;client;clique;admin,http://localhost:$EXECUTION_ENGINE_WS_PORT|ws|net;eth;subscribe;engine;web3;client;admin"
 
 else
     nethermind \
@@ -85,5 +85,5 @@ else
     --Network.DiscoveryPort="$EXECUTION_P2P_PORT" \
     --Network.P2PPort="$EXECUTION_P2P_PORT" \
     --JsonRpc.JwtSecretFile="$JWT_SECRET_FILE" \
-    --JsonRpc.AdditionalRpcUrls="http://localhost:$EXECUTION_ENGINE_HTTP_PORT|http|net;eth;subscribe;engine;web3;client;clique,http://localhost:$EXECUTION_ENGINE_WS_PORT|ws|net;eth;subscribe;engine;web3;client"
+    --JsonRpc.AdditionalRpcUrls="http://localhost:$EXECUTION_ENGINE_HTTP_PORT|http|net;eth;subscribe;engine;web3;client;clique;admin,http://localhost:$EXECUTION_ENGINE_WS_PORT|ws|net;eth;subscribe;engine;web3;client;admin"
 fi

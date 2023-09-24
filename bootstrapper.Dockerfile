@@ -33,6 +33,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 RUN pip3 install ruamel.yaml web3
+RUN pip3 install pydantic
 COPY --from=builder /go/bin/eth2-testnet-genesis /usr/local/bin/eth2-testnet-genesis
 COPY --from=builder /go/bin/eth2-val-tools /usr/local/bin/eth2-val-tools
 COPY --from=builder /go/bin/eth2-bootnode /usr/local/bin/eth2-bootnode
