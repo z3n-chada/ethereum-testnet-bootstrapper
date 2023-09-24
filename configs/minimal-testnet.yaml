@@ -6,6 +6,17 @@ testnet-config:
   consensus-layer:
     preset-base: 'minimal'
 
+# add json-rpc-snooper for EL/CL jsonrpc proxy
+execution-configs:
+  geth-execution-config:
+    json-snooper-proxy-port: 8765
+  reth-execution-config:
+    json-snooper-proxy-port: 8765
+  besu-execution-config:
+    json-snooper-proxy-port: 8765
+  nethermind-execution-config:
+    json-snooper-proxy-port: 8765
+
 client-instances:
 ###############################################################################
 ####### All Consensus Clients paired with a Geth Execution Client. ############
@@ -13,8 +24,6 @@ client-instances:
   prysm-geth:
     consensus-config: "prysm-consensus-client"
     execution-config: "geth-execution-config"
-    additional-env:
-      test: "foo"
 
   teku-geth:
     consensus-config: "teku-consensus-client"
@@ -42,7 +51,7 @@ client-instances:
 
   lighthouse-besu:
     consensus-config: "lighthouse-consensus-client"
-    execution-config: "geth-execution-config"
+    execution-config: "besu-execution-config"
 
   lodestar-besu:
     consensus-config: "lodestar-consensus-client"
