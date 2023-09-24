@@ -1,12 +1,18 @@
 import json
 import logging
 import pathlib
-import re
 import time
 from typing import List, Union
 
+from pydantic.utils import deep_update
 from ruamel import yaml
-from .defaults import *
+
+from .defaults import DEFAULT_GENERIC_INSTANCE_NUM_NODES, DEFAULT_DOCKER_CONFIG, DEFAULT_FILES_CONFIG, \
+    DEFAULT_EXECUTION_CONFIG, DEFAULT_EXECUTION_CONFIG_FIELDS, get_default_execution_config_value, \
+    DEFAULT_CONSENSUS_CONFIG, DEFAULT_CONSENSUS_CONFIG_FIELDS, get_default_consensus_config_value, \
+    DEFAULT_GENERIC_INSTANCES, REQUIRED_GENERIC_INSTANCE_FIELDS, DEFAULT_GENERIC_INSTANCE_IMAGE, \
+    DEFAULT_GENERIC_INSTANCE_TAG, DEFAULT_MINIMAL_DOCKER_TAG, DEFAULT_MAINNET_DOCKER_TAG, DEFAULT_MINIMAL_DOCKER_IMAGE, \
+    DEFAULT_MAINNET_DOCKER_IMAGE, DEFAULT_CONSENSUS_CLIENT_INSTANCE_ADDITIONAL_ENV, DEFAULT_TESTNET_CONFIG
 from ..common.consensus import ConsensusFork, TerminalBlockHash
 from ..common.consensus import (
     PresetEnum,
@@ -15,7 +21,8 @@ from ..common.consensus import (
     ForkVersionName,
     Epoch,
 )
-
+# make it easier to read the output etb-config.yaml file.
+yaml.SafeDumper.ignore_aliases = lambda *args : True
 
 def _set_default(config: dict, entry: str, default_param):
     """
@@ -986,12 +993,8 @@ class ETBConfig(Config):
             raise Exception("A preset-base must be supplied in testnet-config/consensus-layer")
         if self.yaml_config["testnet-config"]["consensus-layer"]["preset-base"] == "minimal":
             preset_base = "minimal"
-            default_docker_image = DEFAULT_MINIMAL_DOCKER_IMAGE
-            default_docker_tag = DEFAULT_MINIMAL_DOCKER_TAG
         else:
             preset_base = "mainnet"
-            default_docker_image = DEFAULT_MAINNET_DOCKER_IMAGE
-            default_docker_tag = DEFAULT_MAINNET_DOCKER_TAG
 
         # get the reserved ips and validator ndxs
         self.reserved_ips = _find_used_ip_addresses(self.yaml_config)
@@ -1008,7 +1011,7 @@ class ETBConfig(Config):
             self.curr_validator_ndx = max(self.reserved_validators.keys())
         else:
             self.curr_validator_ndx = 0
-        self._populate_client_instances(default_image=default_docker_image, default_tag=default_docker_tag)
+        self._populate_client_instances(preset_base=preset_base)
         self._populate_testnet_config(default_validator_genesis=self.curr_validator_ndx)
         if "special" not in self.yaml_config:
             self.yaml_config["special"] = {}
@@ -1022,7 +1025,7 @@ class ETBConfig(Config):
             return
 
         default_config = DEFAULT_DOCKER_CONFIG
-        default_config.update(self.yaml_config["docker"])
+        default_config = deep_update(default_config, self.yaml_config["docker"])
         self.yaml_config["docker"] = default_config
 
     def _populate_files_config(self):
@@ -1031,14 +1034,14 @@ class ETBConfig(Config):
             return
 
         default_config = DEFAULT_FILES_CONFIG
-        default_config.update(self.yaml_config["files"])
+        default_config = deep_update(default_config, self.yaml_config["files"])
         self.yaml_config["files"] = default_config
 
     def _populate_execution_configs(self):
         execution_configs = DEFAULT_EXECUTION_CONFIG
 
         if "execution-configs" in self.yaml_config:
-            execution_configs.update(self.yaml_config["execution-configs"])
+            execution_configs = deep_update(execution_configs, self.yaml_config["execution-configs"])
 
         for config_name, config in execution_configs.items():
             if "client" not in config:
@@ -1054,7 +1057,7 @@ class ETBConfig(Config):
         consensus_configs = DEFAULT_CONSENSUS_CONFIG
 
         if "consensus-configs" in self.yaml_config:
-            consensus_configs.update(self.yaml_config["consensus-configs"])
+            consensus_configs = deep_update(consensus_configs, self.yaml_config["consensus-configs"])
 
         for config_name, config in consensus_configs.items():
             if "client" not in config:
@@ -1069,8 +1072,10 @@ class ETBConfig(Config):
     def _populate_generic_instances(self):
         generic_instances = DEFAULT_GENERIC_INSTANCES
 
-        if "generic-instances" in self.yaml_config["generic-instances"]:
-            generic_instances.update(self.yaml_config["generic-instances"])
+        if "generic-instances" in self.yaml_config:
+            logging.debug(
+                f"Adding user-specified generic-instances to etb-config. {self.yaml_config['generic-instances'].keys()}")
+            generic_instances = deep_update(generic_instances, self.yaml_config["generic-instances"])
 
         for instance_name, instance in generic_instances.items():
             # make sure the required fields are present.
@@ -1083,6 +1088,10 @@ class ETBConfig(Config):
 
         # handle ip-address mapping
         for instance_name, instance in generic_instances.items():
+            if "image" not in instance:
+                instance["image"] = DEFAULT_GENERIC_INSTANCE_IMAGE
+            if "tag" not in instance:
+                instance["tag"] = DEFAULT_GENERIC_INSTANCE_TAG
             if "num-nodes" not in instance:
                 instance["num-nodes"] = DEFAULT_GENERIC_INSTANCE_NUM_NODES
             if "start-ip-address" not in instance:
@@ -1094,11 +1103,20 @@ class ETBConfig(Config):
 
         self.yaml_config["generic-instances"] = generic_instances
 
-    def _populate_client_instances(self, default_image: str, default_tag: str):
+    def _populate_client_instances(self, preset_base: str):
+        if preset_base == "minimal":
+            default_tag = DEFAULT_MINIMAL_DOCKER_TAG
+            default_image = DEFAULT_MINIMAL_DOCKER_IMAGE
+        elif preset_base == "mainnet":
+            default_tag = DEFAULT_MAINNET_DOCKER_TAG
+            default_image = DEFAULT_MAINNET_DOCKER_IMAGE
+        else:
+            raise Exception(f"Unknown preset-base {preset_base}")
 
         consensus_configs = {}
         for name, consensus_config in self.yaml_config["consensus-configs"].items():
             consensus_configs[name] = ConsensusInstanceConfig(name=name, config=consensus_config)
+
         for instance_name, instance in self.yaml_config["client-instances"].items():
             consensus_config = consensus_configs[instance["consensus-config"]]
             if "num-nodes" not in instance:
@@ -1119,18 +1137,22 @@ class ETBConfig(Config):
                 for _ in range(instance["num-nodes"]):
                     self.reserved_ips[ip_suffix] = instance_name
                     ip_suffix += 1
+            # add default additional-envs
+            cl_additional_env = DEFAULT_CONSENSUS_CLIENT_INSTANCE_ADDITIONAL_ENV[preset_base][consensus_config.client]
+            if cl_additional_env:
+                if "additional-env" in instance:
+                    instance["additional-env"] = deep_update(instance["additional-env"], cl_additional_env)
+                else:
+                    instance["additional-env"] = cl_additional_env
 
     def _populate_testnet_config(self, default_validator_genesis: int):
         testnet_config = DEFAULT_TESTNET_CONFIG
-        if "consensus-layer" in self.yaml_config["testnet-config"]:
-            testnet_config["consensus-layer"].update(self.yaml_config["testnet-config"]["consensus-layer"])
-        if "execution-layer" in self.yaml_config["testnet-config"]:
-            testnet_config["execution-layer"].update(self.yaml_config["testnet-config"]["execution-layer"])
-        if "deposit-contract-address" in self.yaml_config["testnet-config"]:
-            testnet_config["deposit-contract-address"] = self.yaml_config["testnet-config"]["deposit-contract-address"]
+
+        testnet_config = deep_update(testnet_config, self.yaml_config["testnet-config"])
 
         if "min-genesis-active-validator-count" not in testnet_config["consensus-layer"]:
             testnet_config["consensus-layer"]["min-genesis-active-validator-count"] = default_validator_genesis
+
         self.yaml_config["testnet-config"] = testnet_config
 
     def _get_next_available_ip_suffix(self, client_name) -> int:
@@ -1341,7 +1363,7 @@ class ETBConfig(Config):
             raise Exception("Cannot write config file while checkpoint file exists.")
 
         with open(dest, "w", encoding="utf-8") as etb_config_file:
-            yaml.safe_dump(self.yaml_config, etb_config_file)
+            yaml.safe_dump(self.yaml_config, etb_config_file, indent=4)
 
 
 def get_etb_config() -> ETBConfig:

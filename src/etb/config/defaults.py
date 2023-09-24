@@ -188,6 +188,23 @@ DEFAULT_CONSENSUS_VALIDATOR_RPC_PORT = 7000
 DEFAULT_PRYSM_VALIDATOR_PASSWORD = "testnet-password"
 DEFAULT_LODESTAR_MINIMAL_CONFIG_ENV = {"LODESTAR_PRESET": "minimal"}
 
+DEFAULT_CONSENSUS_CLIENT_INSTANCE_ADDITIONAL_ENV = {
+    "mainnet": {
+        "prysm": {"validator-password": DEFAULT_PRYSM_VALIDATOR_PASSWORD},
+        "lodestar" : {},
+        "teku": {},
+        "nimbus": {},
+        "lighthouse": {},
+    },
+    "minimal": {
+        "prysm": {"validator-password": DEFAULT_PRYSM_VALIDATOR_PASSWORD},
+        "lodestar": {"lodestar-preset": "minimal"},
+        "teku": {},
+        "nimbus": {},
+        "lighthouse": {},
+    }
+}
+
 # docker images and tags
 DEFAULT_MINIMAL_DOCKER_IMAGE = "etb-all-clients"
 DEFAULT_MINIMAL_DOCKER_TAG = "minimal-current"
@@ -304,6 +321,8 @@ DEFAULT_NODE_WATCH_TAG_NAME = "latest"
 DEFAULT_NODE_WATCH_ENTRYPOINT = "python3 /source/src/node_watch.py --log-level info --monitor heads:slot --monitor checkpoints:slot --max-retries 3"
 
 DEFAULT_GENERIC_INSTANCE_NUM_NODES = 1
+DEFAULT_GENERIC_INSTANCE_IMAGE = "ethereum-testnet-bootstrapper"
+DEFAULT_GENERIC_INSTANCE_TAG = "latest"
 
 REQUIRED_GENERIC_INSTANCE_FIELDS = [
     "image",
@@ -334,7 +353,7 @@ DEFAULT_GENERIC_INSTANCES = {
             "consensus-bootnode-enr-file": DEFAULT_CONSENSUS_BOOTNODES_FILE,
         }
     },
-    DEFAULT_NODE_WATCH_INSTANCE_NAME : {
+    DEFAULT_NODE_WATCH_INSTANCE_NAME: {
         "image": DEFAULT_NODE_WATCH_IMAGE_NAME,
         "tag": DEFAULT_NODE_WATCH_TAG_NAME,
         "entrypoint": DEFAULT_NODE_WATCH_ENTRYPOINT,
