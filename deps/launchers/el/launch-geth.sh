@@ -1,37 +1,5 @@
 #!/bin/bash
 
-env_vars=(
-  "EXECUTION_CHECKPOINT_FILE"
-  "EXECUTION_CLIENT"
-  "EXECUTION_ENGINE_HTTP_PORT"
-  "EXECUTION_ENGINE_WS_PORT"
-  "EXECUTION_GENESIS_FILE"
-  "EXECUTION_HTTP_APIS"
-  "EXECUTION_HTTP_PORT"
-  "EXECUTION_LAUNCHER"
-  "EXECUTION_LOG_LEVEL"
-  "EXECUTION_METRIC_PORT"
-  "EXECUTION_NODE_DIR"
-  "EXECUTION_P2P_PORT"
-  "EXECUTION_WS_APIS"
-  "EXECUTION_WS_PORT"
-  "IP_ADDRESS"
-  "IP_SUBNET"
-  "JWT_SECRET_FILE"
-  "CHAIN_ID"
-  "IS_DENEB"
-)
-
-# verify vars we need are set and available.
-for var in "${env_vars[@]}" ; do
-    if [[ -z "${!var}" ]]; then
-        echo "GETH error in geth var check."
-        echo "$var not set"
-        exit 1
-    fi
-done
-
-
 while [ ! -f "$EXECUTION_CHECKPOINT_FILE" ]; do
   echo "Waiting for execution checkpoint file: $EXECUTION_CHECKPOINT_FILE"
     sleep 1
@@ -45,61 +13,45 @@ geth init \
     "$EXECUTION_GENESIS_FILE"
 
 if [ "$RUN_JSON_RPC_SNOOPER" == "true" ]; then
+  echo "Launching json_rpc_snoop."
   json_rpc_snoop -p "$CL_EXECUTION_ENGINE_HTTP_PORT" http://localhost:"$EXECUTION_ENGINE_HTTP_PORT" 2>&1 | tee "$EXECUTION_NODE_DIR/json_rpc_snoop.log" &
 fi
 
-# Now start geth.
-if [ "$IS_DENEB" == 1 ]; then
-  echo "Launching deneb ready geth."
-  geth \
-    --datadir="$EXECUTION_NODE_DIR" \
-    --networkid="$CHAIN_ID" \
-    --port "$EXECUTION_P2P_PORT" \
-    --http --http.api "$EXECUTION_HTTP_APIS" \
-    --http.port "$EXECUTION_HTTP_PORT" \
-    --http.addr 0.0.0.0 \
-    --http.corsdomain "*" \
-    --http.vhosts="*" \
-    --ws --ws.api "$EXECUTION_WS_APIS" \
-    --ws.port="$EXECUTION_WS_PORT" \
-    --ws.addr 0.0.0.0 \
-    --gcmode=archive \
-    --authrpc.port="$EXECUTION_ENGINE_HTTP_PORT" \
-    --authrpc.addr=0.0.0.0 \
-    --authrpc.vhosts="*" \
-    --authrpc.jwtsecret="$JWT_SECRET_FILE" \
-    --nat "extip:$IP_ADDRESS" \
-    --rpc.allow-unprotected-txs \
-    --allow-insecure-unlock \
-    --netrestrict="$IP_SUBNET" \
-    --syncmode=full \
-    --ipcdisable=true \
-    --vmodule=rpc=5 \
-    --discovery.dns=""
-else
-    geth \
-    --datadir="$EXECUTION_NODE_DIR" \
-    --networkid="$CHAIN_ID" \
-    --port "$EXECUTION_P2P_PORT" \
-    --http --http.api "$EXECUTION_HTTP_APIS" \
-    --http.port "$EXECUTION_HTTP_PORT" \
-    --http.addr 0.0.0.0 \
-    --http.corsdomain "*" \
-    --http.vhosts="*" \
-    --ws --ws.api "$EXECUTION_WS_APIS" \
-    --ws.port="$EXECUTION_WS_PORT" \
-    --ws.addr 0.0.0.0 \
-    --gcmode=archive \
-    --authrpc.port="$EXECUTION_ENGINE_HTTP_PORT" \
-    --authrpc.addr=0.0.0.0 \
-    --authrpc.vhosts="*" \
-    --authrpc.jwtsecret="$JWT_SECRET_FILE" \
-    --nat "extip:$IP_ADDRESS" \
-    --rpc.allow-unprotected-txs \
-    --allow-insecure-unlock \
-    --netrestrict="$IP_SUBNET" \
-    --syncmode=full \
-    --ipcdisable=true \
-    --vmodule=rpc=5 \
-    --discovery.dns=""
-fi
+EXECUTION_CMD="geth"
+EXECUTION_CMD+=" --verbosity=$EXECUTION_LOG_LEVEL"
+EXECUTION_CMD+=" --datadir=$EXECUTION_NODE_DIR"
+EXECUTION_CMD+=" --networkid=$CHAIN_ID"
+EXECUTION_CMD+=" --port=$EXECUTION_P2P_PORT"
+EXECUTION_CMD+=" --http"
+EXECUTION_CMD+=" --http.addr=0.0.0.0"
+EXECUTION_CMD+=" --http.port=$EXECUTION_HTTP_PORT"
+EXECUTION_CMD+=" --http.vhosts=*"
+EXECUTION_CMD+=" --http.corsdomain=*"
+EXECUTION_CMD+=" --http.api=$EXECUTION_HTTP_APIS"
+EXECUTION_CMD+=" --ws"
+EXECUTION_CMD+=" --ws.addr=0.0.0.0"
+EXECUTION_CMD+=" --ws.port=$EXECUTION_WS_PORT"
+EXECUTION_CMD+=" --ws.api=$EXECUTION_WS_APIS"
+EXECUTION_CMD+=" --ws.origins=*"
+EXECUTION_CMD+=" --allow-insecure-unlock"
+EXECUTION_CMD+=" --nat=extip:$IP_ADDRESS"
+EXECUTION_CMD+=" --authrpc.port=$EXECUTION_ENGINE_HTTP_PORT"
+EXECUTION_CMD+=" --authrpc.addr=0.0.0.0"
+EXECUTION_CMD+=" --authrpc.vhosts=*"
+EXECUTION_CMD+=" --authrpc.jwtsecret=$JWT_SECRET_FILE"
+EXECUTION_CMD+=" --syncmode=full"
+EXECUTION_CMD+=" --rpc.allow-unprotected-txs"
+EXECUTION_CMD+=" --metrics"
+EXECUTION_CMD+=" --metrics.addr=0.0.0.0"
+EXECUTION_CMD+=" --metrics.port=$EXECUTION_METRIC_PORT"
+EXECUTION_CMD+=" --ipcdisable=true"
+EXECUTION_CMD+=" --netrestrict=$IP_SUBNET"
+#--vmodule=rpc=5 \
+#--discovery.dns=""
+#--gcmode=archive \
+#--syncmode=full \
+#--password
+#--unlock
+
+echo "Launching geth execution client."
+eval "$EXECUTION_CMD"
