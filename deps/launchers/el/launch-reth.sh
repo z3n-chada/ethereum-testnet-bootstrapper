@@ -1,36 +1,5 @@
 #!/bin/bash
 
-env_vars=(
-  "EXECUTION_CHECKPOINT_FILE"
-  "EXECUTION_CLIENT"
-  "EXECUTION_ENGINE_HTTP_PORT"
-  "EXECUTION_ENGINE_WS_PORT"
-  "EXECUTION_GENESIS_FILE"
-  "EXECUTION_HTTP_APIS"
-  "EXECUTION_HTTP_PORT"
-  "EXECUTION_LAUNCHER"
-  "EXECUTION_LOG_LEVEL"
-  "EXECUTION_METRIC_PORT"
-  "EXECUTION_NODE_DIR"
-  "EXECUTION_P2P_PORT"
-  "EXECUTION_WS_APIS"
-  "EXECUTION_WS_PORT"
-  "IP_ADDRESS"
-  "IP_SUBNET"
-  "JWT_SECRET_FILE"
-  "CHAIN_ID"
-)
-
-# verify vars we need are set and available.
-for var in "${env_vars[@]}" ; do
-    if [[ -z "${!var}" ]]; then
-        echo "GETH error in geth var check."
-        echo "$var not set"
-        exit 1
-    fi
-done
-
-
 while [ ! -f "$EXECUTION_CHECKPOINT_FILE" ]; do
   echo "Waiting for execution checkpoint file: $EXECUTION_CHECKPOINT_FILE"
     sleep 1
