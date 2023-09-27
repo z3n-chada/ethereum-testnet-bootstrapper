@@ -317,11 +317,15 @@ COPY --from=misc-builder /git/beacon-metrics-gazer/target/release/beacon-metrics
 COPY --from=misc-builder /git/json_rpc_snoop/target/release/json_rpc_snoop /usr/local/bin/json_rpc_snoop
 
 # consensus clients
-COPY --from=nimbus-eth2-builder /git/nimbus-eth2/build/nimbus_beacon_node /usr/local/bin/nimbus_beacon_node
-COPY --from=nimbus-eth2-builder /nimbus.version /nimbus.version
-
 COPY --from=lighthouse-builder /lighthouse.version /lighthouse.version
 COPY --from=lighthouse-builder /git/lighthouse/target/release/lighthouse /usr/local/bin/lighthouse
+
+COPY --from=lodestar-builder /git/lodestar /git/lodestar
+COPY --from=lodestar-builder /lodestar.version /lodestar.version
+RUN ln -s /git/lodestar/node_modules/.bin/lodestar /usr/local/bin/lodestar
+
+COPY --from=nimbus-eth2-builder /git/nimbus-eth2/build/nimbus_beacon_node /usr/local/bin/nimbus_beacon_node
+COPY --from=nimbus-eth2-builder /nimbus.version /nimbus.version
 
 COPY --from=teku-builder  /git/teku/build/install/teku/. /opt/teku
 COPY --from=teku-builder /teku.version /teku.version
@@ -331,11 +335,8 @@ COPY --from=prysm-builder /git/prysm/bazel-bin/cmd/beacon-chain/beacon-chain_/be
 COPY --from=prysm-builder /git/prysm/bazel-bin/cmd/validator/validator_/validator /usr/local/bin/validator
 COPY --from=prysm-builder /prysm.version /prysm.version
 
-COPY --from=lodestar-builder /git/lodestar /git/lodestar
-COPY --from=lodestar-builder /lodestar.version /lodestar.version
-RUN ln -s /git/lodestar/node_modules/.bin/lodestar /usr/local/bin/lodestar
 
-# execution clients
+## execution clients
 COPY --from=geth-builder /geth.version /geth.version
 COPY --from=geth-builder /root/go/bin/geth /usr/local/bin/geth
 

@@ -89,7 +89,7 @@ execution-configs:
   reth-execution-config:
     client: "reth"
     launcher: "/source/deps/launchers/el/launch-reth.sh"
-    log-level: "debug" # detail
+    log-level: "vvvv" # log level for reth is v*log-level
     http-apis: "eth,net,admin,web3"
     ws-apis: "eth,net,admin,web3"
     http-port: 8645
