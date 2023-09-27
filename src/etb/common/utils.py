@@ -3,7 +3,7 @@ import logging
 
 from web3.auto import w3
 
-from ..config.etb_config import FilesConfig
+from ..config.etb_config import FilesConfig, ETBConfig
 
 logging_levels: dict = {
     "DEBUG": logging.DEBUG,
@@ -31,8 +31,7 @@ def create_logger(
     if log_level.upper() not in logging_levels:
         raise Exception(f"Unknown log level: {log_level}")
 
-    logging.basicConfig(
-        level=logging_levels[log_level.upper()], format=format_str)
+    logging.basicConfig(level=logging_levels[log_level.upper()], format=format_str)
 
     if log_to_file:
         if log_file is None:
@@ -75,3 +74,20 @@ class PremineKey:
         )
         self.public_key: str = acct.address
         self.private_key = acct.key.hex()
+
+
+def get_premine_keypairs(etb_config: ETBConfig) -> list[PremineKey]:
+    """
+    Returns a list of PremineKey objects from the given ETBConfig.
+    :param etb_config: The ETBConfig to use.
+    :return: A list of PremineKey objects.
+    """
+    mnemonic = etb_config.testnet_config.execution_layer.account_mnemonic
+    account_pass = etb_config.testnet_config.execution_layer.keystore_passphrase
+    premine_accts = etb_config.testnet_config.execution_layer.premines
+
+    premines: list[PremineKey] = []
+    for acc in premine_accts:
+        premines.append(PremineKey(mnemonic=mnemonic, account=acc, passphrase=account_pass))
+
+    return premines

@@ -28,3 +28,6 @@ build_image "etb-all-clients:minimal-current" "etb-all-clients_minimal-current.D
 
 log_step "building mainnet-current"
 build_image "etb-all-clients:mainnet-current" "etb-all-clients_mainnet-current.Dockerfile"
+
+log_step "building mainnet-deneb"
+build_image "etb-all-clients:mainnet-deneb" "etb-all-clients_mainnet-deneb.Dockerfile"

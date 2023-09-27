@@ -11,13 +11,18 @@ from web3.auto import w3
 
 from etb.common.utils import create_logger, PremineKey
 from etb.config.etb_config import ETBConfig, ClientInstance, get_etb_config
-from etb.interfaces.testnet_monitor import TestnetMonitor
+from etb.monitoring.testnet_monitor import TestnetMonitor
 from etb.interfaces.external.live_fuzzer import LiveFuzzer
 
 w3.eth.account.enable_unaudited_hdwallet_features()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+
+    # hidden config option for testing.
+    parser.add_argument(
+        "--config", dest="config", type=str, default=None, help=argparse.SUPPRESS
+    )
 
     parser.add_argument(
         "--fuzz-mode",
@@ -44,6 +49,14 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
+        "--target-instance",
+        dest="target_instance",
+        type=str,
+        required=False,
+        help="if specifed use the target instance for spamming (ignores target-port and target-ip)"
+    )
+
+    parser.add_argument(
         "--epoch-delay",
         dest="epoch_delay",
         type=int,
@@ -65,39 +78,85 @@ if __name__ == "__main__":
         help="log level to use",
     )
 
+    parser.add_argument(
+        "--no-al",
+        dest="no_al",
+        action="store_true",
+        help="if set, tx-fuzz will use the no-al argument.",
+    )
+
+    parser.add_argument(
+        "--sk",
+        dest="sk",
+        default=None,
+        help="if set, tx-fuzz will use the provided sk argument.",
+    )
+
+    parser.add_argument(
+        "--tx-count",
+        dest="tx_count",
+        default=500,
+        type=int,
+        help="tx-count to pass to tx-fuzz (defaults to 500)",
+    )
+
     args = parser.parse_args()
 
     create_logger(name="tx-fuzz", log_level=args.log_level)
-    etb_config: ETBConfig = get_etb_config()
+
+    logging.info("Getting view of the testnet from etb-config.")
+    if args.config is None:
+        etb_config: ETBConfig = get_etb_config()
+    else:
+        logging.warning("Using config from args.")
+        etb_config: ETBConfig = ETBConfig(pathlib.Path(args.config))
+
     testnet_monitor = TestnetMonitor(etb_config)
 
-    live_fuzzer_interface = LiveFuzzer(
-        binary_path=pathlib.Path(
-            args.tx_fuzz_path))
+    live_fuzzer_interface = LiveFuzzer(binary_path=pathlib.Path(args.tx_fuzz_path))
 
-    # process args.
-    if args.target_ip is None or args.target_port is None:
-        client: ClientInstance = random.choice(
-            etb_config.get_client_instances())
-        args.target_ip = client.get_ip_address()
-        args.target_port = client.execution_config.http_port
+    if args.target_instance is not None:
+        # use the target instance.
+        instances = etb_config.get_client_instances()
+        found_instance: bool = False
+        for instance in instances:
+            if instance.name == args.target_instance:
+                found_instance = True
+                args.target_ip = instance.get_ip_address()
+                args.target_port = instance.execution_config.http_port
+                logging.info(f"spammer using supplied instance {instance.name}")
+
+        if not found_instance:
+            raise Exception("Supplied target-instance was not found in the etb-config.")
+
+    else:
+        # process args.
+        if args.target_ip is None or args.target_port is None:
+            client: ClientInstance = random.choice(etb_config.get_client_instances())
+            args.target_ip = client.get_ip_address()
+            args.target_port = client.execution_config.http_port
 
     rpc_path = f"http://{args.target_ip}:{args.target_port}"
+    logging.info(f"Spamming with rpc: {rpc_path}")
 
-    # get the private keys to use.
-    mnemonic = etb_config.testnet_config.execution_layer.account_mnemonic
-    account_pass = etb_config.testnet_config.execution_layer.keystore_passphrase
-    premine_accts = etb_config.testnet_config.execution_layer.premines
+    if args.sk is None:
+        # get the private keys to use.
+        mnemonic = etb_config.testnet_config.execution_layer.account_mnemonic
+        account_pass = etb_config.testnet_config.execution_layer.keystore_passphrase
+        premine_accts = etb_config.testnet_config.execution_layer.premines
 
-    private_keys = []
-    for acc in premine_accts:
-        private_keys.append(
-            PremineKey(
-                mnemonic=mnemonic, account=acc, passphrase=account_pass
-            ).private_key
-        )
+        private_keys = []
+        for acc in premine_accts:
+            private_keys.append(
+                PremineKey(
+                    mnemonic=mnemonic, account=acc, passphrase=account_pass
+                ).private_key
+            )
+        private_key = random.choice(private_keys)
+    else:
+        private_key = args.sk
 
-    logging.debug(f"private keys: {private_keys}")
+    logging.debug(f"private key: {private_key}")
 
     logging.info(f"Waiting for start epoch {args.epoch_delay}")
     testnet_monitor.wait_for_epoch(args.epoch_delay)
@@ -105,5 +164,7 @@ if __name__ == "__main__":
     live_fuzzer_interface.start_fuzzer(
         rpc_path=rpc_path,
         fuzz_mode=args.fuzz_mode,
-        private_key=random.choice(private_keys),
+        private_key=private_key,
+        no_al=args.no_al,
+        tx_count=args.tx_count,
     )

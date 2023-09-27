@@ -25,6 +25,9 @@ init-testnet:
 run-bootstrapper:
 	docker run -it -v $(shell pwd)/:/source/ -v $(shell pwd)/data/:/data ethereum-testnet-bootstrapper --config $(config) --bootstrap-testnet --log-level $(log_level)
 
+# run testnet
+run-testnet:
+	docker-compose up --force-recreate --remove-orphans
 # remove last run.
 clean:
 	docker run -t -v $(shell pwd)/:/source/ -v $(shell pwd)/data/:/data ethereum-testnet-bootstrapper --clean --log-level $(log_level)

@@ -1,4 +1,4 @@
-# Running a mainnet spec local testnet with the current network conditions.
+# Running a minimal testnet with the current network conditions.
 # parameters for building the docker network
 docker:
     network-name: "ethereum-testnet"
@@ -32,10 +32,16 @@ testnet-config:
 
   # used for generating the consensus config placed in /data/eth2-config.yaml
   consensus-layer:
-    preset-base: 'mainnet'
-    config-name: "local-mainnet-testnet"
+    preset-base: 'minimal'
+    config-name: "local-minimal-testnet"
 
-    min-genesis-active-validator-count: 60 # custom pre-seeded into genesis state.
+    min-genesis-active-validator-count: 80 # custom pre-seeded into genesis state.
+
+    # optional config param overrides
+    min-validator-withdrawability-delay: 2 # increase the withdrawal speed
+    shard-committee-period: 2 # increase the withdrawal speed
+    # MIN_VALIDATOR_WITHDRAWABILITY_DELAY + CHURN_LIMIT_QUOTIENT // 2
+    min-epochs-for-block-requests: 17
 
     # the validator mnemonic to use for all validators
     validator-mnemonic: "ocean style run case glory clip into nature guess jacket document firm fiscal hello kite disagree symptom tide net coral envelope wink render festival"
@@ -83,7 +89,7 @@ execution-configs:
   reth-execution-config:
     client: "reth"
     launcher: "/source/deps/launchers/el/launch-reth.sh"
-    log-level: "vvvv" # detail
+    log-level: "vvvv" # log level for reth is v*log-level
     http-apis: "eth,net,admin,web3"
     ws-apis: "eth,net,admin,web3"
     http-port: 8645
@@ -110,7 +116,7 @@ execution-configs:
 
   nethermind-execution-config:
     client: "nethermind"
-    log-level: "info"
+    log-level: "DEBUG"
     launcher: "/source/deps/launchers/el/launch-nethermind.sh"
     http-apis: "net,eth,consensus,subscribe,web3,admin"
     ws-apis: "net,eth,consensus,subscribe,web3,admin"
@@ -202,7 +208,7 @@ client-instances:
   prysm-geth:
     # docker-compose
     image: "etb-all-clients"
-    tag: "mainnet-current"
+    tag: "minimal-current"
     start-ip-address: "10.0.20.10"
     num-nodes: 1
 
@@ -218,7 +224,7 @@ client-instances:
   teku-geth:
     # docker-compose
     image: "etb-all-clients"
-    tag: "mainnet-current"
+    tag: "minimal-current"
     start-ip-address: "10.0.20.20"
     num-nodes: 1
 
@@ -231,7 +237,7 @@ client-instances:
   lighthouse-geth:
     # docker-compose
     image: "etb-all-clients"
-    tag: "mainnet-current"
+    tag: "minimal-current"
     start-ip-address: "10.0.20.30"
     num-nodes: 1
 
@@ -244,7 +250,7 @@ client-instances:
   lodestar-geth:
     # docker-compose
     image: "etb-all-clients"
-    tag: "mainnet-current"
+    tag: "minimal-current"
     start-ip-address: "10.0.20.40"
     num-nodes: 1
 
@@ -254,10 +260,13 @@ client-instances:
 
     validator-offset-start: 12
 
+    additional-env:
+      lodestar-preset: "minimal"
+
   nimbus-geth:
     # docker-compose
     image: "etb-all-clients"
-    tag: "mainnet-current"
+    tag: "minimal-current"
     start-ip-address: "10.0.20.50"
     num-nodes: 1
 
@@ -272,7 +281,7 @@ client-instances:
   prysm-besu:
     # docker-compose
     image: "etb-all-clients"
-    tag: "mainnet-current"
+    tag: "minimal-current"
     start-ip-address: "10.0.20.60"
     num-nodes: 1
 
@@ -288,7 +297,7 @@ client-instances:
   teku-besu:
     # docker-compose
     image: "etb-all-clients"
-    tag: "mainnet-current"
+    tag: "minimal-current"
     start-ip-address: "10.0.20.70"
     num-nodes: 1
 
@@ -301,7 +310,7 @@ client-instances:
   lighthouse-besu:
     # docker-compose
     image: "etb-all-clients"
-    tag: "mainnet-current"
+    tag: "minimal-current"
     start-ip-address: "10.0.20.80"
     num-nodes: 1
 
@@ -314,7 +323,7 @@ client-instances:
   lodestar-besu:
     # docker-compose
     image: "etb-all-clients"
-    tag: "mainnet-current"
+    tag: "minimal-current"
     start-ip-address: "10.0.20.90"
     num-nodes: 1
 
@@ -324,10 +333,13 @@ client-instances:
 
     validator-offset-start: 32
 
+    additional-env:
+      lodestar-preset: "minimal"
+
   nimbus-besu:
     # docker-compose
     image: "etb-all-clients"
-    tag: "mainnet-current"
+    tag: "minimal-current"
     start-ip-address: "10.0.20.100"
     num-nodes: 1
 
@@ -342,7 +354,7 @@ client-instances:
   prysm-nethermind:
     # docker-compose
     image: "etb-all-clients"
-    tag: "mainnet-current"
+    tag: "minimal-current"
     start-ip-address: "10.0.20.110"
     num-nodes: 1
 
@@ -358,7 +370,7 @@ client-instances:
   teku-nethermind:
     # docker-compose
     image: "etb-all-clients"
-    tag: "mainnet-current"
+    tag: "minimal-current"
     start-ip-address: "10.0.20.120"
     num-nodes: 1
 
@@ -371,7 +383,7 @@ client-instances:
   lighthouse-nethermind:
     # docker-compose
     image: "etb-all-clients"
-    tag: "mainnet-current"
+    tag: "minimal-current"
     start-ip-address: "10.0.20.130"
     num-nodes: 1
 
@@ -384,7 +396,7 @@ client-instances:
   lodestar-nethermind:
     # docker-compose
     image: "etb-all-clients"
-    tag: "mainnet-current"
+    tag: "minimal-current"
     start-ip-address: "10.0.20.140"
     num-nodes: 1
 
@@ -394,10 +406,13 @@ client-instances:
 
     validator-offset-start: 52
 
+    additional-env:
+      lodestar-preset: "minimal"
+
   nimbus-nethermind:
     # docker-compose
     image: "etb-all-clients"
-    tag: "mainnet-current"
+    tag: "minimal-current"
     start-ip-address: "10.0.20.150"
     num-nodes: 1
 
@@ -407,6 +422,80 @@ client-instances:
 
     validator-offset-start: 56
 
+  # Geth clients
+  prysm-reth:
+    # docker-compose
+    image: "etb-all-clients"
+    tag: "minimal-current"
+    start-ip-address: "10.0.20.160"
+    num-nodes: 1
+
+    # consensus-info
+    consensus-config: "prysm-consensus-client"
+    execution-config: "reth-execution-config"
+
+    validator-offset-start: 60
+
+    additional-env:
+      validator-password: "testnet-password"
+
+  teku-reth:
+    # docker-compose
+    image: "etb-all-clients"
+    tag: "minimal-current"
+    start-ip-address: "10.0.20.170"
+    num-nodes: 1
+
+    # consensus-info
+    consensus-config: "teku-consensus-client"
+    execution-config: "reth-execution-config"
+
+    validator-offset-start: 64
+
+  lighthouse-reth:
+    # docker-compose
+    image: "etb-all-clients"
+    tag: "minimal-current"
+    start-ip-address: "10.0.20.180"
+    num-nodes: 1
+
+    # consensus-info
+    consensus-config: "lighthouse-consensus-client"
+    execution-config: "reth-execution-config"
+
+    validator-offset-start: 68
+
+  lodestar-reth:
+    # docker-compose
+    image: "etb-all-clients"
+    tag: "minimal-current"
+    start-ip-address: "10.0.20.190"
+    num-nodes: 1
+
+    # consensus-info
+    consensus-config: "lodestar-consensus-client"
+    execution-config: "reth-execution-config"
+
+    validator-offset-start: 72
+
+    additional-env:
+      lodestar-preset: "minimal"
+
+  nimbus-reth:
+    # docker-compose
+    image: "etb-all-clients"
+    tag: "minimal-current"
+    start-ip-address: "10.0.20.195"
+    num-nodes: 1
+
+    # consensus-info
+    consensus-config: "nimbus-consensus-client"
+    execution-config: "reth-execution-config"
+
+    validator-offset-start: 76
+
+
+
 # generic instances that run fuzzers/health checks/etc.
 generic-instances:
 # the bootstrapper that builds the network.
@@ -415,7 +504,7 @@ generic-instances:
     tag: "latest"
     start-ip-address: "10.0.20.201"
     num-nodes: 1
-    entrypoint: "/source/entrypoint.sh --bootstrap-testnet --log-level info"
+    entrypoint: "/source/entrypoint.sh --bootstrap-testnet --log-level debug"
 
   # required instance, bootnode to connect all CL clients together
   eth2-bootnode:
@@ -438,7 +527,7 @@ generic-instances:
     tag: "latest"
     start-ip-address: "10.0.20.203"
     num-nodes: 1
-    entrypoint: "python3 /source/src/node_watch.py --log-level info --monitor heads:slot --monitor checkpoints:slot --max-retries 3"
+    entrypoint: "python3 /source/src/node_watch.py --log-level info --monitor heads:slot --monitor checkpoints:slot --monitor peers:epoch --max-retries 3"
 
   tx-spammer:
     image: "etb-all-clients"

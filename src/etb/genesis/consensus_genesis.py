@@ -135,10 +135,16 @@ MIN_EPOCHS_FOR_BLOCK_REQUESTS: {self.consensus_testnet_config.min_epochs_for_blo
         # config params.
         if self.consensus_testnet_config.deneb_fork.epoch != Epoch.FarFuture:
             config_file += f"""
-# Misc
+# Deneb
 # ---------------------------------------------------------------
-FIELD_ELEMENTS_PER_BLOB: {self.consensus_testnet_config.preset_base.FIELD_ELEMENTS_PER_BLOB.value}
-MAX_BLOBS_PER_BLOCK: 4
+# `2**7` (=128)
+MAX_REQUEST_BLOCKS_DENEB: 128
+# MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK
+MAX_REQUEST_BLOB_SIDECARS: 768
+# `2**12` (= 4096 epochs, ~18 days)
+MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS: 4096
+# `6`
+BLOB_SIDECAR_SUBNET_COUNT: 6
 """
         return config_file
 

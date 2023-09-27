@@ -1,37 +1,5 @@
 #!/bin/bash
 
-env_vars=(
-  "CONSENSUS_BEACON_API_PORT"
-  "CONSENSUS_BEACON_METRIC_PORT"
-  "CONSENSUS_BEACON_RPC_PORT"
-  "CONSENSUS_BOOTNODE_FILE"
-  "CONSENSUS_CHECKPOINT_FILE"
-  "CONSENSUS_CLIENT"
-  "CONSENSUS_CONFIG_FILE"
-  "CONSENSUS_GENESIS_FILE"
-  "CONSENSUS_GRAFFITI"
-  "CONSENSUS_NODE_DIR"
-  "CONSENSUS_P2P_PORT"
-  "CONSENSUS_VALIDATOR_METRIC_PORT"
-  "CONSENSUS_VALIDATOR_RPC_PORT"
-  "CONSENSUS_LOG_LEVEL"
-  "IP_ADDRESS"
-  "IP_SUBNET"
-  "JWT_SECRET_FILE"
-  "COLLECTION_DIR"
-  "NUM_CLIENT_NODES"
-  "EXECUTION_ENGINE_HTTP_PORT"
-  "EXECUTION_ENGINE_WS_PORT"
-)
-# verify vars we need are set and available.
-for var in "${env_vars[@]}" ; do
-    if [[ -z "${!var}" ]]; then
-        echo "NIMBUS error in geth var check."
-        echo "$var not set"
-        exit 1
-    fi
-done
-
 # we can wait for the bootnode enr to drop before we get the signal to start up.
 while [ ! -f "$CONSENSUS_BOOTNODE_FILE" ]; do
   echo "consensus client waiting for bootnode enr file: $CONSENSUS_BOOTNODE_FILE"
@@ -45,26 +13,37 @@ while [ ! -f "$CONSENSUS_CHECKPOINT_FILE" ]; do
     sleep 1
 done
 
-echo "Launching nimbus."
+BEACON_NODE_CMD="nimbus_beacon_node"
+BEACON_NODE_CMD+=" --non-interactive"
+BEACON_NODE_CMD+=" --bootstrap-node=$bootnode_enr"
+BEACON_NODE_CMD+=" --log-level=$CONSENSUS_LOG_LEVEL"
+BEACON_NODE_CMD+=" --udp-port=$CONSENSUS_P2P_PORT"
+BEACON_NODE_CMD+=" --tcp-port=$CONSENSUS_P2P_PORT"
+BEACON_NODE_CMD+=" --network=$COLLECTION_DIR/"
+BEACON_NODE_CMD+=" --data-dir=$CONSENSUS_NODE_DIR"
+BEACON_NODE_CMD+=" --web3-url=http://127.0.0.1:$CL_EXECUTION_ENGINE_HTTP_PORT"
+BEACON_NODE_CMD+=" --nat=extip:$IP_ADDRESS"
+BEACON_NODE_CMD+=" --enr-auto-update=false"
+BEACON_NODE_CMD+=" --rest"
+BEACON_NODE_CMD+=" --rest-address=0.0.0.0"
+BEACON_NODE_CMD+=" --rest-allow-origin=*"
+BEACON_NODE_CMD+=" --rest-port=$CONSENSUS_BEACON_API_PORT"
+BEACON_NODE_CMD+=" --doppelganger-detection=false"
+BEACON_NODE_CMD+=" --subscribe-all-subnets=true"
+BEACON_NODE_CMD+=" --jwt-secret=$JWT_SECRET_FILE"
+BEACON_NODE_CMD+=" --metrics"
+BEACON_NODE_CMD+=" --metrics-address=0.0.0.0"
+BEACON_NODE_CMD+=" --metrics-port=$CONSENSUS_BEACON_METRIC_PORT"
+BEACON_NODE_CMD+=" --in-process-validators=true"
+BEACON_NODE_CMD+=" --secrets-dir=$CONSENSUS_NODE_DIR/secrets"
+BEACON_NODE_CMD+=" --validators-dir=$CONSENSUS_NODE_DIR/keys"
+BEACON_NODE_CMD+=" --suggested-fee-recipient=0x00000000219ab540356cbb839cbe05303d7705fa"
+BEACON_NODE_CMD+=" --graffiti=$CONSENSUS_GRAFFITI"
+BEACON_NODE_CMD+=" --insecure-netkey-password"
+BEACON_NODE_CMD+=" --netkey-file=$CONSENSUS_NODE_DIR/netkey-file.txt"
+#BEACON_NODE_CMD+=" --dump:on"
+#BEACON_NODE_CMD+=" --num-threads=4"
+#BEACON_NODE_CMD+=" --history=prune"
 
-nimbus_beacon_node \
-    --non-interactive \
-    --data-dir="$CONSENSUS_NODE_DIR" \
-    --log-file="$CONSENSUS_NODE_DIR/beacon-log.txt" --log-level="$CONSENSUS_LOG_LEVEL" \
-    --network="$COLLECTION_DIR/" \
-    --secrets-dir="$CONSENSUS_NODE_DIR/secrets" --validators-dir="$CONSENSUS_NODE_DIR/keys" \
-    --rest \
-    --rest-address="0.0.0.0" --rest-port="$CONSENSUS_BEACON_API_PORT" \
-    --listen-address="$IP_ADDRESS" \
-    --tcp-port="$CONSENSUS_P2P_PORT" --udp-port="$CONSENSUS_P2P_PORT" \
-    --nat="extip:$IP_ADDRESS" \
-    --discv5=true \
-    --subscribe-all-subnets \
-    --insecure-netkey-password --netkey-file="$CONSENSUS_NODE_DIR/netkey-file.txt" \
-    --graffiti="$CONSENSUS_GRAFFITI" \
-    --in-process-validators=true \
-    --doppelganger-detection=true \
-    --bootstrap-node="$bootnode_enr" \
-    --jwt-secret="$JWT_SECRET_FILE" \
-    --web3-url=http://"127.0.0.1:$EXECUTION_ENGINE_HTTP_PORT" \
-    --dump:on
+echo "Launching nimbus beacon-node + validator."
+eval "$BEACON_NODE_CMD"

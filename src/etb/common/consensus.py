@@ -148,8 +148,7 @@ class ForkVersionName(int, Enum):
 class ConsensusFork:
     """Abstraction for a consensus fork."""
 
-    def __init__(self, fork_name: ForkVersionName,
-                 fork_version: int, fork_epoch: int):
+    def __init__(self, fork_name: ForkVersionName, fork_version: int, fork_epoch: int):
         self.name: ForkVersionName = fork_name
         self.version: int = fork_version
         self.epoch: int = fork_epoch

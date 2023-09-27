@@ -24,6 +24,9 @@ ARG BESU_BRANCH="main"
 ARG GETH_REPO="https://github.com/ethereum/go-ethereum.git"
 ARG GETH_BRANCH="master"
 
+ARG RETH_REPO="https://github.com/paradigmxyz/reth.git"
+ARG RETH_BRANCH="main"
+
 ARG NETHERMIND_REPO="https://github.com/NethermindEth/nethermind.git"
 ARG NETHERMIND_BRANCH="master"
 
@@ -34,6 +37,9 @@ ARG TX_FUZZ_BRANCH="master"
 # Metrics gathering
 ARG BEACON_METRICS_GAZER_REPO="https://github.com/dapplion/beacon-metrics-gazer.git"
 ARG BEACON_METRICS_GAZER_BRANCH="master"
+
+ARG JSON_RPC_SNOOP_REPO="https://github.com/ethDreamer/json_rpc_snoop.git"
+ARG JSON_RPC_SNOOP_BRANCH="master"
 ###############################################################################
 # Builder to build all of the clients.
 FROM debian:bullseye-slim AS etb-client-builder
@@ -65,8 +71,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git
 
 # set up dotnet (nethermind)
-RUN wget https://packages.microsoft.com/config/debian/11/packages-microsoft-prod.deb -O packages-microsoft-prod.deb && dpkg -i packages-microsoft-prod.deb && rm packages-microsoft-prod.deb
-RUN apt update && apt install -y dotnet-sdk-7.0
+RUN wget https://dot.net/v1/dotnet-install.sh -O dotnet-install.sh && \
+    chmod +x dotnet-install.sh && \
+    ./dotnet-install.sh --channel 7.0
+ENV PATH="$PATH:/root/.dotnet/"
 
 WORKDIR /git
 
@@ -75,10 +83,15 @@ RUN wget --no-check-certificate https://apt.llvm.org/llvm.sh && chmod +x llvm.sh
 ENV LLVM_CONFIG=llvm-config-15
 
 # set up go (geth+prysm)
-RUN wget https://go.dev/dl/go1.20.3.linux-amd64.tar.gz
-RUN tar -zxvf go1.20.3.linux-amd64.tar.gz -C /usr/local/
-RUN ln -s /usr/local/go/bin/go /usr/local/bin/go
-RUN ln -s /usr/local/go/bin/gofmt /usr/local/bin/gofmt
+RUN arch=$(arch | sed s/aarch64/arm64/ | sed s/x86_64/amd64/) && \
+    wget https://go.dev/dl/go1.20.3.linux-${arch}.tar.gz
+
+RUN arch=$(arch | sed s/aarch64/arm64/ | sed s/x86_64/amd64/) && \
+    tar -zxvf go1.20.3.linux-${arch}.tar.gz -C /usr/local/
+
+RUN ln -s /usr/local/go/bin/go /usr/local/bin/go && \
+    ln -s /usr/local/go/bin/gofmt /usr/local/bin/gofmt
+
 ENV PATH="$PATH:/root/go/bin"
 
 # setup nodejs (lodestar)
@@ -113,6 +126,7 @@ RUN git clone "${LIGHTHOUSE_REPO}" && \
     git log -n 1 --format=format:"%H" > /lighthouse.version
 
 RUN cd lighthouse && \
+    cargo update -p proc-macro2 && \
     cargo build --release --manifest-path lighthouse/Cargo.toml --features spec-minimal --bin lighthouse
 
 # LODESTAR
@@ -140,8 +154,8 @@ RUN git clone "${NIMBUS_ETH2_REPO}" && \
     make -j16 update
 
 RUN cd nimbus-eth2 && \
-    make -j16 nimbus_beacon_node NIMFLAGS="-d:const_preset=minimal -d:web3_consensus_const_preset=minimal -d:FIELD_ELEMENTS_PER_BLOB=4 -d:disableMarchNative --cc:clang --clang.exe:clang-15 --clang.linkerexe:clang-15"
-
+    arch=$(arch | sed s/aarch64/arm64/ | sed s/x86_64/amd64/) && \
+    make -j16 nimbus_beacon_node NIMFLAGS="-d:const_preset=minimal -d:web3_consensus_const_preset=minimal -d:FIELD_ELEMENTS_PER_BLOB=4 -d:disableMarchNative --cpu:${arch} --cc:clang --clang.exe:clang-15 --clang.linkerexe:clang-15 --passC:-fno-lto --passL:-fno-lto"
 
 # TEKU
 FROM etb-client-builder AS teku-builder
@@ -157,15 +171,17 @@ RUN cd teku && \
     ./gradlew installDist
 
 # PRYSM
-FROM gcr.io/prysmaticlabs/build-agent AS prysm-builder
+FROM etb-client-builder AS prysm-builder
 ARG PRYSM_BRANCH
 ARG PRYSM_REPO
+RUN go install github.com/bazelbuild/bazelisk@latest
 RUN git clone "${PRYSM_REPO}" && \
     cd prysm && \
     git checkout "${PRYSM_BRANCH}" && \
     git log -n 1 --format=format:"%H" > /prysm.version
 
-RUN cd prysm && bazel build --config=minimal //cmd/beacon-chain:beacon-chain //cmd/validator:validator
+RUN cd prysm && \
+    /root/go/bin/bazelisk build --config=minimal //cmd/beacon-chain:beacon-chain //cmd/validator:validator
 
 
 ############################# Execution  Clients  #############################
@@ -180,6 +196,17 @@ RUN git clone "${GETH_REPO}" && \
 
 RUN cd go-ethereum && \
     go install ./...
+
+FROM etb-client-builder AS reth-builder
+ARG RETH_BRANCH
+ARG RETH_REPO
+RUN git clone "${RETH_REPO}" && \
+    cd reth && \
+    git checkout "${RETH_BRANCH}" && \
+    git log -n 1 --format=format:"%H" > /reth.version
+
+RUN cd reth && \
+    cargo build --release
 
 # Besu
 FROM etb-client-builder AS besu-builder
@@ -211,6 +238,8 @@ ARG TX_FUZZ_BRANCH
 ARG TX_FUZZ_REPO
 ARG BEACON_METRICS_GAZER_REPO
 ARG BEACON_METRICS_GAZER_BRANCH
+ARG JSON_RPC_SNOOP_REPO
+ARG JSON_RPC_SNOOP_BRANCH
 
 RUN go install github.com/wealdtech/ethereal/v2@latest \
     && go install github.com/wealdtech/ethdo@latest \
@@ -228,7 +257,15 @@ RUN git clone "${BEACON_METRICS_GAZER_REPO}" && \
     git checkout "${BEACON_METRICS_GAZER_BRANCH}"
 
 RUN cd beacon-metrics-gazer && \
+    cargo update -p proc-macro2 && \
     cargo build --release
+
+RUN git clone "${JSON_RPC_SNOOP_REPO}" && \
+    cd json_rpc_snoop && \
+    git checkout "${JSON_RPC_SNOOP_BRANCH}"
+
+RUN cd json_rpc_snoop && \
+    make
 ########################### etb-all-clients runner  ###########################
 FROM debian:bullseye-slim
 
@@ -240,9 +277,12 @@ RUN apt update && apt install curl ca-certificates -y --no-install-recommends \
     software-properties-common && \
     curl -sL https://deb.nodesource.com/setup_18.x | bash -
 
-RUN wget https://packages.microsoft.com/config/debian/11/packages-microsoft-prod.deb -O packages-microsoft-prod.deb && \
-    dpkg -i packages-microsoft-prod.deb && \
-    rm packages-microsoft-prod.deb
+RUN wget https://dot.net/v1/dotnet-install.sh -O dotnet-install.sh && \
+    chmod +x dotnet-install.sh && \
+    ./dotnet-install.sh --channel 7.0
+
+ENV PATH="$PATH:/root/.dotnet/"
+ENV DOTNET_ROOT=/root/.dotnet
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     nodejs \
@@ -253,12 +293,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     liblz4-dev \
     libzstd-dev \
     openjdk-17-jre \
-    dotnet-runtime-7.0 \
-    aspnetcore-runtime-7.0 \
     python3-dev \
     python3-pip
 
-RUN pip3 install ruamel.yaml web3
+RUN pip3 install ruamel.yaml web3 pydantic
 
 # for coverage artifacts and runtime libraries.
 RUN wget --no-check-certificate https://apt.llvm.org/llvm.sh && \
@@ -275,29 +313,35 @@ COPY --from=misc-builder /root/go/bin/eth2-val-tools /usr/local/bin/eth2-val-too
 COPY --from=misc-builder /git/tx-fuzz/cmd/livefuzzer/livefuzzer /usr/local/bin/livefuzzer
 # beacon-metrics-gazer
 COPY --from=misc-builder /git/beacon-metrics-gazer/target/release/beacon-metrics-gazer /usr/local/bin/beacon-metrics-gazer
+# json-rpc-snoop
+COPY --from=misc-builder /git/json_rpc_snoop/target/release/json_rpc_snoop /usr/local/bin/json_rpc_snoop
 
 # consensus clients
-COPY --from=nimbus-eth2-builder /git/nimbus-eth2/build/nimbus_beacon_node /usr/local/bin/nimbus_beacon_node
-COPY --from=nimbus-eth2-builder /nimbus.version /nimbus.version
-
 COPY --from=lighthouse-builder /lighthouse.version /lighthouse.version
 COPY --from=lighthouse-builder /git/lighthouse/target/release/lighthouse /usr/local/bin/lighthouse
-
-COPY --from=teku-builder  /git/teku/build/install/teku/. /opt/teku
-COPY --from=teku-builder /teku.version /teku.version
-RUN ln -s /opt/teku/bin/teku /usr/local/bin/teku
-
-COPY --from=prysm-builder /prysm/bazel-bin/cmd/beacon-chain/beacon-chain_/beacon-chain /usr/local/bin/beacon-chain
-COPY --from=prysm-builder /prysm/bazel-bin/cmd/validator/validator_/validator /usr/local/bin/validator
-COPY --from=prysm-builder /prysm.version /prysm.version
 
 COPY --from=lodestar-builder /git/lodestar /git/lodestar
 COPY --from=lodestar-builder /lodestar.version /lodestar.version
 RUN ln -s /git/lodestar/node_modules/.bin/lodestar /usr/local/bin/lodestar
 
-# execution clients
+COPY --from=nimbus-eth2-builder /git/nimbus-eth2/build/nimbus_beacon_node /usr/local/bin/nimbus_beacon_node
+COPY --from=nimbus-eth2-builder /nimbus.version /nimbus.version
+
+COPY --from=teku-builder  /git/teku/build/install/teku/. /opt/teku
+COPY --from=teku-builder /teku.version /teku.version
+RUN ln -s /opt/teku/bin/teku /usr/local/bin/teku
+
+COPY --from=prysm-builder /git/prysm/bazel-bin/cmd/beacon-chain/beacon-chain_/beacon-chain /usr/local/bin/beacon-chain
+COPY --from=prysm-builder /git/prysm/bazel-bin/cmd/validator/validator_/validator /usr/local/bin/validator
+COPY --from=prysm-builder /prysm.version /prysm.version
+
+
+## execution clients
 COPY --from=geth-builder /geth.version /geth.version
 COPY --from=geth-builder /root/go/bin/geth /usr/local/bin/geth
+
+COPY --from=reth-builder /reth.version /reth.version
+COPY --from=reth-builder /git/reth/target/release/reth /usr/local/bin/reth
 
 COPY --from=besu-builder /besu.version /besu.version
 COPY --from=besu-builder /git/besu/build/install/besu/. /opt/besu
@@ -305,4 +349,4 @@ RUN ln -s /opt/besu/bin/besu /usr/local/bin/besu
 
 COPY --from=nethermind-builder /nethermind.version /nethermind.version
 COPY --from=nethermind-builder /git/nethermind/out /nethermind/
-RUN ln -s /nethermind/Nethermind.Runner /usr/local/bin/nethermind
+RUN ln -s /nethermind/nethermind /usr/local/bin/nethermind

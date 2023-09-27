@@ -15,6 +15,7 @@ class TestnetMonitorActionInterval(Enum):
 
     EVERY_SLOT = 1
     EVERY_EPOCH = 2
+    ONCE = 3
 
 
 class TestnetMonitorAction:
@@ -57,6 +58,7 @@ class TestnetMonitor:
 
         self.every_slot_actions: list[TestnetMonitorAction] = []
         self.every_epoch_actions: list[TestnetMonitorAction] = []
+        self.once_actions: list[TestnetMonitorAction] = []
 
     def slot_to_epoch(self, slot_num: int) -> int:
         """Convert slot number to epoch number.
@@ -74,8 +76,7 @@ class TestnetMonitor:
 
     def get_slot(self) -> int:
         """Get the current slot wrt to genesis time @return: slot numbuer."""
-        return (int(time.time()) -
-                self.consensus_genesis_time) // self.seconds_per_slot
+        return (int(time.time()) - self.consensus_genesis_time) // self.seconds_per_slot
 
     def get_epoch(self) -> int:
         """Get the current epoch wrt to genesis time @return:"""
@@ -108,11 +109,21 @@ class TestnetMonitor:
             self.every_slot_actions.append(action)
         elif action.interval == TestnetMonitorActionInterval.EVERY_EPOCH:
             self.every_epoch_actions.append(action)
+        elif action.interval == TestnetMonitorActionInterval.ONCE:
+            self.once_actions.append(action)
         else:
             raise Exception("Invalid action interval")
 
     def run(self):
         """Optionally run the testnet monitor with actions."""
+        if len(self.once_actions) > 0:
+            logging.info("Performing one time actions.")
+            for action in self.once_actions:
+                action.perform_action()
+
+        if len(self.every_slot_actions) == 0 and len(self.every_epoch_actions) == 0:
+            return
+
         while True:
             goal_slot = self.get_slot() + 1
             self.wait_for_slot(goal_slot)

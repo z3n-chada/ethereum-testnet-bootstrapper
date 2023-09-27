@@ -13,7 +13,7 @@ class LiveFuzzer:
     ):
         self.binary_path = binary_path
 
-    def start_fuzzer(self, rpc_path: str, fuzz_mode: str, private_key: str):
+    def start_fuzzer(self, rpc_path: str, fuzz_mode: str, private_key: str, no_al:bool = False, tx_count:int = 500):
         """Start the livefuzzer binary with the given parameters.
 
         @param rpc_path: path to the livefuzzer binary @param fuzz_mode:
@@ -27,7 +27,12 @@ class LiveFuzzer:
             rpc_path,
             "--sk",
             private_key,
+            "--txcount",
+            str(tx_count),
         ]
+
+        if no_al:
+            cmd.append("--no-al")
 
         logging.debug(f"Starting livefuzzer with the following command: {cmd}")
         try:
